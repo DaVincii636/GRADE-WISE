@@ -29,6 +29,7 @@
                 }
             </select>
             <button type="submit" class="gw-btn gw-btn-small gw-btn-outline">View</button>
+            @Html.ActionLink("What-If simulator", "WhatIf", "Student", new { id = Model.SelectedId }, new { @class = "gw-btn gw-btn-small" })
             <span class="gw-muted">@Model.Term</span>
         }
     </div>

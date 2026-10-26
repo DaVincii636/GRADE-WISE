@@ -1,0 +1,260 @@
+@model GradeWise.Models.WhatIfViewModel
+@using GradeWise.Services
+@{
+    ViewBag.Title = "What-If simulator";
+}
+
+<h1 class="gw-page-title">What-If simulator</h1>
+<p class="gw-page-sub">Try different scores for your remaining work and see where your final grade could land.</p>
+
+@if (!Model.HasCourse)
+{
+    <section class="gw-panel">
+        <div class="gw-panel-body gw-empty-block">
+            You are not enrolled in any course yet. Your instructor enrolls you, and the simulator is available once they do.
+        </div>
+    </section>
+}
+else
+{
+    <section class="gw-panel gw-picker-panel">
+        <div class="gw-panel-body">
+            @using (Html.BeginForm("WhatIf", "Student", FormMethod.Get, new { @class = "gw-picker" }))
+            {
+                <label for="course-picker">Course</label>
+                <select id="course-picker" name="id" class="gw-inline-select">
+                    @foreach (var c in Model.Courses)
+                    {
+                        <option value="@c.Id" selected="@(c.Id == Model.SelectedId)">@c.Code &middot; @c.Name</option>
+                    }
+                </select>
+                <button type="submit" class="gw-btn gw-btn-small gw-btn-outline">View</button>
+                @Html.ActionLink("Back to my grades", "Index", "Student", new { id = Model.SelectedId }, new { @class = "gw-btn gw-btn-small gw-btn-outline" })
+                <span class="gw-muted">@Model.Term</span>
+            }
+        </div>
+    </section>
+
+    if (!Model.HasCategories)
+    {
+        <div class="gw-alert gw-alert-warn" role="status">
+            Your instructor has not set the grading categories for this course yet, so there is nothing to simulate.
+        </div>
+    }
+    else if (!Model.WeightsOk)
+    {
+        <div class="gw-alert gw-alert-warn" role="status">
+            The grading weights for this course add up to <strong>@GradeCalculator.Format(Model.WeightTotal)%</strong>, not 100%.
+            The simulator is switched off until your instructor fixes them, because the results would not be reliable.
+        </div>
+    }
+    else if (Model.NothingLeft)
+    {
+        <section class="gw-stats" aria-label="Final result">
+            <div class="gw-stat">
+                <div class="gw-stat-value">@GradeCalculator.Format(Model.Earned)%</div>
+                <div class="gw-stat-label">Final grade</div>
+            </div>
+            <div class="gw-stat">
+                <div class="gw-stat-value">@GradeCalculator.Format(Model.Equivalent)</div>
+                <div class="gw-stat-label">Equivalent grade</div>
+            </div>
+        </section>
+        <div class="gw-alert gw-alert-ok" role="status">
+            Every category in this course is already graded, so there is nothing left to simulate.
+        </div>
+    }
+    else
+    {
+        <div id="whatif"
+             data-earned="@GradeCalculator.Raw(Model.Earned)"
+             data-remaining="@GradeCalculator.Raw(Model.RemainingWeight)"
+             data-default="@GradeCalculator.Raw(Model.DefaultScore)">
+
+            <section class="gw-stats" aria-label="Projection">
+                <div class="gw-stat">
+                    <div class="gw-stat-value">@GradeCalculator.Format(Model.Earned)</div>
+                    <div class="gw-stat-label">Points earned so far <span class="gw-th-sub">(out of @GradeCalculator.Format(Model.WeightTotal))</span></div>
+                </div>
+                <div class="gw-stat">
+                    <div class="gw-stat-value">@GradeCalculator.Format(Model.RemainingWeight)%</div>
+                    <div class="gw-stat-label">Remaining weight <span class="gw-th-sub">(still to be graded)</span></div>
+                </div>
+                <div class="gw-stat gw-stat-live">
+                    <div class="gw-stat-value" id="sim-final" aria-live="polite">&mdash;</div>
+                    <div class="gw-stat-label">Projected final grade</div>
+                </div>
+                <div class="gw-stat gw-stat-live">
+                    <div class="gw-stat-value" id="sim-grade" aria-live="polite">&mdash;</div>
+                    <div class="gw-stat-label">Projected equivalent grade</div>
+                </div>
+            </section>
+
+            <section class="gw-panel">
+                <div class="gw-panel-head">
+                    <h2 class="gw-panel-title">Your scenario</h2>
+                </div>
+                <div class="gw-panel-body">
+                    <p class="gw-hint-block gw-muted">
+                        Drag a slider, or type a score, for each category that is not graded yet. The projected grade above updates as you go.
+                    </p>
+                    <div class="gw-table-wrap">
+                        <table class="gw-table gw-sim-table">
+                            <thead>
+                                <tr>
+                                    <th>Category</th>
+                                    <th class="gw-num">Weight</th>
+                                    <th>Score you might get</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var c in Model.Ungraded)
+                                {
+                                    <tr class="gw-sim-row" data-weight="@GradeCalculator.Raw(c.Weight)">
+                                        <td>@c.Name</td>
+                                        <td class="gw-num">@GradeCalculator.Format(c.Weight)%</td>
+                                        <td>
+                                            <div class="gw-sim-control">
+                                                <input type="range" class="gw-sim-range" min="0" max="100" step="1"
+                                                       value="@GradeCalculator.Raw(Model.DefaultScore)"
+                                                       aria-label="Score slider for @c.Name" />
+                                                <input type="number" class="gw-score-input gw-sim-num" min="0" max="100" step="0.01"
+                                                       value="@GradeCalculator.Raw(Model.DefaultScore)"
+                                                       aria-label="Score for @c.Name" />
+                                                <span class="gw-muted">/ 100</span>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                    <div id="sim-scenario-msg" class="gw-alert gw-sim-msg" role="status" style="display:none"></div>
+                    <div class="gw-form-buttons">
+                        <button type="button" id="sim-reset" class="gw-btn gw-btn-small gw-btn-outline">Reset</button>
+                    </div>
+                </div>
+            </section>
+
+            <section class="gw-panel">
+                <div class="gw-panel-head">
+                    <h2 class="gw-panel-title">Target grade</h2>
+                </div>
+                <div class="gw-panel-body">
+                    <p class="gw-hint-block gw-muted">
+                        Pick the final grade you are aiming for and see what your remaining work needs to average.
+                    </p>
+
+                    <div class="gw-chips" role="group" aria-label="Target equivalent grade">
+                        @foreach (var step in Model.Scale)
+                        {
+                            <button type="button" class="gw-chip" aria-pressed="false"
+                                    data-min="@GradeCalculator.Raw(step.MinAverage)" data-grade="@GradeCalculator.Raw(step.Grade)">
+                                @GradeCalculator.Format(step.Grade) <span class="gw-th-sub">@step.MinAverage.ToString("0")%</span>
+                            </button>
+                        }
+                    </div>
+
+                    <div class="gw-sim-control gw-sim-target">
+                        <label for="sim-target-num" class="gw-sim-label">Target final grade</label>
+                        <input type="range" id="sim-target-range" min="0" max="100" step="0.5" value="75"
+                               aria-label="Target slider" />
+                        <input type="number" id="sim-target-num" class="gw-score-input" min="0" max="100" step="0.01" value="75" />
+                        <span class="gw-muted">%</span>
+                    </div>
+
+                    <div id="sim-target-msg" class="gw-alert gw-sim-msg" role="status" aria-live="polite"></div>
+                    <p id="sim-compare" class="gw-muted gw-sim-compare" aria-live="polite"></p>
+                    <button type="button" id="sim-apply" class="gw-btn gw-btn-small" style="display:none">Use this score for all remaining work</button>
+                </div>
+            </section>
+        </div>
+
+        if (Model.Graded.Count > 0)
+        {
+            <section class="gw-panel">
+                <div class="gw-panel-head">
+                    <h2 class="gw-panel-title">Already graded</h2>
+                </div>
+                <div class="gw-table-wrap">
+                    <table class="gw-table">
+                        <thead>
+                            <tr>
+                                <th>Category</th>
+                                <th class="gw-num">Weight</th>
+                                <th class="gw-num">Your score</th>
+                                <th class="gw-num">Weighted points</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var r in Model.Graded)
+                            {
+                                <tr>
+                                    <td>@r.Category</td>
+                                    <td class="gw-num">@GradeCalculator.Format(r.Weight)%</td>
+                                    <td class="gw-num">@GradeCalculator.Format(r.Score)</td>
+                                    <td class="gw-num">@GradeCalculator.Format(r.WeightedPoints)</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        }
+
+        <details class="gw-panel gw-check-panel">
+            <summary class="gw-check-summary">Check the math</summary>
+            <div class="gw-panel-body">
+                <p class="gw-hint-block gw-muted">
+                    The page works out each example below in JavaScript. The server works out the same examples with its own
+                    calculator. If the two ever disagree, this table says so.
+                </p>
+                <div class="gw-table-wrap">
+                    <table class="gw-table">
+                        <thead>
+                            <tr>
+                                <th>Example</th>
+                                <th class="gw-num">Page</th>
+                                <th class="gw-num">Server</th>
+                                <th>Result</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var k in Model.Checks)
+                            {
+                                <tr class="gw-check-row"
+                                    data-kind="@k.Kind"
+                                    data-earned="@GradeCalculator.Raw(k.Earned)"
+                                    data-remaining="@GradeCalculator.Raw(k.Remaining)"
+                                    data-input="@GradeCalculator.Raw(k.Input)"
+                                    data-expected="@GradeCalculator.Raw(k.Expected)"
+                                    data-status="@k.Status">
+                                    <td>
+                                        @k.Label
+                                        <span class="gw-th-sub">
+                                            @(k.Kind == "final" ? "(projected final grade)" : "(average needed on the rest)")
+                                        </span>
+                                    </td>
+                                    <td class="gw-num gw-check-page">&mdash;</td>
+                                    <td class="gw-num">@GradeCalculator.Format(k.Expected)</td>
+                                    <td class="gw-check-match">&mdash;</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </details>
+    }
+}
+
+@section scripts {
+    <script src="@Url.Content("~/Scripts/whatif.js")"></script>
+    <script>
+        // Switch course as soon as another one is picked (the View button still works without JavaScript).
+        var picker = document.getElementById("course-picker");
+        if (picker) {
+            picker.addEventListener("change", function () { picker.form.submit(); });
+        }
+    </script>
+}

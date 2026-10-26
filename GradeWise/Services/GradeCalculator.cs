@@ -52,8 +52,36 @@ namespace GradeWise.Services
         public double? Lowest { get; set; }
     }
 
+    /// <summary>What a target final grade needs, as worked out by <see cref="GradeCalculator.CheckTarget"/>.</summary>
+    public enum TargetStatus
+    {
+        /// <summary>Every category is already graded, so there is nothing left to simulate.</summary>
+        NothingLeft,
+
+        /// <summary>The points already earned meet the target; even a 0 on the rest is enough.</summary>
+        Secured,
+
+        /// <summary>The target needs an average between 0 and 100 on the remaining work.</summary>
+        Reachable,
+
+        /// <summary>The target needs more than 100 on the remaining work, so it cannot be reached.</summary>
+        OutOfReach
+    }
+
+    public class TargetResult
+    {
+        public TargetStatus Status { get; set; }
+
+        /// <summary>
+        /// Average (percent) needed on the remaining work. Can be 0 or below (secured) or above 100
+        /// (out of reach). Null when nothing is left to grade.
+        /// </summary>
+        public double? Required { get; set; }
+    }
+
     /// <summary>
-    /// The one place the grade formula lives, so it can be checked on its own (Phase 7 builds on it).
+    /// The one place the grade formula lives, so it can be checked on its own.
+    /// The What-If page repeats the same formulas in Scripts/whatif.js and checks itself against this class.
     /// Scores are percentages from 0 to 100; weights are percentages of the final grade.
     /// </summary>
     public static class GradeCalculator
@@ -102,6 +130,52 @@ namespace GradeWise.Services
             return summary;
         }
 
+        /// <summary>
+        /// What-If: the final grade (percent of the whole course) if the remaining categories get the given scores.
+        /// final = earned + sum of (weight x score / 100). Scores are limited to 0-100.
+        /// </summary>
+        public static double ProjectFinal(double earned, IEnumerable<double> weights, IEnumerable<double> scores)
+        {
+            var total = earned;
+            var weightList = (weights ?? Enumerable.Empty<double>()).ToList();
+            var scoreList = (scores ?? Enumerable.Empty<double>()).ToList();
+
+            for (var i = 0; i < weightList.Count && i < scoreList.Count; i++)
+            {
+                var score = Math.Max(0, Math.Min(100, scoreList[i]));
+                total += weightList[i] * score / 100.0;
+            }
+
+            return total;
+        }
+
+        /// <summary>Tolerance for the target checks, so rounding noise cannot flip a result.</summary>
+        public const double TargetTolerance = 0.000001;
+
+        /// <summary>
+        /// What-If: the average needed on the remaining work to reach a target final grade.
+        /// required = (target - earned) / remaining weight x 100.
+        /// </summary>
+        public static TargetResult CheckTarget(double target, double earned, double remainingWeight)
+        {
+            var result = new TargetResult();
+
+            if (remainingWeight <= WeightTolerance)
+            {
+                result.Status = TargetStatus.NothingLeft;
+                return result;
+            }
+
+            var required = (target - earned) / remainingWeight * 100.0;
+            result.Required = required;
+
+            if (required <= TargetTolerance) result.Status = TargetStatus.Secured;
+            else if (required > 100 + TargetTolerance) result.Status = TargetStatus.OutOfReach;
+            else result.Status = TargetStatus.Reachable;
+
+            return result;
+        }
+
         public static double TotalWeight(IEnumerable<GradeCategory> categories)
         {
             return (categories ?? Enumerable.Empty<GradeCategory>()).Sum(c => c.Weight);
@@ -129,12 +203,27 @@ namespace GradeWise.Services
         {
             if (!average.HasValue) return null;
 
+            // Round away floating-point noise so an exact 85 is never read as 84.99999999.
+            var value = Math.Round(average.Value, 6);
+
             foreach (var step in GradeScale)
             {
-                if (average.Value >= step[0]) return step[1];
+                if (value >= step[0]) return step[1];
             }
 
             return FailingGrade;
+        }
+
+        /// <summary>The grade table, highest first. The What-If page uses it for its target buttons.</summary>
+        public static List<GradeStep> Scale()
+        {
+            return GradeScale.Select(s => new GradeStep { MinAverage = s[0], Grade = s[1] }).ToList();
+        }
+
+        /// <summary>A number written the same way on every computer (dot decimal), for HTML attributes read by JavaScript.</summary>
+        public static string Raw(double value)
+        {
+            return value.ToString("R", CultureInfo.InvariantCulture);
         }
 
         /// <summary>Text for showing a grade or weight: two decimals, or a dash when there is no value.</summary>

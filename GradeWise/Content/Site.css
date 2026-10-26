@@ -497,3 +497,78 @@ a.gw-btn { text-decoration: none; }
 }
 
 .gw-notes li { margin-bottom: 8px; }
+
+/* ---------- What-If simulator (Phase 7) ---------- */
+.gw-alert-info {
+    background: #eef2fb;
+    border-color: #c3cfee;
+    border-left-color: var(--gw-navy);
+    color: var(--gw-navy-dark);
+}
+
+.gw-stat-live { border-left-color: var(--gw-gold); }
+
+.gw-sim-control {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+}
+
+.gw-sim-control input[type="range"] {
+    flex: 1 1 160px;
+    min-width: 140px;
+    accent-color: var(--gw-navy);
+}
+
+.gw-sim-target { margin-bottom: 16px; }
+
+.gw-sim-label { font-weight: 600; margin: 0; }
+
+.gw-sim-msg { margin-top: 16px; }
+
+.gw-sim-compare { margin: -6px 0 14px; min-height: 1.4em; }
+
+.gw-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+
+.gw-chip {
+    background: var(--gw-white);
+    color: var(--gw-navy);
+    border: 1px solid var(--gw-navy);
+    border-radius: 999px;
+    padding: 4px 12px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.gw-chip:hover { background: var(--gw-head); }
+
+.gw-chip-on,
+.gw-chip-on:hover {
+    background: var(--gw-navy);
+    color: var(--gw-white);
+}
+
+.gw-chip-on .gw-th-sub { color: #c9d3ee; }
+
+.gw-check-panel { padding: 0; }
+
+.gw-check-summary {
+    cursor: pointer;
+    padding: 14px 18px;
+    color: var(--gw-navy);
+    font-weight: 700;
+}
+
+.gw-check-ok { color: #14532d; font-weight: 600; }
+.gw-check-bad { color: #b3261e; font-weight: 700; }
+
+@media (max-width: 576px) {
+    .gw-sim-control { gap: 8px; }
+}

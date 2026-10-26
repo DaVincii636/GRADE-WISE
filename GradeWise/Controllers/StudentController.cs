@@ -20,5 +20,14 @@ namespace GradeWise.Controllers
 
             return View(StudentService.GetDashboard(me.Id, id));
         }
+
+        // GET: /Student/WhatIf  or  /Student/WhatIf/{courseId}
+        public ActionResult WhatIf(string id)
+        {
+            var me = SampleData.FindByLogin(User.Identity.Name);
+            if (me == null) return new HttpUnauthorizedResult();
+
+            return View(StudentService.GetWhatIf(me.Id, id));
+        }
     }
 }

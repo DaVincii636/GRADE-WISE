@@ -51,6 +51,118 @@ namespace GradeWise.Services
             return model;
         }
 
+        /// <summary>
+        /// Data for the What-If simulator: the student's own graded and ungraded categories in one course.
+        /// The course is picked the same safe way as the dashboard (only courses the student is enrolled in).
+        /// </summary>
+        public static WhatIfViewModel GetWhatIf(string studentId, string requestedCourseId)
+        {
+            var model = new WhatIfViewModel();
+
+            lock (SampleData.Sync)
+            {
+                var mine = SampleData.Courses
+                    .Where(c => c.StudentIds.Contains(studentId))
+                    .OrderBy(c => c.Code)
+                    .ThenBy(c => c.Name)
+                    .ToList();
+
+                model.Courses = mine.Select(c => new StudentCourseOption { Id = c.Id, Code = c.Code, Name = c.Name }).ToList();
+                if (mine.Count == 0) return model;
+
+                var course = mine.FirstOrDefault(c => c.Id == requestedCourseId) ?? mine[0];
+                var scores = ScoresOf(course, studentId);
+                var result = GradeCalculator.Calculate(course.Categories, scores);
+
+                model.HasCourse = true;
+                model.SelectedId = course.Id;
+                model.Code = course.Code;
+                model.Name = course.Name;
+                model.Term = course.Term;
+                model.HasCategories = course.Categories.Count > 0;
+                model.WeightTotal = result.TotalWeight;
+                model.WeightsOk = model.HasCategories && GradeCalculator.IsFullWeight(result.TotalWeight);
+                model.Average = result.Average;
+                model.Equivalent = GradeCalculator.EquivalentGrade(result.Average);
+                model.Earned = result.Earned;
+                model.RemainingWeight = result.RemainingWeight;
+                model.NothingLeft = model.WeightsOk && result.RemainingWeight <= GradeCalculator.WeightTolerance;
+
+                model.DefaultScore = result.Average.HasValue
+                    ? Math.Max(0, Math.Min(100, Math.Round(result.Average.Value)))
+                    : 75;
+
+                foreach (var category in course.Categories)
+                {
+                    var own = FindScore(scores, category.Name);
+
+                    if (own.HasValue)
+                    {
+                        model.Graded.Add(new BreakdownRow
+                        {
+                            Category = category.Name,
+                            Weight = category.Weight,
+                            Score = own,
+                            WeightedPoints = category.Weight * own.Value / 100.0
+                        });
+                    }
+                    else
+                    {
+                        model.Ungraded.Add(new GradeCategory { Name = category.Name, Weight = category.Weight });
+                    }
+                }
+            }
+
+            model.Scale = GradeCalculator.Scale();
+            model.Checks = BuildChecks();
+            return model;
+        }
+
+        // Fixed examples. The server works out the answer with GradeCalculator; the page works it out again
+        // in JavaScript and shows whether the two agree. They use no student data.
+        private static List<WhatIfCheck> BuildChecks()
+        {
+            return new List<WhatIfCheck>
+            {
+                FinalCheck("55 points earned, 80% on the remaining 45%", 55, 45, 80),
+                FinalCheck("40 points earned, 50% on the remaining 60%", 40, 60, 50),
+                TargetCheck("Target 85% with 55 earned and 45% left", 85, 55, 45),
+                TargetCheck("Target 75% with 59.6 earned and 30% left", 75, 59.6, 30),
+                TargetCheck("Target 70% with 72 earned and 20% left (already secured)", 70, 72, 20),
+                TargetCheck("Target 100% with 50 earned and 40% left (out of reach)", 100, 50, 40)
+            };
+        }
+
+        private static WhatIfCheck FinalCheck(string label, double earned, double remaining, double average)
+        {
+            return new WhatIfCheck
+            {
+                Label = label,
+                Kind = "final",
+                Earned = earned,
+                Remaining = remaining,
+                Input = average,
+                Expected = GradeCalculator.ProjectFinal(earned, new[] { remaining }, new[] { average }),
+                Status = ""
+            };
+        }
+
+        private static WhatIfCheck TargetCheck(string label, double target, double earned, double remaining)
+        {
+            var result = GradeCalculator.CheckTarget(target, earned, remaining);
+
+            return new WhatIfCheck
+            {
+                Label = label,
+                Kind = "required",
+                Earned = earned,
+                Remaining = remaining,
+                Input = target,
+                Expected = result.Required ?? 0,
+                Status = result.Status.ToString()
+            };
+        }
+
         // ---------- helpers (call only while holding SampleData.Sync) ----------
 
         private static void FillCourse(StudentDashboardViewModel model, Course course, string studentId)
