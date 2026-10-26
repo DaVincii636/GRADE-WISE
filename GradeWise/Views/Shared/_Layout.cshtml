@@ -26,13 +26,18 @@
 <body>
     <header class="gw-topbar">
         <div class="gw-topbar-inner">
-            @Html.ActionLink("GradeWise", "Index", "Home", new { area = "" }, new { @class = "gw-brand" })
+            <a href="@Url.Action("Index", "Home", new { area = "" })" class="gw-brand">
+                <img src="~/Content/img/stickers/stamp-ring.svg" alt="" class="gw-brand-mark" width="36" height="36" />
+                <span class="gw-brand-word">GradeWise</span>
+            </a>
             @if (!string.IsNullOrEmpty(role))
             {
                 <div class="gw-user">
                     <span class="gw-user-name">@userName</span>
                     <span class="gw-role">@role</span>
-                    @Html.ActionLink("Sign out", "Logout", "Account", new { area = "" }, new { @class = "gw-signout" })
+                    <a href="@Url.Action("Logout", "Account", new { area = "" })" class="gw-iconbtn gw-signout" aria-label="Sign out" title="Sign out">
+                        <img src="~/Content/img/icons/sign-out.svg" alt="" width="24" height="24" />
+                    </a>
                 </div>
             }
         </div>
