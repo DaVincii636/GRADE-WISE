@@ -1,0 +1,153 @@
+@model GradeWise.Models.AnalyticsViewModel
+@using GradeWise.Services
+@{
+    ViewBag.Title = Model.Code + " analytics";
+    var graded = Model.Summary.Graded;
+}
+
+<h1 class="gw-page-title">@Model.Code &middot; @Model.Name</h1>
+<p class="gw-page-sub">@Model.Term &middot; Class analytics</p>
+
+<div class="gw-toolbar">
+    @Html.ActionLink("Back to scores", "Course", "Faculty", new { id = Model.CourseId }, new { @class = "gw-btn gw-btn-outline" })
+    @Html.ActionLink("Export class record (CSV)", "ExportCsv", "Faculty", new { id = Model.CourseId }, new { @class = "gw-btn" })
+</div>
+
+@if (Model.Categories.Count > 0 && !Model.WeightsOk)
+{
+    <div class="gw-alert gw-alert-warn" role="status">
+        The category weights add up to <strong>@GradeCalculator.Format(Model.WeightTotal)%</strong>, not 100%.
+        The numbers below use the weights as they are.
+        @Html.ActionLink("Fix the weights", "Categories", "Faculty", new { id = Model.CourseId }, null)
+    </div>
+}
+
+<section class="gw-stats" aria-label="Class summary">
+    <div class="gw-stat">
+        <div class="gw-stat-value">@Model.StudentCount</div>
+        <div class="gw-stat-label">Students</div>
+    </div>
+    <div class="gw-stat">
+        <div class="gw-stat-value">@GradeCalculator.Format(Model.Summary.Average)</div>
+        <div class="gw-stat-label">Class average</div>
+    </div>
+    <div class="gw-stat">
+        <div class="gw-stat-value">@GradeCalculator.Format(Model.Summary.Highest)</div>
+        <div class="gw-stat-label">Highest</div>
+    </div>
+    <div class="gw-stat">
+        <div class="gw-stat-value">@GradeCalculator.Format(Model.Summary.Lowest)</div>
+        <div class="gw-stat-label">Lowest</div>
+    </div>
+</section>
+
+<section class="gw-panel">
+    <div class="gw-panel-head">
+        <h2 class="gw-panel-title">Grade distribution</h2>
+    </div>
+    @if (Model.StudentCount == 0)
+    {
+        <div class="gw-panel-body gw-empty-block">
+            No students are enrolled yet.
+            @Html.ActionLink("Enroll students", "Enroll", "Faculty", new { id = Model.CourseId }, null)
+        </div>
+    }
+    else if (graded == 0)
+    {
+        <div class="gw-panel-body gw-empty-block">
+            No scores have been entered yet, so there is nothing to chart.
+            @Html.ActionLink("Enter scores", "Course", "Faculty", new { id = Model.CourseId }, null)
+        </div>
+    }
+    else
+    {
+        <div class="gw-panel-body">
+            <p class="gw-hint-block gw-muted">
+                Number of students whose average (graded work so far) falls in each range.
+                A range includes its lower number but not its upper one, and averages are rounded to 2 decimals, as in the score table.
+            </p>
+        </div>
+        <div class="gw-table-wrap">
+            <table class="gw-table gw-dist-table">
+                <caption class="gw-sr-only">Number of students per average range</caption>
+                <thead>
+                    <tr>
+                        <th scope="col">Average</th>
+                        <th scope="col" class="gw-num">Students</th>
+                        <th scope="col" class="gw-dist-col">Chart</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var bin in Model.Bins)
+                    {
+                        <tr>
+                            <th scope="row">@bin.Label</th>
+                            <td class="gw-num">@bin.Count</td>
+                            <td class="gw-dist-col" aria-hidden="true">
+                                <div class="gw-bar-track">
+                                    @if (bin.Count > 0)
+                                    {
+                                        <div class="gw-bar" style="width:@(bin.BarPercent)%"></div>
+                                    }
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                    @if (Model.NotGraded > 0)
+                    {
+                        <tr class="gw-dist-none">
+                            <th scope="row">Not graded yet</th>
+                            <td class="gw-num">@Model.NotGraded</td>
+                            <td class="gw-dist-col"></td>
+                        </tr>
+                    }
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <th scope="row">Total</th>
+                        <th class="gw-num">@Model.StudentCount</th>
+                        <th></th>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    }
+</section>
+
+<section class="gw-panel">
+    <div class="gw-panel-head">
+        <h2 class="gw-panel-title">Category averages</h2>
+    </div>
+    <div class="gw-table-wrap">
+        <table class="gw-table">
+            <thead>
+                <tr>
+                    <th>Category</th>
+                    <th class="gw-num">Weight</th>
+                    <th class="gw-num">Students graded</th>
+                    <th class="gw-num">Class average</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (Model.Categories.Count == 0)
+                {
+                    <tr>
+                        <td colspan="4" class="gw-empty">
+                            This course has no grading categories yet.
+                            @Html.ActionLink("Set them up", "Categories", "Faculty", new { id = Model.CourseId }, null)
+                        </td>
+                    </tr>
+                }
+                @foreach (var c in Model.Categories)
+                {
+                    <tr>
+                        <td>@c.Name</td>
+                        <td class="gw-num">@GradeCalculator.Format(c.Weight)%</td>
+                        <td class="gw-num">@c.Graded of @Model.StudentCount</td>
+                        <td class="gw-num">@GradeCalculator.Format(c.Average)</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</section>

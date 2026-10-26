@@ -28,6 +28,7 @@ namespace GradeWise.Services
             {
                 var me = SampleData.Users.FirstOrDefault(u => u.Id == studentId);
                 model.StudentName = me == null ? null : me.FullName;
+                model.StudentNo = me == null ? null : me.StudentNo;
 
                 var mine = SampleData.Courses
                     .Where(c => c.StudentIds.Contains(studentId))
@@ -182,6 +183,7 @@ namespace GradeWise.Services
             model.Equivalent = GradeCalculator.EquivalentGrade(result.Average);
             model.Earned = result.Earned;
             model.RemainingWeight = result.RemainingWeight;
+            model.History = HistoryService.GetHistory(course.Id, studentId);
 
             // Everyone's scores in this course, used only to make averages.
             var everyone = course.StudentIds.Select(id => ScoresOf(course, id)).ToList();

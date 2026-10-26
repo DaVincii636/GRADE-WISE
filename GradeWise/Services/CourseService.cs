@@ -205,6 +205,13 @@ namespace GradeWise.Services
                     entry.Score = change.Item3;
                 }
 
+                // Keep a progress snapshot for every student whose numbers moved.
+                var now = DateTime.Now;
+                foreach (var studentId in course.StudentIds)
+                {
+                    HistoryService.Record(course, studentId, now);
+                }
+
                 return true;
             }
         }
@@ -299,6 +306,7 @@ namespace GradeWise.Services
                 if (!course.StudentIds.Remove(studentId)) return null;
 
                 SampleData.Grades.RemoveAll(g => g.CourseId == course.Id && g.StudentId == studentId);
+                SampleData.Snapshots.RemoveAll(h => h.CourseId == course.Id && h.StudentId == studentId);
 
                 var student = SampleData.Users.FirstOrDefault(u => u.Id == studentId);
                 return student == null ? studentId : student.FullName;
@@ -451,6 +459,14 @@ namespace GradeWise.Services
                 }
 
                 course.Categories = newCategories;
+
+                // New weights or categories change everyone's average, so keep a snapshot where they moved.
+                var now = DateTime.Now;
+                foreach (var studentId in course.StudentIds)
+                {
+                    HistoryService.Record(course, studentId, now);
+                }
+
                 return true;
             }
         }

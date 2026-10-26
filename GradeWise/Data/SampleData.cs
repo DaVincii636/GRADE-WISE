@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using GradeWise.Helpers;
 using GradeWise.Models;
+using GradeWise.Services;
 
 namespace GradeWise.Data
 {
@@ -131,5 +132,40 @@ namespace GradeWise.Data
             new AcademicTerm { Id = "t-2026-1", Name = "1st Semester, S.Y. 2026-2027", IsCurrent = true },
             new AcademicTerm { Id = "t-2026-2", Name = "2nd Semester, S.Y. 2026-2027", IsCurrent = false }
         };
+
+        /// <summary>
+        /// Progress history: a snapshot of each student's standing every time their scores changed.
+        /// New ones are added by CourseService when faculty save scores or weights. The demo history
+        /// below is built from the scores above, one snapshot per graded category, two weeks apart.
+        /// (Keep this field below Courses and Grades: fields are filled in the order they are written.)
+        /// </summary>
+        public static readonly List<ScoreSnapshot> Snapshots = BuildSnapshots();
+
+        private static List<ScoreSnapshot> BuildSnapshots()
+        {
+            var list = new List<ScoreSnapshot>();
+            var now = DateTime.Now;
+
+            foreach (var course in Courses)
+            {
+                foreach (var record in Grades.Where(g => g.CourseId == course.Id))
+                {
+                    var graded = course.Categories
+                        .Select(c => record.Scores.FirstOrDefault(s => s.Category == c.Name))
+                        .Where(s => s != null && s.Score.HasValue)
+                        .ToList();
+
+                    for (var step = 0; step < graded.Count; step++)
+                    {
+                        var soFar = graded.Take(step + 1).ToList();
+                        var result = GradeCalculator.Calculate(course.Categories, soFar);
+                        var when = now.AddDays(-14 * (graded.Count - 1 - step)).AddHours(-1);
+                        list.Add(HistoryService.Make(course.Id, record.StudentId, when, result));
+                    }
+                }
+            }
+
+            return list;
+        }
     }
 }

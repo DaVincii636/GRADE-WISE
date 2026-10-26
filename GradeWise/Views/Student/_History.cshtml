@@ -1,0 +1,90 @@
+@model GradeWise.Models.StudentDashboardViewModel
+@using System.Linq
+@using GradeWise.Services
+@{
+    var points = Model.History.Where(h => h.Average.HasValue).ToList();
+
+    // Chart size and margins. Averages run from 0 to 100 up the side.
+    const double W = 600, H = 190, L = 40, R = 16, T = 12, B = 30;
+    Func<int, double> px = i => points.Count == 1 ? L + (W - L - R) / 2 : L + (W - L - R) * i / (points.Count - 1);
+    Func<double, double> py = v => T + (H - T - B) * (1 - v / 100.0);
+
+    // Razor treats the SVG text tag as its own tag, so the chart labels are built as plain strings (fixed words and numbers only).
+    Func<double, double, string, string, string> label = (x, y, anchor, content) =>
+        "<text class=\"gw-chart-label\" x=\"" + GradeCalculator.Raw(x) + "\" y=\"" + GradeCalculator.Raw(y)
+        + "\" text-anchor=\"" + anchor + "\">" + content + "</text>";
+}
+
+<section class="gw-panel">
+    <div class="gw-panel-head">
+        <h2 class="gw-panel-title">Progress history</h2>
+    </div>
+
+    @if (Model.History.Count == 0)
+    {
+        <div class="gw-panel-body gw-empty-block">
+            No history yet. A snapshot of your average is saved each time your instructor updates your scores.
+        </div>
+    }
+    else
+    {
+        if (points.Count >= 2)
+        {
+            <div class="gw-panel-body">
+                <svg class="gw-chart" viewBox="0 0 @W @H" role="img"
+                     aria-label="Line chart of your average over time, from @GradeCalculator.Format(points[0].Average) to @GradeCalculator.Format(points[points.Count - 1].Average) percent">
+                    @foreach (var tick in new[] { 0, 50, 100 })
+                    {
+                        <line class="gw-chart-grid" x1="@GradeCalculator.Raw(L)" x2="@GradeCalculator.Raw(W - R)" y1="@GradeCalculator.Raw(py(tick))" y2="@GradeCalculator.Raw(py(tick))" />
+                        @Html.Raw(label(L - 6, py(tick) + 4, "end", tick.ToString()))
+                    }
+                    <line class="gw-chart-pass" x1="@GradeCalculator.Raw(L)" x2="@GradeCalculator.Raw(W - R)" y1="@GradeCalculator.Raw(py(75))" y2="@GradeCalculator.Raw(py(75))" />
+                    @Html.Raw(label(W - R, py(75) - 4, "end", "passing 75"))
+
+                    <polyline class="gw-chart-line" points="@string.Join(" ", points.Select((p, i) => GradeCalculator.Raw(px(i)) + "," + GradeCalculator.Raw(py(p.Average.Value))))" />
+
+                    @for (var i = 0; i < points.Count; i++)
+                    {
+                        <circle class="gw-chart-dot" cx="@GradeCalculator.Raw(px(i))" cy="@GradeCalculator.Raw(py(points[i].Average.Value))" r="4">
+                            <title>@points[i].Label: @GradeCalculator.Format(points[i].Average)%</title>
+                        </circle>
+                    }
+                </svg>
+            </div>
+        }
+
+        <div class="gw-table-wrap">
+            <table class="gw-table">
+                <thead>
+                    <tr>
+                        <th>When</th>
+                        <th class="gw-num">Average</th>
+                        <th class="gw-num">Equivalent grade</th>
+                        <th class="gw-num">Change</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @for (var i = Model.History.Count - 1; i >= 0; i--)
+                    {
+                        var h = Model.History[i];
+                        <tr>
+                            <td>@h.Label</td>
+                            <td class="gw-num">@(h.Average.HasValue ? GradeCalculator.Format(h.Average) + "%" : "\u2014")</td>
+                            <td class="gw-num">@GradeCalculator.Format(h.Equivalent)</td>
+                            <td class="gw-num">
+                                @if (h.Change.HasValue)
+                                {
+                                    @((h.Change.Value >= 0 ? "+" : "") + GradeCalculator.Format(h.Change))
+                                }
+                                else
+                                {
+                                    <span class="gw-muted">&mdash;</span>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</section>

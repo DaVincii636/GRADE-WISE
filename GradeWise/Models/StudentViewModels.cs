@@ -31,6 +31,8 @@ namespace GradeWise.Models
     {
         public string StudentName { get; set; }
 
+        public string StudentNo { get; set; }
+
         public List<StudentCourseOption> Courses { get; set; } = new List<StudentCourseOption>();
 
         public bool HasCourse { get; set; }
@@ -64,6 +66,9 @@ namespace GradeWise.Models
         public int MinClassSize { get; set; }
 
         public List<string> Notifications { get; set; } = new List<string>();
+
+        /// <summary>The student's own progress history in this course, oldest first.</summary>
+        public List<HistoryPoint> History { get; set; } = new List<HistoryPoint>();
     }
     /// <summary>One line of the grade table: the lowest average (percent) that earns this grade.</summary>
     public class GradeStep

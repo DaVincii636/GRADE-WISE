@@ -70,6 +70,8 @@ else if (!Model.WeightsOk)
     @Html.ActionLink("Back to courses", "Index", "Faculty", null, new { @class = "gw-btn gw-btn-outline" })
     @Html.ActionLink("Students", "Enroll", "Faculty", new { id = Model.CourseId }, new { @class = "gw-btn gw-btn-outline" })
     @Html.ActionLink("Categories and weights", "Categories", "Faculty", new { id = Model.CourseId }, new { @class = "gw-btn gw-btn-outline" })
+    @Html.ActionLink("Analytics", "Analytics", "Faculty", new { id = Model.CourseId }, new { @class = "gw-btn gw-btn-outline" })
+    @Html.ActionLink("Export CSV", "ExportCsv", "Faculty", new { id = Model.CourseId }, new { @class = "gw-btn gw-btn-outline" })
 </div>
 
 <section class="gw-panel">

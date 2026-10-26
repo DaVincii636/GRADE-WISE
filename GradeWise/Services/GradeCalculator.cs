@@ -176,6 +176,49 @@ namespace GradeWise.Services
             return result;
         }
 
+        // Lower end of each distribution range. The last range runs up to 100.
+        private static readonly double[] BinEdges = { 0, 60, 70, 80, 90 };
+
+        private static readonly string[] BinLabels =
+        {
+            "Below 60", "60 to below 70", "70 to below 80", "80 to below 90", "90 to 100"
+        };
+
+        /// <summary>
+        /// Counts students per score range. Each average is rounded to 2 decimals first (the same way it is
+        /// shown), so the counts always agree with the numbers in the score table. Null (not graded) is skipped.
+        /// </summary>
+        public static List<DistributionBin> Distribution(IEnumerable<double?> averages)
+        {
+            var bins = new List<DistributionBin>();
+            for (var i = 0; i < BinEdges.Length; i++)
+            {
+                bins.Add(new DistributionBin
+                {
+                    Label = BinLabels[i],
+                    Min = BinEdges[i],
+                    Max = i + 1 < BinEdges.Length ? BinEdges[i + 1] : 100
+                });
+            }
+
+            foreach (var average in averages ?? Enumerable.Empty<double?>())
+            {
+                if (!average.HasValue) continue;
+
+                var value = Math.Round(average.Value, 2);
+                for (var i = bins.Count - 1; i >= 0; i--)
+                {
+                    if (value >= bins[i].Min || i == 0)
+                    {
+                        bins[i].Count++;
+                        break;
+                    }
+                }
+            }
+
+            return bins;
+        }
+
         public static double TotalWeight(IEnumerable<GradeCategory> categories)
         {
             return (categories ?? Enumerable.Empty<GradeCategory>()).Sum(c => c.Weight);

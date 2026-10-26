@@ -1,0 +1,143 @@
+@model GradeWise.Models.StudentDashboardViewModel
+@using GradeWise.Services
+@{
+    ViewBag.Title = "Grade summary";
+}
+
+<div class="gw-toolbar gw-no-print">
+    @Html.ActionLink("Back to my grades", "Index", "Student", new { id = Model.SelectedId }, new { @class = "gw-btn gw-btn-outline" })
+    @if (Model.HasCourse)
+    {
+        <button type="button" id="print-summary" class="gw-btn">Print or save as PDF</button>
+    }
+</div>
+
+@if (!Model.HasCourse)
+{
+    <section class="gw-panel">
+        <div class="gw-panel-body gw-empty-block">
+            You are not enrolled in any course yet, so there is no summary to print.
+        </div>
+    </section>
+}
+else
+{
+    <article class="gw-summary">
+        <header class="gw-summary-head">
+            <h1 class="gw-page-title">Grade summary</h1>
+            <p class="gw-page-sub">GradeWise &middot; printed @DateTime.Now.ToString("MMMM d, yyyy", System.Globalization.CultureInfo.InvariantCulture)</p>
+        </header>
+
+        <section class="gw-panel">
+            <div class="gw-panel-body">
+                <dl class="gw-facts">
+                    <dt>Student</dt>
+                    <dd>@Model.StudentName (@Model.StudentNo)</dd>
+                    <dt>Course</dt>
+                    <dd>@Model.Code &middot; @Model.Name</dd>
+                    <dt>Term</dt>
+                    <dd>@Model.Term</dd>
+                </dl>
+            </div>
+        </section>
+
+        @if (!Model.HasCategories)
+        {
+            <div class="gw-alert gw-alert-warn" role="status">
+                The grading categories for this course have not been set yet, so there is nothing to summarize.
+            </div>
+        }
+        else if (!Model.WeightsOk)
+        {
+            <div class="gw-alert gw-alert-warn" role="status">
+                The grading weights for this course add up to <strong>@GradeCalculator.Format(Model.WeightTotal)%</strong>, not 100%.
+                These numbers may change once the instructor fixes them.
+            </div>
+        }
+
+        <section class="gw-stats" aria-label="Summary">
+            <div class="gw-stat">
+                <div class="gw-stat-value">@(Model.Average.HasValue ? GradeCalculator.Format(Model.Average) + "%" : "\u2014")</div>
+                <div class="gw-stat-label">Current average <span class="gw-th-sub">(graded work so far)</span></div>
+            </div>
+            <div class="gw-stat">
+                <div class="gw-stat-value">@GradeCalculator.Format(Model.Equivalent)</div>
+                <div class="gw-stat-label">Equivalent grade</div>
+            </div>
+            <div class="gw-stat">
+                <div class="gw-stat-value">@(Model.HasCategories ? GradeCalculator.Format(Model.RemainingWeight) + "%" : "\u2014")</div>
+                <div class="gw-stat-label">Remaining weight <span class="gw-th-sub">(not graded yet)</span></div>
+            </div>
+        </section>
+
+        <section class="gw-panel">
+            <div class="gw-panel-head">
+                <h2 class="gw-panel-title">Assessment breakdown</h2>
+            </div>
+            <div class="gw-table-wrap">
+                <table class="gw-table">
+                    <thead>
+                        <tr>
+                            <th>Category</th>
+                            <th class="gw-num">Weight</th>
+                            <th class="gw-num">Your score</th>
+                            <th class="gw-num">Weighted points</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (Model.Rows.Count == 0)
+                        {
+                            <tr>
+                                <td colspan="4" class="gw-empty">No scores have been entered yet.</td>
+                            </tr>
+                        }
+                        @foreach (var r in Model.Rows)
+                        {
+                            <tr>
+                                <td>@r.Category</td>
+                                <td class="gw-num">@GradeCalculator.Format(r.Weight)%</td>
+                                <td class="gw-num">
+                                    @if (r.Score.HasValue)
+                                    {
+                                        @GradeCalculator.Format(r.Score)
+                                    }
+                                    else
+                                    {
+                                        <span class="gw-muted">Not graded yet</span>
+                                    }
+                                </td>
+                                <td class="gw-num">@GradeCalculator.Format(r.WeightedPoints)</td>
+                            </tr>
+                        }
+                    </tbody>
+                    @if (Model.Rows.Count > 0)
+                    {
+                        <tfoot>
+                            <tr>
+                                <th>Total</th>
+                                <th class="gw-num">@GradeCalculator.Format(Model.WeightTotal)%</th>
+                                <th></th>
+                                <th class="gw-num">@GradeCalculator.Format(Model.Earned)</th>
+                            </tr>
+                        </tfoot>
+                    }
+                </table>
+            </div>
+        </section>
+
+        @Html.Partial("_History", Model)
+
+        <p class="gw-note">
+            This summary shows only your own scores. It is a copy of what GradeWise held on the date above and is not an official transcript.
+        </p>
+    </article>
+}
+
+@section scripts {
+    <script>
+        var printButton = document.getElementById("print-summary");
+        if (printButton) {
+            printButton.addEventListener("click", function () { window.print(); });
+        }
+    </script>
+}

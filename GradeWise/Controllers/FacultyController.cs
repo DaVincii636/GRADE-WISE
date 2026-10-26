@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using System.Web.Mvc;
 using GradeWise.Data;
 using GradeWise.Models;
@@ -60,6 +61,27 @@ namespace GradeWise.Controllers
             if (model == null) return HttpNotFound();
 
             return View(model);
+        }
+
+        // GET: /Faculty/Analytics/{id}
+        public ActionResult Analytics(string id)
+        {
+            var model = ReportService.GetAnalytics(id, CurrentFacultyId());
+            if (model == null) return HttpNotFound();
+
+            return View(model);
+        }
+
+        // GET: /Faculty/ExportCsv/{id}
+        public ActionResult ExportCsv(string id)
+        {
+            string fileName;
+            var csv = ReportService.BuildClassCsv(id, CurrentFacultyId(), out fileName);
+            if (csv == null) return HttpNotFound();
+
+            // The UTF-8 marker at the start makes Excel read names with accents correctly.
+            var bytes = new UTF8Encoding(true).GetPreamble().Concat(Encoding.UTF8.GetBytes(csv)).ToArray();
+            return File(bytes, "text/csv", fileName);
         }
 
         // POST: /Faculty/SaveScores/{id}
