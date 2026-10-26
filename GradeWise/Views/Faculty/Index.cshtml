@@ -7,8 +7,15 @@
     var error = TempData["Error"] as string;
 }
 
-<h1 class="gw-page-title">My courses</h1>
-<p class="gw-page-sub">Set up grading categories and enter student scores.</p>
+<div class="gw-page-head">
+    <div>
+        <h1 class="gw-page-title">My courses</h1>
+        <p class="gw-page-sub">Set up grading categories and enter student scores.</p>
+    </div>
+    <a href="@Url.Action("CreateCourse", "Faculty")" class="gw-iconbtn gw-iconbtn-add" aria-label="Create course" title="Create course">
+        <img src="@Url.Content("~/Content/img/icons/add.svg")" alt="" width="24" height="24" />
+    </a>
+</div>
 
 @if (!string.IsNullOrEmpty(error))
 {
@@ -20,80 +27,72 @@
 }
 
 <section class="gw-stats" aria-label="Summary">
-    <div class="gw-stat">
+    <div class="gw-stat" data-tab="Courses">
         <div class="gw-stat-value">@Model.Courses.Count</div>
         <div class="gw-stat-label">Courses</div>
     </div>
-    <div class="gw-stat">
+    <div class="gw-stat" data-tab="Students">
         <div class="gw-stat-value">@Model.StudentCount</div>
         <div class="gw-stat-label">Enrolled students</div>
     </div>
-    <div class="gw-stat">
+    <div class="gw-stat" data-tab="Missing">
         <div class="gw-stat-value">@Model.MissingScores</div>
         <div class="gw-stat-label">Scores not yet entered</div>
     </div>
 </section>
 
-<div class="gw-toolbar">
-    @Html.ActionLink("Create course", "CreateCourse", "Faculty", null, new { @class = "gw-btn" })
-</div>
-
 <section class="gw-panel">
     <div class="gw-panel-head">
         <h2 class="gw-panel-title">Courses</h2>
     </div>
-    <div class="gw-table-wrap">
-        <table class="gw-table">
-            <thead>
-                <tr>
-                    <th>Code</th>
-                    <th>Course</th>
-                    <th>Term</th>
-                    <th class="gw-num">Students</th>
-                    <th class="gw-num">Weights</th>
-                    <th class="gw-num">Class average</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                @if (Model.Courses.Count == 0)
-                {
-                    <tr>
-                        <td colspan="7" class="gw-empty">You have no courses yet. Create one to start entering scores.</td>
-                    </tr>
-                }
-                @foreach (var c in Model.Courses)
-                {
-                    <tr>
-                        <td>@c.Code</td>
-                        <td>@c.Name</td>
-                        <td>@c.Term</td>
-                        <td class="gw-num">@c.StudentCount</td>
-                        <td class="gw-num">
-                            @if (c.CategoryCount == 0)
-                            {
-                                <span class="gw-status gw-status-warn">None set</span>
-                            }
-                            else if (GradeCalculator.IsFullWeight(c.WeightTotal))
-                            {
-                                @:100%
-                            }
-                            else
-                            {
-                                <span class="gw-status gw-status-warn">@GradeCalculator.Format(c.WeightTotal)%</span>
-                            }
-                        </td>
-                        <td class="gw-num">@GradeCalculator.Format(c.ClassAverage)</td>
-                        <td>
-                            <div class="gw-row-actions">
-                                @Html.ActionLink("Scores", "Course", "Faculty", new { id = c.Id }, new { @class = "gw-btn gw-btn-small" })
-                                @Html.ActionLink("Students", "Enroll", "Faculty", new { id = c.Id }, new { @class = "gw-btn gw-btn-small gw-btn-outline" })
-                                @Html.ActionLink("Categories", "Categories", "Faculty", new { id = c.Id }, new { @class = "gw-btn gw-btn-small gw-btn-outline" })
-                            </div>
-                        </td>
-                    </tr>
-                }
-            </tbody>
-        </table>
-    </div>
+
+    @if (Model.Courses.Count == 0)
+    {
+        <div class="gw-panel-body gw-empty-state">
+            <img src="@Url.Content("~/Content/img/stickers/mascot-cat.svg")" alt="" class="gw-empty-mascot" width="72" height="72" />
+            <p class="gw-empty-title">No courses yet</p>
+            <p class="gw-muted">Create your first course to start entering scores.</p>
+            @Html.ActionLink("Create course", "CreateCourse", "Faculty", null, new { @class = "gw-btn" })
+        </div>
+    }
+    else
+    {
+        <ul class="gw-collection">
+            @foreach (var c in Model.Courses)
+            {
+                <li>
+                    <div class="gw-collection-item gw-collection-row">
+                        <span class="gw-collection-sticker" aria-hidden="true">@(c.Code.Length > 2 ? c.Code.Substring(0, 2) : c.Code)</span>
+                        <span class="gw-collection-main">
+                            <span class="gw-collection-code">@c.Code &middot; @c.Name</span>
+                            <span class="gw-collection-meta">
+                                @c.Term &middot; @c.StudentCount students &middot;
+                                @if (c.CategoryCount == 0)
+                                {
+                                    <span class="gw-status gw-status-warn">No weights set</span>
+                                }
+                                else if (GradeCalculator.IsFullWeight(c.WeightTotal))
+                                {
+                                    <span>weights 100%</span>
+                                }
+                                else
+                                {
+                                    <span class="gw-status gw-status-warn">weights @GradeCalculator.Format(c.WeightTotal)%</span>
+                                }
+                                &middot; class average @GradeCalculator.Format(c.ClassAverage)
+                            </span>
+                        </span>
+                        <span class="gw-row-actions gw-collection-buttons">
+                            @Html.ActionLink("Scores", "Course", "Faculty", new { id = c.Id }, new { @class = "gw-btn gw-btn-small" })
+                            @Html.ActionLink("Students", "Enroll", "Faculty", new { id = c.Id }, new { @class = "gw-btn gw-btn-small gw-btn-outline" })
+                            @Html.ActionLink("Categories", "Categories", "Faculty", new { id = c.Id }, new { @class = "gw-btn gw-btn-small gw-btn-outline" })
+                        </span>
+                        <a href="@Url.Action("Course", "Faculty", new { id = c.Id })" class="gw-collection-go" aria-label="Open @c.Code">
+                            <img src="@Url.Content("~/Content/img/icons/chevron-right.svg")" alt="" class="gw-collection-chevron" width="20" height="20" />
+                        </a>
+                    </div>
+                </li>
+            }
+        </ul>
+    }
 </section>

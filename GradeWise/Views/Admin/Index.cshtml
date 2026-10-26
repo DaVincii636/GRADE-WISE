@@ -27,23 +27,29 @@
 }
 @if (!string.IsNullOrEmpty(tempPassword))
 {
-    <div class="gw-alert gw-alert-ok" role="status">
-        Temporary password for <strong>@tempPasswordFor</strong>:
-        <span class="gw-temp-password">@tempPassword</span><br />
-        Copy it now and give it to the user. It is not shown again.
-    </div>
+    <aside class="gw-sticky-note" role="status" aria-live="polite">
+        <img src="@Url.Content("~/Content/img/stickers/tape.svg")" alt="" class="gw-tape" width="120" height="34" />
+        <p class="gw-sticky-title">Temporary password for <strong>@tempPasswordFor</strong></p>
+        <div class="gw-sticky-row">
+            <code class="gw-temp-password" id="temp-password">@tempPassword</code>
+            <button type="button" class="gw-iconbtn" id="copy-password" aria-label="Copy temporary password" title="Copy password">
+                <img src="@Url.Content("~/Content/img/icons/copy.svg")" alt="" width="24" height="24" />
+            </button>
+        </div>
+        <p class="gw-sticky-hint">Copy it now and give it to the user. It is not shown again.</p>
+    </aside>
 }
 
 <section class="gw-stats" aria-label="Summary">
-    <div class="gw-stat">
+    <div class="gw-stat" data-tab="Users">
         <div class="gw-stat-value">@users.Count</div>
         <div class="gw-stat-label">Users</div>
     </div>
-    <div class="gw-stat">
+    <div class="gw-stat" data-tab="Active">
         <div class="gw-stat-value">@users.Count(u => u.IsActive)</div>
         <div class="gw-stat-label">Active accounts</div>
     </div>
-    <div class="gw-stat">
+    <div class="gw-stat" data-tab="Term">
         <div class="gw-stat-value gw-stat-value-text">@(string.IsNullOrEmpty(currentTerm) ? "Not set" : currentTerm)</div>
         <div class="gw-stat-label">Current term</div>
     </div>
@@ -87,7 +93,7 @@
                         <td>
                             @if (isMe)
                             {
-                                @u.Role
+                                <span class="gw-badge">@u.Role</span>
                             }
                             else
                             {
@@ -148,5 +154,34 @@
                 e.preventDefault();
             }
         });
+
+        // Copy the one-time temporary password (the box is only shown once).
+        var copyBtn = document.getElementById("copy-password");
+        if (copyBtn) {
+            copyBtn.addEventListener("click", function () {
+                var box = document.getElementById("temp-password");
+                var text = box ? box.textContent : "";
+                function done() {
+                    copyBtn.setAttribute("title", "Copied");
+                    copyBtn.setAttribute("aria-label", "Copied");
+                }
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(text).then(done, function () { fallback(); });
+                } else {
+                    fallback();
+                }
+                function fallback() {
+                    var area = document.createElement("textarea");
+                    area.value = text;
+                    area.setAttribute("readonly", "readonly");
+                    area.style.position = "absolute";
+                    area.style.left = "-9999px";
+                    document.body.appendChild(area);
+                    area.select();
+                    try { document.execCommand("copy"); done(); } catch (err) { /* nothing else to do */ }
+                    document.body.removeChild(area);
+                }
+            });
+        }
     </script>
 }

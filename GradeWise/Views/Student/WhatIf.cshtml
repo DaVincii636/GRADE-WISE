@@ -10,8 +10,10 @@
 @if (!Model.HasCourse)
 {
     <section class="gw-panel">
-        <div class="gw-panel-body gw-empty-block">
-            You are not enrolled in any course yet. Your instructor enrolls you, and the simulator is available once they do.
+        <div class="gw-panel-body gw-empty-state">
+            <img src="@Url.Content("~/Content/img/stickers/mascot-cat.svg")" alt="" class="gw-empty-mascot" width="72" height="72" />
+            <p class="gw-empty-title">Nothing to simulate yet</p>
+            <p class="gw-muted">You are not enrolled in any course yet. Your instructor enrolls you, and the simulator is available once they do.</p>
         </div>
     </section>
 }
@@ -51,11 +53,11 @@ else
     else if (Model.NothingLeft)
     {
         <section class="gw-stats" aria-label="Final result">
-            <div class="gw-stat">
+            <div class="gw-stat" data-tab="Final">
                 <div class="gw-stat-value">@GradeCalculator.Format(Model.Earned)%</div>
                 <div class="gw-stat-label">Final grade</div>
             </div>
-            <div class="gw-stat">
+            <div class="gw-stat" data-tab="Grade">
                 <div class="gw-stat-value">@GradeCalculator.Format(Model.Equivalent)</div>
                 <div class="gw-stat-label">Equivalent grade</div>
             </div>
@@ -72,19 +74,19 @@ else
              data-default="@GradeCalculator.Raw(Model.DefaultScore)">
 
             <section class="gw-stats" aria-label="Projection">
-                <div class="gw-stat">
+                <div class="gw-stat" data-tab="Earned">
                     <div class="gw-stat-value">@GradeCalculator.Format(Model.Earned)</div>
                     <div class="gw-stat-label">Points earned so far <span class="gw-th-sub">(out of @GradeCalculator.Format(Model.WeightTotal))</span></div>
                 </div>
-                <div class="gw-stat">
+                <div class="gw-stat" data-tab="Remaining">
                     <div class="gw-stat-value">@GradeCalculator.Format(Model.RemainingWeight)%</div>
                     <div class="gw-stat-label">Remaining weight <span class="gw-th-sub">(still to be graded)</span></div>
                 </div>
-                <div class="gw-stat gw-stat-live">
+                <div class="gw-stat gw-stat-live" data-tab="Projected">
                     <div class="gw-stat-value" id="sim-final" aria-live="polite">&mdash;</div>
                     <div class="gw-stat-label">Projected final grade</div>
                 </div>
-                <div class="gw-stat gw-stat-live">
+                <div class="gw-stat gw-stat-live" data-tab="Grade">
                     <div class="gw-stat-value" id="sim-grade" aria-live="polite">&mdash;</div>
                     <div class="gw-stat-label">Projected equivalent grade</div>
                 </div>

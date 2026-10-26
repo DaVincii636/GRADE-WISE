@@ -1,13 +1,20 @@
-﻿<!DOCTYPE html>
-<html>
-<head>
-    <meta name="viewport" content="width=device-width" />
-    <title>Error</title>
-</head>
-<body>
-    <hgroup>
-        <h1>Error.</h1>
-        <h2>An error occurred while processing your request.</h2>
-    </hgroup>
-</body>
-</html>
+@{
+    ViewBag.Title = "Something went wrong";
+}
+
+<div class="gw-error">
+    <div class="gw-error-sticker" aria-hidden="true">
+        <img src="~/Content/img/stickers/tape.svg" alt="" class="gw-decor-tape" width="80" height="22" />
+        <img src="~/Content/img/stickers/mascot-cat.svg" alt="" width="96" height="80" />
+    </div>
+
+    <div class="gw-error-text">
+        <span class="gw-badge">Error</span>
+        <h1 class="gw-page-title">Oops, that did not work</h1>
+        <p>Something went wrong while loading this page. Try again in a moment, or go back to your dashboard.</p>
+        <a href="@Url.Action("Index", "Home", new { area = "" })" class="gw-iconbtn gw-iconbtn-text">
+            <img src="~/Content/img/icons/back.svg" alt="" width="24" height="24" />
+            <span>Back to home</span>
+        </a>
+    </div>
+</div>

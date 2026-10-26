@@ -48,30 +48,45 @@ else if (!Model.WeightsOk)
 }
 
 <section class="gw-stats" aria-label="Class summary">
-    <div class="gw-stat">
+    <div class="gw-stat" data-tab="Students">
         <div class="gw-stat-value">@Model.Rows.Count</div>
         <div class="gw-stat-label">Students</div>
     </div>
-    <div class="gw-stat">
+    <div class="gw-stat" data-tab="Average">
         <div class="gw-stat-value">@GradeCalculator.Format(Model.Summary.Average)</div>
         <div class="gw-stat-label">Class average</div>
     </div>
-    <div class="gw-stat">
+    <div class="gw-stat" data-tab="Highest">
         <div class="gw-stat-value">@GradeCalculator.Format(Model.Summary.Highest)</div>
         <div class="gw-stat-label">Highest</div>
     </div>
-    <div class="gw-stat">
+    <div class="gw-stat" data-tab="Lowest">
         <div class="gw-stat-value">@GradeCalculator.Format(Model.Summary.Lowest)</div>
         <div class="gw-stat-label">Lowest</div>
     </div>
 </section>
 
 <div class="gw-toolbar">
-    @Html.ActionLink("Back to courses", "Index", "Faculty", null, new { @class = "gw-btn gw-btn-outline" })
-    @Html.ActionLink("Students", "Enroll", "Faculty", new { id = Model.CourseId }, new { @class = "gw-btn gw-btn-outline" })
-    @Html.ActionLink("Categories and weights", "Categories", "Faculty", new { id = Model.CourseId }, new { @class = "gw-btn gw-btn-outline" })
-    @Html.ActionLink("Analytics", "Analytics", "Faculty", new { id = Model.CourseId }, new { @class = "gw-btn gw-btn-outline" })
-    @Html.ActionLink("Export CSV", "ExportCsv", "Faculty", new { id = Model.CourseId }, new { @class = "gw-btn gw-btn-outline" })
+    <a href="@Url.Action("Index", "Faculty")" class="gw-iconbtn gw-iconbtn-text" title="Back to courses">
+        <img src="@Url.Content("~/Content/img/icons/back.svg")" alt="" width="24" height="24" />
+        <span>Back to courses</span>
+    </a>
+    <a href="@Url.Action("Enroll", "Faculty", new { id = Model.CourseId })" class="gw-iconbtn gw-iconbtn-text" title="Students">
+        <img src="@Url.Content("~/Content/img/icons/user.svg")" alt="" width="24" height="24" />
+        <span>Students</span>
+    </a>
+    <a href="@Url.Action("Categories", "Faculty", new { id = Model.CourseId })" class="gw-iconbtn gw-iconbtn-text" title="Categories and weights">
+        <img src="@Url.Content("~/Content/img/icons/list.svg")" alt="" width="24" height="24" />
+        <span>Categories</span>
+    </a>
+    <a href="@Url.Action("Analytics", "Faculty", new { id = Model.CourseId })" class="gw-iconbtn gw-iconbtn-text" title="Analytics">
+        <img src="@Url.Content("~/Content/img/icons/calendar.svg")" alt="" width="24" height="24" />
+        <span>Analytics</span>
+    </a>
+    <a href="@Url.Action("ExportCsv", "Faculty", new { id = Model.CourseId })" class="gw-iconbtn gw-iconbtn-text" title="Export CSV">
+        <img src="@Url.Content("~/Content/img/icons/download.svg")" alt="" width="24" height="24" />
+        <span>Export CSV</span>
+    </a>
 </div>
 
 <section class="gw-panel">
@@ -96,10 +111,10 @@ else if (!Model.WeightsOk)
         {
             @Html.AntiForgeryToken()
             <div class="gw-table-wrap">
-                <table class="gw-table">
+                <table class="gw-table gw-score-table">
                     <thead>
                         <tr>
-                            <th>Student</th>
+                            <th class="gw-sticky-col">Student</th>
                             @foreach (var c in Model.Categories)
                             {
                                 <th class="gw-num">@c.Name<br /><span class="gw-th-sub">@GradeCalculator.Format(c.Weight)%</span></th>
@@ -112,7 +127,7 @@ else if (!Model.WeightsOk)
                         @foreach (var row in Model.Rows)
                         {
                             <tr>
-                                <td>
+                                <td class="gw-sticky-col">
                                     @row.FullName
                                     <div class="gw-muted gw-small">@row.StudentNo</div>
                                 </td>
@@ -124,6 +139,7 @@ else if (!Model.WeightsOk)
                                                class="gw-score-input @(row.Invalid[i] ? "gw-input-bad" : "")"
                                                name="@CourseService.ScoreFieldName(row.StudentId, category.Name)"
                                                value="@row.Inputs[i]"
+                                               placeholder="&mdash;"
                                                aria-label="@category.Name score for @row.FullName" />
                                     </td>
                                 }

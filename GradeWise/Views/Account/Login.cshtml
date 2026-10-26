@@ -5,34 +5,69 @@
 }
 
 <div class="gw-login">
-    <section class="gw-panel">
-        <div class="gw-panel-head">
-            <h1 class="gw-panel-title">Sign in to GradeWise</h1>
-        </div>
-        <div class="gw-panel-body">
-            @if (!string.IsNullOrEmpty(error))
-            {
-                <div class="gw-alert" role="alert">@error</div>
-            }
+    <div class="gw-login-intro">
+        <h1 class="gw-login-headline">Know your grade, <s class="gw-strike" aria-hidden="true">guess</s> <span class="gw-swap">plan your finals</span></h1>
+        <p class="gw-login-sub">Check your term grades, then try what-if scores before the exam.</p>
+    </div>
 
-            @using (Html.BeginForm("Login", "Account", FormMethod.Post))
-            {
-                @Html.AntiForgeryToken()
-                <div class="gw-field">
-                    <label for="loginId">Student number or email</label>
-                    <input type="text" id="loginId" name="loginId" value="@loginId" autocomplete="username" autofocus />
-                </div>
-                <div class="gw-field">
-                    <label for="password">Password</label>
-                    <input type="password" id="password" name="password" autocomplete="current-password" />
-                </div>
-                <button type="submit" class="gw-btn gw-btn-block">Sign in</button>
-            }
+    <div class="gw-login-stage">
+        <section class="gw-card gw-card-raised gw-login-card">
+            <div class="gw-card-head">
+                <h2 class="gw-card-tab">Sign in</h2>
+            </div>
+            <div class="gw-card-body">
+                @if (!string.IsNullOrEmpty(error))
+                {
+                    <div class="gw-alert" role="alert">@error</div>
+                }
 
-            @* TEMPORARY demo logins: delete this note in Phase 9. *@
-            <p class="gw-note">
-                Demo accounts: admin / Admin@123, faculty / Faculty@123, 2026-0001 / Student@123
-            </p>
+                @using (Html.BeginForm("Login", "Account", FormMethod.Post))
+                {
+                    @Html.AntiForgeryToken()
+                    <div class="gw-field">
+                        <label for="loginId">ID or email</label>
+                        <input type="text" id="loginId" name="loginId" value="@loginId" autocomplete="username" autofocus />
+                    </div>
+                    <div class="gw-field">
+                        <label for="password">Password</label>
+                        <input type="password" id="password" name="password" autocomplete="current-password" />
+                    </div>
+                    <button type="submit" class="gw-btn gw-btn-block">Sign in</button>
+                }
+
+                @* Demo logins show only while the site runs in debug mode (compilation debug="true").
+                   Web.Release.config removes that setting, so a published build never shows them. *@
+                @if (Context.IsDebuggingEnabled)
+                {
+                    <p class="gw-note gw-demo-note">
+                        <span class="gw-badge">Dev only</span>
+                        Demo accounts: admin / Admin@123, faculty / Faculty@123, 2026-0001 / Student@123
+                    </p>
+                }
+            </div>
+        </section>
+
+        @* Decoration only: sample content at slight angles. Hidden from screen readers and below 768px. *@
+        <div class="gw-login-decor" aria-hidden="true">
+            <div class="gw-stat gw-decor-stat">
+                <div class="gw-stat-value">89.5%</div>
+                <div class="gw-stat-label">Term average <span class="gw-badge">Sample</span></div>
+            </div>
+
+            <div class="gw-decor-sticker">
+                <img src="~/Content/img/stickers/tape.svg" alt="" class="gw-decor-tape" width="80" height="22" />
+                <img src="~/Content/img/stickers/mascot-cat.svg" alt="" width="84" height="70" />
+                <span class="gw-badge">Plan ahead</span>
+            </div>
+
+            <div class="gw-card gw-decor-note">
+                <div class="gw-card-head">
+                    <span class="gw-card-tab">What-If</span>
+                </div>
+                <div class="gw-card-body">
+                    Score <strong>86</strong> on the finals to reach <strong>2.00</strong>
+                </div>
+            </div>
         </div>
-    </section>
+    </div>
 </div>

@@ -1,40 +1,144 @@
-/* GradeWise theme
-   navy  #17306b   top bar, headings, table headers
-   gold  #e8a317   brand rule, role badge, focus rings
-   page  #f3f4f8   page background                       */
+/* GradeWise theme: paper, grid, and ink (redesign, Phases R2-R4)
+   paper  #fdfcf9   page and card background
+   ink    #111111   text, outlines
+   lime   #a9d56e   main accent (always used as a background, never as text color on paper)
+   The old navy/gold variables were removed in Phase R9; the few legacy names
+   still used by rules (--gw-page, --gw-head, --gw-line, --gw-muted) point at the new palette. */
 
 :root {
-    --gw-navy: #17306b;
-    --gw-navy-dark: #10224d;
-    --gw-gold: #e8a317;
-    --gw-page: #f3f4f8;
-    --gw-ink: #1b2233;
-    --gw-muted: #5b6478;
-    --gw-line: #dfe3ec;
-    --gw-head: #eceff7;
-    --gw-white: #ffffff;
+    /* new tokens */
+    --gw-paper: #fdfcf9;
+    --gw-grid: #e6e4de;
+    --gw-lime: #a9d56e;
+    --gw-lime-pale: #eef6df;
+    --gw-orange: #f26b21;
+    --gw-lavender: #a9a4f5;
+    --gw-note: #f2e36b;
+    --gw-outline: 1.5px solid #111111;
+    --gw-shadow: 6px 6px 0 #111111;
+    --gw-font: "Space Grotesk", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --gw-font-pixel: "Silkscreen", "Courier New", monospace;
+    /* old names still used by some rules, remapped to the new palette */
+    --gw-page: var(--gw-paper);
+    --gw-ink: #111111;
+    --gw-muted: #555555;
+    --gw-line: #cfcdc6;
+    --gw-head: #f1efe8;
+    /* Bootstrap 5 variables, so nothing falls back to Bootstrap blue */
+    --bs-body-font-family: var(--gw-font);
+    --bs-body-color: #111111;
+    --bs-body-bg: var(--gw-paper);
+    --bs-link-color: #111111;
+    --bs-link-hover-color: #111111;
+    --bs-border-color: #111111;
 }
 
 body {
-    background: var(--gw-page);
+    background-color: var(--gw-page);
+    background-image: url(img/grid-tile.svg); /* relative to /Content/, works inside the css bundle too */
+    background-size: 32px 32px;
     color: var(--gw-ink);
-    font-family: "Segoe UI", system-ui, -apple-system, Roboto, "Helvetica Neue", Arial, sans-serif;
+    font-family: var(--gw-font);
+    font-weight: 400;
     line-height: 1.5;
 }
 
-a { color: var(--gw-navy); }
-a:hover { color: var(--gw-navy-dark); }
+h1, h2, h3, h4, h5, h6 {
+    color: var(--gw-ink);
+    font-family: var(--gw-font);
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    line-height: 1.2;
+}
 
+a {
+    color: var(--gw-ink);
+    text-decoration: underline;
+    text-decoration-color: var(--gw-ink);
+    text-decoration-thickness: 1.5px;
+    text-underline-offset: 3px;
+}
+
+    a:hover {
+        color: var(--gw-ink);
+        text-decoration-color: var(--gw-lime);
+        text-decoration-thickness: 3px;
+    }
+
+/* Focus ring: ink ring (high contrast) with a lime halo. Never rely on lime alone. */
 :focus-visible {
-    outline: 3px solid var(--gw-gold);
+    outline: 3px solid var(--gw-ink);
     outline-offset: 2px;
+    box-shadow: 0 0 0 5px var(--gw-lime);
 }
 
-/* ---------- Top bar ---------- */
-.gw-topbar {
-    background: var(--gw-navy);
-    border-bottom: 4px solid var(--gw-gold);
+::selection {
+    background: var(--gw-lime);
+    color: var(--gw-ink);
 }
+
+/* ---------- Bootstrap leftovers (nothing blue) ---------- */
+.btn-primary {
+    --bs-btn-bg: #111111;
+    --bs-btn-border-color: #111111;
+    --bs-btn-color: var(--gw-paper);
+    --bs-btn-hover-bg: var(--gw-lime);
+    --bs-btn-hover-border-color: #111111;
+    --bs-btn-hover-color: #111111;
+    --bs-btn-active-bg: var(--gw-lime);
+    --bs-btn-active-border-color: #111111;
+    --bs-btn-active-color: #111111;
+    --bs-btn-focus-shadow-rgb: 169, 213, 110;
+}
+
+.btn-outline-primary {
+    --bs-btn-color: #111111;
+    --bs-btn-border-color: #111111;
+    --bs-btn-hover-bg: var(--gw-lime);
+    --bs-btn-hover-border-color: #111111;
+    --bs-btn-hover-color: #111111;
+    --bs-btn-active-bg: var(--gw-lime);
+    --bs-btn-active-border-color: #111111;
+    --bs-btn-active-color: #111111;
+}
+
+.form-control:focus,
+.form-select:focus {
+    border-color: #111111;
+    box-shadow: 0 0 0 4px var(--gw-lime);
+}
+
+.form-check-input:checked {
+    background-color: #111111;
+    border-color: #111111;
+}
+
+.text-primary {
+    color: #111111 !important;
+}
+
+.bg-primary {
+    background-color: #111111 !important;
+}
+
+/* ---------- Top bar (Phase R3) ---------- */
+.gw-topbar {
+    position: relative;
+    background: var(--gw-paper);
+    border-bottom: var(--gw-outline);
+    margin-bottom: 8px;
+}
+
+    /* the dashed guide line just under the bar */
+    .gw-topbar::after {
+        content: "";
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: -7px;
+        border-bottom: 1.5px dashed var(--gw-ink);
+        pointer-events: none;
+    }
 
 .gw-topbar-inner {
     display: flex;
@@ -42,18 +146,33 @@ a:hover { color: var(--gw-navy-dark); }
     align-items: center;
     justify-content: space-between;
     gap: 8px 24px;
-    max-width: 1140px;
+    max-width: 1100px;
     margin: 0 auto;
-    padding: 12px 16px;
+    padding: 10px 24px;
 }
 
 .gw-brand,
 .gw-brand:hover {
-    color: var(--gw-white);
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--gw-ink);
     font-size: 1.4rem;
     font-weight: 700;
-    letter-spacing: 0.01em;
+    letter-spacing: -0.01em;
     text-decoration: none;
+}
+
+.gw-brand-mark {
+    display: block;
+    width: 36px;
+    height: 36px;
+}
+
+/* marker-style lime underline behind the lower part of the word */
+.gw-brand-word {
+    padding: 0 3px;
+    background: linear-gradient(transparent 64%, var(--gw-lime) 64%, var(--gw-lime) 92%, transparent 92%);
 }
 
 .gw-user {
@@ -61,40 +180,94 @@ a:hover { color: var(--gw-navy-dark); }
     flex-wrap: wrap;
     align-items: center;
     gap: 8px 14px;
-    color: var(--gw-white);
+    color: var(--gw-ink);
 }
 
-.gw-user-name { font-weight: 600; }
+.gw-user-name {
+    font-weight: 500;
+}
 
+/* role badge: pixel-font chip on pale lime */
 .gw-role {
-    background: var(--gw-gold);
-    color: var(--gw-navy);
-    border-radius: 999px;
-    padding: 2px 12px;
-    font-size: 0.85rem;
-    font-weight: 700;
+    background: #e4f0d4;
+    color: var(--gw-ink);
+    border: var(--gw-outline);
+    border-radius: 0;
+    padding: 3px 10px 2px;
+    font-family: var(--gw-font-pixel);
+    font-size: 0.8rem;
+    letter-spacing: 0.04em;
+    line-height: 1.4;
 }
 
-.gw-signout,
-.gw-signout:hover {
-    color: var(--gw-white);
-    font-size: 0.95rem;
-    text-decoration: underline;
-    text-underline-offset: 3px;
+/* square outlined icon button (sign out, and later add/export/back) */
+.gw-iconbtn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    background: var(--gw-paper);
+    color: var(--gw-ink);
+    border: var(--gw-outline);
+    border-radius: 0;
+    cursor: pointer;
+    text-decoration: none;
 }
+
+    .gw-iconbtn:hover {
+        background: var(--gw-lime);
+        color: var(--gw-ink);
+    }
+
+    .gw-iconbtn img {
+        display: block;
+        width: 24px;
+        height: 24px;
+    }
 
 /* ---------- Page ---------- */
 .gw-page {
-    max-width: 1140px;
+    position: relative;
+    max-width: 1100px;
     margin: 0 auto;
-    padding: 28px 16px 40px;
+    padding: 28px 24px 40px;
+}
+
+    /* faint dashed guide lines down both sides of the page (wide screens only) */
+    .gw-page::before,
+    .gw-page::after {
+        content: "";
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        border-left: 1.5px dashed rgba(17, 17, 17, 0.3);
+        pointer-events: none;
+    }
+
+    .gw-page::before {
+        left: 0;
+    }
+
+    .gw-page::after {
+        right: 0;
+    }
+
+@media (max-width: 1139.98px) {
+    .gw-page::before,
+    .gw-page::after {
+        display: none;
+    }
 }
 
 .gw-page-title {
-    color: var(--gw-navy);
+    color: var(--gw-ink);
     font-size: 1.75rem;
     font-weight: 700;
-    margin: 0 0 4px;
+    margin: 0 0 10px;
+    padding-bottom: 10px;
+    border-bottom: 1.5px dashed var(--gw-ink);
 }
 
 .gw-page-sub {
@@ -103,204 +276,294 @@ a:hover { color: var(--gw-navy-dark); }
 }
 
 .gw-footer {
-    max-width: 1140px;
+    max-width: 1100px;
     margin: 0 auto;
-    padding: 16px;
-    border-top: 1px solid var(--gw-line);
+    padding: 16px 24px;
+    border-top: 1.5px dashed var(--gw-ink);
     color: var(--gw-muted);
-    font-size: 0.9rem;
+    font-family: var(--gw-font-pixel);
+    font-size: 0.75rem;
+    letter-spacing: 0.04em;
+    text-align: center;
 }
 
-/* ---------- Stat cards ---------- */
-.gw-stats {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 16px;
-    margin-bottom: 24px;
-}
+/* =====================================================================
+   Phase R4: component library
+   Tab card, raised card, stat card, label|value fields, buttons, tables,
+   alerts, chips and form controls. Old class names (gw-panel, gw-stat,
+   gw-btn, ...) keep working; the new names (gw-card, ...) are aliases.
+   ===================================================================== */
 
-.gw-stat {
-    background: var(--gw-white);
-    border: 1px solid var(--gw-line);
-    border-left: 5px solid var(--gw-navy);
-    border-radius: 10px;
-    padding: 16px 18px;
-}
-
-.gw-stat-value {
-    color: var(--gw-navy);
-    font-size: 2rem;
-    font-weight: 700;
-    line-height: 1.1;
-}
-
-.gw-stat-label {
-    color: var(--gw-muted);
-    font-size: 0.95rem;
-    margin-top: 4px;
-}
-
-/* ---------- Panels ---------- */
+/* ---------- Tab card (.gw-card / old .gw-panel) ---------- */
+.gw-card,
 .gw-panel {
-    background: var(--gw-white);
-    border: 1px solid var(--gw-line);
-    border-radius: 10px;
-    margin-bottom: 24px;
-    overflow: hidden;
+    position: relative;
+    display: flow-root; /* stops the tab's negative margin from collapsing out of the card */
+    background: var(--gw-paper);
+    border: var(--gw-outline);
+    border-radius: 0;
+    margin: 20px 0 28px;
 }
 
+/* the tab: label sticking out of the top-left corner, sitting on the border */
+.gw-card-head,
 .gw-panel-head {
-    padding: 14px 18px;
-    border-bottom: 1px solid var(--gw-line);
+    position: relative;
+    z-index: 1;
+    margin: -15px 16px 10px;
+    padding: 0;
+    border: 0;
 }
 
+.gw-card-tab,
 .gw-panel-title {
-    color: var(--gw-navy);
-    font-size: 1.1rem;
+    display: inline-block;
+    background: var(--gw-paper);
+    color: var(--gw-ink);
+    border: var(--gw-outline);
+    border-radius: 0;
+    padding: 2px 14px;
+    font-family: var(--gw-font);
+    font-size: 1rem;
     font-weight: 700;
+    line-height: 1.5;
     margin: 0;
 }
 
-.gw-panel-body { padding: 18px; }
+.gw-card-body,
+.gw-panel-body {
+    padding: 8px 18px 18px;
+}
+
+/* a card whose body comes first (no tab) needs its full padding */
+.gw-card > .gw-card-body:first-child,
+.gw-panel > .gw-panel-body:first-child {
+    padding-top: 18px;
+}
+
+/* raised card: hard offset shadow */
+.gw-card-raised {
+    box-shadow: var(--gw-shadow);
+}
+
+/* the first card inside .gw-stats or .gw-two-col should not add extra top margin */
+.gw-stats > .gw-card,
+.gw-two-col > .gw-card,
+.gw-two-col > .gw-panel {
+    margin-top: 0;
+    margin-bottom: 0;
+}
+
+.gw-picker-panel {
+    margin-top: 0;
+}
+
+/* ---------- Stat card ---------- */
+.gw-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+    margin-bottom: 28px;
+}
+
+.gw-stat {
+    position: relative;
+    background: var(--gw-paper);
+    border: var(--gw-outline);
+    border-radius: 0;
+    padding: 16px 18px 14px;
+}
+
+/* big bold number with a thin offset outline behind it (like the "05" in the calendar reference) */
+.gw-stat-value {
+    color: var(--gw-ink);
+    font-size: 2.4rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+    text-shadow: 3px 3px 0 var(--gw-lime);
+}
+
+.gw-stat-label {
+    color: var(--gw-ink);
+    font-size: 0.95rem;
+    margin-top: 6px;
+    padding-top: 6px;
+    border-top: 1.5px dashed var(--gw-ink);
+}
+
+/* the live What-If number: raised, so it stands out */
+.gw-stat-live {
+    background: var(--gw-lime-pale);
+    box-shadow: 4px 4px 0 var(--gw-ink);
+}
+
+.gw-stat-value-text {
+    font-size: 1.15rem;
+    line-height: 1.3;
+    text-shadow: none;
+}
 
 /* ---------- Tables ---------- */
-.gw-table-wrap { overflow-x: auto; }
+.gw-table-wrap {
+    overflow-x: auto;
+}
 
 .gw-table {
     width: 100%;
     border-collapse: collapse;
-}
-
-.gw-table th,
-.gw-table td {
-    padding: 10px 18px;
-    text-align: left;
-    border-bottom: 1px solid var(--gw-line);
-}
-
-.gw-table th {
-    background: var(--gw-head);
-    color: var(--gw-navy);
-    font-weight: 700;
-}
-
-.gw-table tbody tr:last-child td { border-bottom: 0; }
-
-.gw-table td.gw-empty {
-    color: var(--gw-muted);
-    text-align: center;
-    padding: 28px 18px;
-}
-
-/* ---------- Forms and buttons ---------- */
-.gw-field { margin-bottom: 16px; }
-
-.gw-field label {
-    display: block;
-    font-weight: 600;
-    margin-bottom: 4px;
-}
-
-.gw-field input {
-    width: 100%;
-    max-width: none;
-    padding: 9px 12px;
-    border: 1px solid #b9c0d0;
-    border-radius: 6px;
-    background: var(--gw-white);
     color: var(--gw-ink);
 }
 
-.gw-field input:focus {
-    border-color: var(--gw-navy);
-    outline: 3px solid var(--gw-gold);
-    outline-offset: 0;
-}
+    .gw-table th,
+    .gw-table td {
+        padding: 10px 14px;
+        text-align: left;
+        border: 1.5px solid var(--gw-ink);
+    }
 
-.gw-btn {
-    display: inline-block;
-    background: var(--gw-navy);
-    color: var(--gw-white);
-    border: 0;
-    border-radius: 6px;
-    padding: 10px 20px;
-    font-family: inherit;
-    font-size: 1rem;
-    font-weight: 700;
-    cursor: pointer;
-}
+        /* the card's own border closes the table on the left and right */
+        .gw-table th:first-child,
+        .gw-table td:first-child {
+            border-left: 0;
+        }
 
-.gw-btn:hover { background: var(--gw-navy-dark); color: var(--gw-white); }
-.gw-btn-block { width: 100%; }
+        .gw-table th:last-child,
+        .gw-table td:last-child {
+            border-right: 0;
+        }
 
-.gw-note {
+    .gw-table thead th {
+        background: var(--gw-paper);
+        color: var(--gw-ink);
+        font-weight: 700;
+        border-top: 1.5px solid var(--gw-ink);
+        border-bottom: 4px double var(--gw-ink); /* double rule under the header row */
+    }
+
+    .gw-table tbody tr:last-child td,
+    .gw-table tbody tr:last-child th {
+        border-bottom: 0;
+    }
+
+    .gw-table tbody tr:hover td,
+    .gw-table tbody tr:hover th {
+        background: var(--gw-lime-pale);
+    }
+
+    .gw-table tfoot th,
+    .gw-table tfoot td {
+        background: var(--gw-paper);
+        border-top: 4px double var(--gw-ink);
+    }
+
+    .gw-table td.gw-empty {
+        color: var(--gw-muted);
+        text-align: center;
+        padding: 28px 18px;
+    }
+
+/* a cell with nothing in it yet */
+.gw-cell-empty {
     color: var(--gw-muted);
-    font-size: 0.9rem;
-    margin: 14px 0 0;
+    background: repeating-linear-gradient(135deg, transparent 0 6px, rgba(17, 17, 17, 0.06) 6px 7px);
 }
 
-.gw-alert {
-    background: #fdecec;
-    border: 1px solid #e8b4b4;
-    border-left: 4px solid #b3261e;
-    color: #7a1b16;
-    border-radius: 6px;
-    padding: 10px 14px;
-    margin-bottom: 16px;
-    font-size: 0.95rem;
+.gw-num {
+    text-align: right !important;
+    white-space: nowrap;
 }
 
-/* ---------- Login ---------- */
-.gw-login {
-    max-width: 420px;
-    margin: 32px auto 0;
+.gw-th-sub {
+    color: var(--gw-muted);
+    font-size: 0.8rem;
+    font-weight: 400;
 }
 
-/* ---------- Admin screens (Phase 4) ---------- */
-a.gw-btn { text-decoration: none; }
-
-.gw-btn-small { padding: 5px 12px; font-size: 0.9rem; }
-
-.gw-btn-outline {
-    background: var(--gw-white);
-    color: var(--gw-navy);
-    border: 1px solid var(--gw-navy);
+/* ---------- Label | value rows (.gw-field) ---------- */
+.gw-field {
+    display: grid;
+    grid-template-columns: minmax(120px, 34%) 1fr;
+    margin: 0;
+    background: var(--gw-paper);
+    border: var(--gw-outline);
 }
 
-.gw-btn-outline:hover { background: var(--gw-head); color: var(--gw-navy-dark); }
+    .gw-field + .gw-field {
+        margin-top: -1.5px; /* neighbouring rows share one border */
+    }
 
-.gw-btn-danger { background: #b3261e; }
-.gw-btn-danger:hover { background: #8c1d18; }
+    /* whatever follows the last row (note, buttons) gets breathing room */
+    .gw-field + *:not(.gw-field) {
+        margin-top: 16px;
+    }
 
-.gw-toolbar {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-    margin-bottom: 24px;
-}
+    .gw-field label {
+        display: flex;
+        align-items: center;
+        margin: 0;
+        padding: 10px 14px;
+        background: var(--gw-head);
+        border-right: var(--gw-outline);
+        font-weight: 700;
+    }
 
-.gw-field select {
-    width: 100%;
-    padding: 9px 12px;
-    border: 1px solid #b9c0d0;
-    border-radius: 6px;
-    background: var(--gw-white);
-    color: var(--gw-ink);
-}
+    .gw-field input,
+    .gw-field select {
+        display: block;
+        width: 100%;
+        max-width: none;
+        min-width: 0;
+        padding: 10px 14px;
+        border: 0;
+        border-radius: 0;
+        background: var(--gw-paper);
+        color: var(--gw-ink);
+        font-family: inherit;
+        font-size: 1rem;
+    }
 
-.gw-field select:focus {
-    border-color: var(--gw-navy);
-    outline: 3px solid var(--gw-gold);
-    outline-offset: 0;
-}
+        .gw-field input:focus,
+        .gw-field select:focus {
+            outline: 3px solid var(--gw-ink);
+            outline-offset: -3px;
+            box-shadow: inset 0 0 0 7px var(--gw-lime);
+        }
 
 .gw-field-hint {
+    grid-column: 1 / -1;
+    margin: 0;
+    padding: 6px 14px;
+    border-top: 1.5px dashed var(--gw-ink);
     color: var(--gw-muted);
     font-size: 0.9rem;
-    margin: 4px 0 0;
 }
 
-.gw-form-narrow { max-width: 520px; }
+/* a hint that stands alone (outside a field row) */
+.gw-hint-block {
+    margin: 0 0 16px;
+}
+
+p.gw-field-hint.gw-hint-block {
+    grid-column: auto;
+    padding: 0;
+    border: 0;
+}
+
+@media (max-width: 479.98px) {
+    .gw-field {
+        grid-template-columns: 1fr;
+    }
+
+        .gw-field label {
+            border-right: 0;
+            border-bottom: var(--gw-outline);
+        }
+}
+
+.gw-form-narrow {
+    max-width: 520px;
+}
 
 .gw-form-buttons {
     display: flex;
@@ -309,38 +572,301 @@ a.gw-btn { text-decoration: none; }
     gap: 14px;
 }
 
-.gw-alert-ok {
-    background: #eaf6ee;
-    border-color: #a9d3b6;
-    border-left-color: #1f7a3d;
-    color: #14532d;
+.gw-note {
+    color: var(--gw-muted);
+    font-size: 0.9rem;
+    margin: 14px 0 0;
 }
 
-.gw-error-list { margin: 6px 0 0; padding-left: 20px; }
-
-.gw-temp-password {
-    font-family: Consolas, "Courier New", monospace;
-    font-size: 1.1rem;
+/* ---------- Buttons ---------- */
+.gw-btn {
+    display: inline-block;
+    background: var(--gw-ink);
+    color: var(--gw-paper);
+    border: var(--gw-outline);
+    border-radius: 0;
+    padding: 10px 20px;
+    font-family: inherit;
+    font-size: 1rem;
     font-weight: 700;
-    background: var(--gw-white);
-    border: 1px solid var(--gw-line);
-    border-radius: 4px;
-    padding: 2px 8px;
-    user-select: all;
+    line-height: 1.4;
+    text-decoration: none;
+    cursor: pointer;
+    transition: transform 0.08s ease, box-shadow 0.08s ease, background-color 0.08s ease;
 }
 
-.gw-stat-value-text { font-size: 1.15rem; line-height: 1.3; }
+a.gw-btn,
+a.gw-btn:hover {
+    text-decoration: none;
+}
 
+/* hover: lime fill, ink text, shifts up-left over a 3px shadow */
+.gw-btn:hover {
+    background: var(--gw-lime);
+    color: var(--gw-ink);
+    transform: translate(-3px, -3px);
+    box-shadow: 3px 3px 0 var(--gw-ink);
+}
+
+.gw-btn:active {
+    background: var(--gw-lime);
+    color: var(--gw-ink);
+    transform: none;
+    box-shadow: none;
+}
+
+.gw-btn-block {
+    width: 100%;
+}
+
+.gw-btn-small {
+    padding: 5px 12px;
+    font-size: 0.9rem;
+}
+
+/* secondary: outlined */
+.gw-btn-outline {
+    background: var(--gw-paper);
+    color: var(--gw-ink);
+}
+
+    .gw-btn-outline:hover {
+        background: var(--gw-lime);
+        color: var(--gw-ink);
+    }
+
+/* destructive: orange outline (ink edge keeps the shape visible) */
+.gw-btn-danger {
+    background: var(--gw-paper);
+    color: var(--gw-ink);
+    box-shadow: 4px 4px 0 var(--gw-orange);
+}
+
+    .gw-btn-danger:hover {
+        background: var(--gw-orange);
+        color: var(--gw-ink);
+        box-shadow: 3px 3px 0 var(--gw-ink);
+    }
+
+.gw-btn:disabled,
+.gw-btn[disabled] {
+    background: var(--gw-head);
+    color: var(--gw-muted);
+    box-shadow: none;
+    transform: none;
+    cursor: not-allowed;
+}
+
+.gw-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 24px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .gw-btn {
+        transition: none;
+    }
+
+        .gw-btn:hover {
+            transform: none;
+        }
+}
+
+/* ---------- Alerts (icon + outline + text, never colour alone) ---------- */
+.gw-alert {
+    position: relative;
+    background: #fdeadd; /* pale orange: error */
+    border: var(--gw-outline);
+    border-left: 8px solid var(--gw-orange);
+    color: var(--gw-ink);
+    border-radius: 0;
+    padding: 10px 14px 10px 50px;
+    margin-bottom: 16px;
+    font-size: 0.95rem;
+}
+
+    .gw-alert::before {
+        content: "";
+        position: absolute;
+        left: 12px;
+        top: 10px;
+        width: 24px;
+        height: 24px;
+        background: url(img/icons/warning.svg) center / 24px 24px no-repeat;
+    }
+
+.gw-alert-warn {
+    background: #fbf3c4; /* pale sticky-note yellow */
+    border-style: dashed;
+    border-left-style: solid;
+    border-left-color: var(--gw-note);
+}
+
+.gw-alert-ok {
+    background: var(--gw-lime-pale);
+    border-left-color: var(--gw-lime);
+    color: var(--gw-ink);
+}
+
+    .gw-alert-ok::before {
+        background-image: url(img/icons/check.svg);
+    }
+
+.gw-alert-info {
+    background: var(--gw-paper);
+    border-left-color: var(--gw-ink);
+    color: var(--gw-ink);
+}
+
+    .gw-alert-info::before {
+        background-image: url(img/icons/bell.svg);
+    }
+
+.gw-error-list {
+    margin: 6px 0 0;
+    padding-left: 20px;
+}
+
+/* ---------- Chips and badges (pixel font on lime) ---------- */
+.gw-badge,
 .gw-status {
     display: inline-block;
-    border-radius: 999px;
-    padding: 2px 10px;
-    font-size: 0.85rem;
-    font-weight: 700;
+    background: #e4f0d4;
+    color: var(--gw-ink);
+    border: var(--gw-outline);
+    border-radius: 0;
+    padding: 2px 9px 1px;
+    font-family: var(--gw-font-pixel);
+    font-size: 0.75rem;
+    letter-spacing: 0.04em;
+    line-height: 1.5;
 }
 
-.gw-status-active { background: #eaf6ee; color: #14532d; }
-.gw-status-off { background: #f1f2f6; color: var(--gw-muted); }
+.gw-status-active {
+    background: var(--gw-lime);
+    color: var(--gw-ink);
+}
+
+.gw-status-off {
+    background: var(--gw-paper);
+    color: var(--gw-ink);
+    border-color: var(--gw-orange);
+    border-width: 2px;
+}
+
+.gw-status-warn {
+    background: var(--gw-note);
+    color: var(--gw-ink);
+}
+
+/* clickable chips (What-If quick picks) */
+.gw-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+
+.gw-chip {
+    background: #e4f0d4;
+    color: var(--gw-ink);
+    border: var(--gw-outline);
+    border-radius: 0;
+    padding: 4px 12px 3px;
+    font-family: var(--gw-font-pixel);
+    font-size: 0.8rem;
+    letter-spacing: 0.04em;
+    cursor: pointer;
+}
+
+    .gw-chip:hover {
+        background: var(--gw-lime);
+    }
+
+.gw-chip-on,
+.gw-chip-on:hover {
+    background: var(--gw-ink);
+    color: var(--gw-paper);
+}
+
+    .gw-chip-on .gw-th-sub {
+        color: #d9d7d0;
+    }
+
+/* ---------- Form controls (square, ink border, lime focus ring) ---------- */
+.form-control,
+.form-select,
+.gw-inline-select,
+.gw-score-input,
+.gw-cat-table input[type="text"],
+.gw-cat-table input[type="number"] {
+    border: var(--gw-outline);
+    border-radius: 0;
+    background-color: var(--gw-paper);
+    color: var(--gw-ink);
+    font-family: inherit;
+}
+
+.gw-inline-select {
+    padding: 6px 10px;
+}
+
+.gw-score-input {
+    width: 84px;
+    padding: 6px 8px;
+    text-align: right;
+}
+
+.gw-cat-table input[type="text"],
+.gw-cat-table input[type="number"] {
+    width: 100%;
+    padding: 8px 10px;
+}
+
+.gw-inline-select:focus,
+.gw-score-input:focus,
+.gw-cat-table input:focus {
+    outline: 3px solid var(--gw-ink);
+    outline-offset: 0;
+    box-shadow: 0 0 0 6px var(--gw-lime);
+}
+
+/* a bad value: dashed orange border plus pale orange fill (not colour alone) */
+.gw-input-bad {
+    border: 2px dashed var(--gw-orange) !important;
+    background: #fdeadd !important;
+}
+
+input[type="checkbox"],
+input[type="radio"],
+input[type="range"] {
+    accent-color: var(--gw-ink);
+}
+
+/* ---------- Small helpers used by many pages ---------- */
+.gw-muted {
+    color: var(--gw-muted);
+}
+
+.gw-small {
+    font-size: 0.85rem;
+}
+
+.gw-empty-block {
+    color: var(--gw-muted);
+    margin: 0;
+}
+
+.gw-sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+}
 
 .gw-row-form {
     display: inline-flex;
@@ -356,60 +882,223 @@ a.gw-btn { text-decoration: none; }
     gap: 8px;
 }
 
-.gw-inline-select {
-    padding: 5px 8px;
-    border: 1px solid #b9c0d0;
-    border-radius: 6px;
-    background: var(--gw-white);
-    color: var(--gw-ink);
+.gw-temp-password {
+    font-family: Consolas, "Courier New", monospace;
+    font-size: 1.1rem;
+    font-weight: 700;
+    background: var(--gw-paper);
+    border: var(--gw-outline);
+    border-radius: 0;
+    padding: 2px 8px;
+    user-select: all;
 }
 
-.gw-muted { color: var(--gw-muted); }
+/* =====================================================================
+   Phase R5: Login and Error pages
+   ===================================================================== */
 
-/* ---------- Faculty screens (Phase 5) ---------- */
-.gw-num { text-align: right !important; white-space: nowrap; }
+/* ---------- Login ---------- */
+.gw-login {
+    max-width: 900px;
+    margin: 24px auto 0;
+}
 
-.gw-th-sub {
+.gw-login-intro {
+    margin-bottom: 20px;
+}
+
+/* zine headline: one word struck out in lime, its replacement underlined in lime */
+.gw-login-headline {
+    margin: 0 0 8px;
+    font-size: clamp(1.9rem, 5.5vw, 2.5rem);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1.2;
+}
+
+.gw-strike {
+    position: relative;
+    display: inline-block;
+    text-decoration: none;
+}
+
+    .gw-strike::after {
+        content: "";
+        position: absolute;
+        left: -4%;
+        right: -4%;
+        top: 54%;
+        height: 0.14em;
+        background: var(--gw-lime);
+        box-shadow: 0 0 0 1.5px var(--gw-ink);
+        transform: translateY(-50%) rotate(-3deg);
+    }
+
+.gw-swap {
+    padding: 0 0.08em;
+    background: linear-gradient(transparent 62%, var(--gw-lime) 62%, var(--gw-lime) 92%, transparent 92%);
+    -webkit-box-decoration-break: clone;
+    box-decoration-break: clone;
+}
+
+.gw-login-sub {
+    margin: 0;
     color: var(--gw-muted);
-    font-size: 0.8rem;
-    font-weight: 400;
+    font-size: 1.1rem;
 }
 
-.gw-small { font-size: 0.85rem; }
-
-.gw-alert-warn {
-    background: #fff6e0;
-    border-color: #ecd08a;
-    border-left-color: var(--gw-gold);
-    color: #6b4a00;
+.gw-login-stage {
+    display: block;
 }
 
-.gw-status-warn { background: #fff6e0; color: #6b4a00; }
-
-.gw-empty-block { color: var(--gw-muted); margin: 0; }
-.gw-hint-block { margin: 0 0 16px; }
-
-.gw-score-input {
-    width: 84px;
-    padding: 6px 8px;
-    border: 1px solid #b9c0d0;
-    border-radius: 6px;
-    background: var(--gw-white);
-    color: var(--gw-ink);
-    text-align: right;
+.gw-login-card {
+    max-width: 440px;
+    margin: 20px auto 28px;
 }
 
-.gw-score-input:focus {
-    border-color: var(--gw-navy);
-    outline: 3px solid var(--gw-gold);
-    outline-offset: 0;
+.gw-demo-note {
+    padding-top: 12px;
+    border-top: 1.5px dashed var(--gw-ink);
 }
 
-.gw-input-bad {
-    border-color: #b3261e;
-    background: #fdecec;
+/* scattered sample cards: wide screens only */
+.gw-login-decor {
+    display: none;
 }
 
+@media (min-width: 768px) {
+    .gw-login-stage {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 420px;
+        column-gap: 32px;
+        align-items: start;
+    }
+
+    .gw-login-card {
+        grid-column: 2;
+        grid-row: 1;
+        width: 100%;
+        max-width: none;
+        margin: 20px 0 28px;
+    }
+
+    .gw-login-decor {
+        grid-column: 1;
+        grid-row: 1;
+        position: relative;
+        display: block;
+        min-height: 390px;
+        pointer-events: none;
+        user-select: none;
+    }
+}
+
+.gw-decor-stat {
+    position: absolute;
+    left: 0;
+    top: 14px;
+    width: 168px;
+    box-shadow: 4px 4px 0 var(--gw-ink);
+    transform: rotate(-3deg);
+}
+
+    .gw-decor-stat .gw-stat-value {
+        font-size: 2rem;
+    }
+
+.gw-decor-sticker {
+    position: absolute;
+    right: 0;
+    top: 48px;
+    width: 112px;
+    padding: 20px 8px 10px;
+    background: var(--gw-paper);
+    border: var(--gw-outline);
+    box-shadow: 4px 4px 0 var(--gw-ink);
+    text-align: center;
+    transform: rotate(5deg);
+}
+
+    .gw-decor-sticker > img:not(.gw-decor-tape) {
+        display: block;
+        margin: 0 auto 8px;
+        max-width: 100%;
+        height: auto;
+    }
+
+.gw-decor-tape {
+    position: absolute;
+    top: -12px;
+    left: 50%;
+    width: 80px;
+    height: auto;
+    margin-left: -40px;
+    transform: rotate(-4deg);
+}
+
+.gw-decor-note {
+    position: absolute;
+    left: 18px;
+    top: 218px;
+    width: 236px;
+    margin: 0;
+    box-shadow: 4px 4px 0 var(--gw-ink);
+    transform: rotate(2deg);
+}
+
+/* ---------- Error page ---------- */
+.gw-error {
+    display: flex;
+    align-items: center;
+    gap: 36px;
+    max-width: 720px;
+    margin: 36px auto 0;
+}
+
+.gw-error-sticker {
+    position: relative;
+    flex: none;
+    width: 150px;
+    padding: 28px 12px 16px;
+    background: var(--gw-paper);
+    border: var(--gw-outline);
+    box-shadow: var(--gw-shadow);
+    text-align: center;
+    transform: rotate(-4deg);
+}
+
+    .gw-error-sticker > img:not(.gw-decor-tape) {
+        display: block;
+        margin: 0 auto;
+        max-width: 100%;
+        height: auto;
+    }
+
+.gw-error-text .gw-page-title {
+    margin-top: 10px;
+}
+
+.gw-error-text p {
+    margin: 0 0 18px;
+}
+
+/* an icon button that also carries a visible label */
+.gw-iconbtn-text {
+    width: auto;
+    gap: 8px;
+    padding: 0 16px 0 8px;
+    font-weight: 700;
+}
+
+@media (max-width: 575.98px) {
+    .gw-error {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 28px;
+    }
+}
+
+/* ---------- Faculty and student helpers ---------- */
 .gw-check-list {
     display: flex;
     flex-direction: column;
@@ -419,12 +1108,12 @@ a.gw-btn { text-decoration: none; }
     margin-bottom: 16px;
 }
 
-.gw-check-list label {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-weight: 400;
-}
+    .gw-check-list label {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-weight: 400;
+    }
 
 .gw-cat-table {
     width: 100%;
@@ -432,43 +1121,20 @@ a.gw-btn { text-decoration: none; }
     margin-bottom: 16px;
 }
 
-.gw-cat-table th,
-.gw-cat-table td {
-    padding: 6px 8px 6px 0;
-    text-align: left;
-}
+    .gw-cat-table th,
+    .gw-cat-table td {
+        padding: 6px 8px 6px 0;
+        text-align: left;
+    }
 
-.gw-cat-table th { color: var(--gw-navy); }
+    .gw-cat-table th {
+        color: var(--gw-ink);
+    }
 
-.gw-cat-table input[type="text"],
-.gw-cat-table input[type="number"] {
-    width: 100%;
-    padding: 8px 10px;
-    border: 1px solid #b9c0d0;
-    border-radius: 6px;
-    background: var(--gw-white);
-    color: var(--gw-ink);
-}
-
-.gw-cat-table input:focus {
-    border-color: var(--gw-navy);
-    outline: 3px solid var(--gw-gold);
-    outline-offset: 0;
-}
-
-.gw-cat-table tfoot th { border-top: 1px solid var(--gw-line); padding-top: 10px; }
-
-.gw-sr-only {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip: rect(0, 0, 0, 0);
-    white-space: nowrap;
-}
-
-/* ---------- Student dashboard (Phase 6) ---------- */
-.gw-picker-panel { margin-bottom: 16px; }
+    .gw-cat-table tfoot th {
+        border-top: 4px double var(--gw-ink);
+        padding-top: 10px;
+    }
 
 .gw-picker {
     display: flex;
@@ -478,17 +1144,15 @@ a.gw-btn { text-decoration: none; }
     margin: 0;
 }
 
-.gw-picker label { font-weight: 600; margin: 0; }
+    .gw-picker label {
+        font-weight: 700;
+        margin: 0;
+    }
 
 .gw-two-col {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-    gap: 16px;
-}
-
-.gw-table tfoot th {
-    background: var(--gw-white);
-    border-top: 2px solid var(--gw-line);
+    gap: 20px;
 }
 
 .gw-notes {
@@ -496,18 +1160,11 @@ a.gw-btn { text-decoration: none; }
     padding-left: 20px;
 }
 
-.gw-notes li { margin-bottom: 8px; }
+    .gw-notes li {
+        margin-bottom: 8px;
+    }
 
-/* ---------- What-If simulator (Phase 7) ---------- */
-.gw-alert-info {
-    background: #eef2fb;
-    border-color: #c3cfee;
-    border-left-color: var(--gw-navy);
-    color: var(--gw-navy-dark);
-}
-
-.gw-stat-live { border-left-color: var(--gw-gold); }
-
+/* ---------- What-If simulator (look finished in Phase R6) ---------- */
 .gw-sim-control {
     display: flex;
     flex-wrap: wrap;
@@ -515,88 +1172,120 @@ a.gw-btn { text-decoration: none; }
     gap: 10px;
 }
 
-.gw-sim-control input[type="range"] {
-    flex: 1 1 160px;
-    min-width: 140px;
-    accent-color: var(--gw-navy);
-}
+    .gw-sim-control input[type="range"] {
+        flex: 1 1 160px;
+        min-width: 140px;
+    }
 
-.gw-sim-target { margin-bottom: 16px; }
-
-.gw-sim-label { font-weight: 600; margin: 0; }
-
-.gw-sim-msg { margin-top: 16px; }
-
-.gw-sim-compare { margin: -6px 0 14px; min-height: 1.4em; }
-
-.gw-chips {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
+.gw-sim-target {
     margin-bottom: 16px;
 }
 
-.gw-chip {
-    background: var(--gw-white);
-    color: var(--gw-navy);
-    border: 1px solid var(--gw-navy);
-    border-radius: 999px;
-    padding: 4px 12px;
-    font-size: 0.9rem;
-    font-weight: 600;
-    cursor: pointer;
+.gw-sim-label {
+    font-weight: 700;
+    margin: 0;
 }
 
-.gw-chip:hover { background: var(--gw-head); }
-
-.gw-chip-on,
-.gw-chip-on:hover {
-    background: var(--gw-navy);
-    color: var(--gw-white);
+.gw-sim-msg {
+    margin-top: 16px;
 }
 
-.gw-chip-on .gw-th-sub { color: #c9d3ee; }
+.gw-sim-compare {
+    margin: -6px 0 14px;
+    min-height: 1.4em;
+}
 
-.gw-check-panel { padding: 0; }
+.gw-check-panel {
+    padding: 0;
+}
 
 .gw-check-summary {
     cursor: pointer;
     padding: 14px 18px;
-    color: var(--gw-navy);
+    color: var(--gw-ink);
     font-weight: 700;
 }
 
-.gw-check-ok { color: #14532d; font-weight: 600; }
-.gw-check-bad { color: #b3261e; font-weight: 700; }
-
-@media (max-width: 576px) {
-    .gw-sim-control { gap: 8px; }
+.gw-check-ok {
+    color: var(--gw-ink);
+    font-weight: 700;
 }
 
-/* ---------- Analytics, history and print (Phase 8) ---------- */
-.gw-dist-table th[scope="row"] { font-weight: 600; background: var(--gw-white); }
-.gw-dist-col { width: 55%; }
-.gw-dist-none th, .gw-dist-none td { color: var(--gw-muted); }
+.gw-check-bad {
+    color: var(--gw-ink);
+    font-weight: 700;
+    text-decoration: underline wavy var(--gw-orange);
+    text-underline-offset: 3px;
+}
+
+@media (max-width: 576px) {
+    .gw-sim-control {
+        gap: 8px;
+    }
+}
+
+/* ---------- Analytics, history and print (restyled in R6/R7) ---------- */
+.gw-dist-table th[scope="row"] {
+    font-weight: 700;
+    background: var(--gw-paper);
+}
+
+.gw-dist-col {
+    width: 55%;
+}
+
+.gw-dist-none th, .gw-dist-none td {
+    color: var(--gw-muted);
+}
 
 .gw-bar-track {
     background: var(--gw-head);
-    border-radius: 4px;
+    border: var(--gw-outline);
+    border-radius: 0;
     height: 18px;
     overflow: hidden;
 }
 
 .gw-bar {
-    background: var(--gw-navy);
+    background: var(--gw-lime);
+    border-right: var(--gw-outline);
     height: 100%;
-    border-radius: 4px;
 }
 
-.gw-chart { width: 100%; height: auto; display: block; }
-.gw-chart-grid { stroke: var(--gw-line); stroke-width: 1; }
-.gw-chart-pass { stroke: var(--gw-gold); stroke-width: 1.5; stroke-dasharray: 5 4; }
-.gw-chart-line { fill: none; stroke: var(--gw-navy); stroke-width: 2.5; stroke-linejoin: round; }
-.gw-chart-dot { fill: var(--gw-gold); stroke: var(--gw-navy); stroke-width: 2; }
-.gw-chart-label { fill: var(--gw-muted); font-size: 11px; }
+.gw-chart {
+    width: 100%;
+    height: auto;
+    display: block;
+}
+
+.gw-chart-grid {
+    stroke: var(--gw-line);
+    stroke-width: 1;
+}
+
+.gw-chart-pass {
+    stroke: var(--gw-orange);
+    stroke-width: 1.5;
+    stroke-dasharray: 5 4;
+}
+
+.gw-chart-line {
+    fill: none;
+    stroke: var(--gw-ink);
+    stroke-width: 2.5;
+    stroke-linejoin: round;
+}
+
+.gw-chart-dot {
+    fill: var(--gw-lime);
+    stroke: var(--gw-ink);
+    stroke-width: 2;
+}
+
+.gw-chart-label {
+    fill: var(--gw-muted);
+    font-size: 11px;
+}
 
 .gw-facts {
     display: grid;
@@ -605,19 +1294,780 @@ a.gw-btn { text-decoration: none; }
     margin: 0;
 }
 
-.gw-facts dt { color: var(--gw-muted); font-weight: 600; }
-.gw-facts dd { margin: 0; }
+    .gw-facts dt {
+        color: var(--gw-muted);
+        font-weight: 700;
+    }
+
+    .gw-facts dd {
+        margin: 0;
+    }
 
 @media print {
     .gw-topbar,
     .gw-footer,
-    .gw-no-print { display: none !important; }
+    .gw-no-print {
+        display: none !important;
+    }
 
-    body { background: #fff; }
-    .gw-page { padding: 0; max-width: none; }
+    body {
+        background: #fff;
+    }
+
+    .gw-page {
+        padding: 0;
+        max-width: none;
+    }
+
+        .gw-page::before,
+        .gw-page::after {
+            display: none;
+        }
+
     .gw-panel,
-    .gw-stat { break-inside: avoid; }
+    .gw-card,
+    .gw-stat {
+        break-inside: avoid;
+        box-shadow: none;
+    }
+
+    .gw-stat-value {
+        text-shadow: none;
+    }
+
     .gw-bar,
     .gw-chart-line,
-    .gw-chart-dot { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .gw-chart-dot {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+}
+
+/* =====================================================================
+   Phase R6: student pages (course list, stat tabs, notes, What-If sliders,
+   history area chart, print sheet)
+   ===================================================================== */
+
+/* ---------- Collections list (08-collections-list.jpg) ---------- */
+.gw-collection {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    border-top: var(--gw-outline);
+}
+
+.gw-collection > li {
+    margin: 0;
+    padding: 0;
+}
+
+.gw-collection-item {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 12px 16px;
+    border-bottom: var(--gw-outline);
+    background: var(--gw-paper);
+    color: var(--gw-ink);
+    text-decoration: none;
+    transition: background-color 0.08s ease;
+}
+
+    .gw-collection-item:hover,
+    .gw-collection-item:focus-visible {
+        background: var(--gw-lime-pale);
+        color: var(--gw-ink);
+        text-decoration: none;
+    }
+
+    /* the course that is currently open gets a lime edge and a pale fill */
+    .gw-collection-item[aria-current="true"] {
+        background: var(--gw-lime-pale);
+        box-shadow: inset 5px 0 0 var(--gw-lime);
+    }
+
+/* round sticker on the left */
+.gw-collection-sticker {
+    flex: 0 0 38px;
+    width: 38px;
+    height: 38px;
+    display: grid;
+    place-items: center;
+    border: var(--gw-outline);
+    border-radius: 50%;
+    background: var(--gw-lime);
+    color: var(--gw-ink);
+    font-family: var(--gw-font-pixel);
+    font-size: 0.7rem;
+    line-height: 1;
+    text-transform: uppercase;
+}
+
+.gw-collection-main {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.gw-collection-code {
+    font-weight: 700;
+    line-height: 1.3;
+}
+
+.gw-collection-meta {
+    color: var(--gw-muted);
+    font-size: 0.9rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.gw-collection-chevron {
+    flex: 0 0 auto;
+    width: 20px;
+    height: 20px;
+}
+
+.gw-collection-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    padding-top: 16px;
+}
+
+/* ---------- Stat cards with a tab label on the top-left corner ---------- */
+.gw-stat[data-tab] {
+    padding-top: 26px;
+}
+
+    .gw-stat[data-tab]::before {
+        content: attr(data-tab);
+        position: absolute;
+        top: -12px;
+        left: 12px;
+        padding: 0 9px;
+        background: var(--gw-paper);
+        border: var(--gw-outline);
+        color: var(--gw-ink);
+        font-family: var(--gw-font-pixel);
+        font-size: 0.62rem;
+        letter-spacing: 0.06em;
+        line-height: 1.6;
+        text-transform: uppercase;
+    }
+
+/* ---------- Small icon inside a card tab ---------- */
+.gw-panel-icon {
+    width: 18px;
+    height: 18px;
+    margin-right: 6px;
+    vertical-align: -3px;
+}
+
+/* ---------- Quote note card (04-note-text-only.jpg) ---------- */
+.gw-quote {
+    display: block;
+    width: 28px;
+    height: 28px;
+    margin-bottom: 6px;
+    opacity: 0.85;
+}
+
+/* ---------- Notification list: lime rule above every item ---------- */
+.gw-notes {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+    .gw-notes li {
+        margin: 0 0 14px;
+        padding: 10px 0 0;
+        border-top: 3px solid var(--gw-lime);
+    }
+
+        .gw-notes li:last-child {
+            margin-bottom: 0;
+        }
+
+/* ---------- "Not graded yet" cell: dashed outline, no fill ---------- */
+.gw-cell-empty {
+    display: inline-block;
+    padding: 0 8px;
+    border: 1.5px dashed var(--gw-ink);
+    background: none;
+    color: var(--gw-muted);
+    font-size: 0.85rem;
+    white-space: nowrap;
+}
+
+/* ---------- What-If sliders: thin ink rail, square thumb ---------- */
+.gw-sim-control input[type="range"] {
+    -webkit-appearance: none;
+    appearance: none;
+    height: 10px;
+    padding: 0;
+    background: var(--gw-paper);
+    border: 1.5px solid var(--gw-ink);
+    border-radius: 0;
+    cursor: pointer;
+}
+
+    .gw-sim-control input[type="range"]::-webkit-slider-runnable-track {
+        height: 7px;
+        background: transparent;
+        border: 0;
+    }
+
+    .gw-sim-control input[type="range"]::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 18px;
+        height: 18px;
+        margin-top: -6px;
+        background: var(--gw-ink);
+        border: 1.5px solid var(--gw-ink);
+        border-radius: 0;
+    }
+
+    .gw-sim-control input[type="range"]::-moz-range-track {
+        height: 7px;
+        background: transparent;
+        border: 0;
+    }
+
+    .gw-sim-control input[type="range"]::-moz-range-thumb {
+        width: 18px;
+        height: 18px;
+        background: var(--gw-ink);
+        border: 1.5px solid var(--gw-ink);
+        border-radius: 0;
+    }
+
+    .gw-sim-control input[type="range"]:focus-visible {
+        outline: 3px solid var(--gw-ink);
+        outline-offset: 3px;
+        box-shadow: 0 0 0 5px var(--gw-lime);
+    }
+
+/* ---------- History chart: lime area under the ink line ---------- */
+.gw-chart-area {
+    fill: var(--gw-lime);
+    fill-opacity: 0.45;
+    stroke: none;
+}
+
+/* ---------- Printable summary sheet ---------- */
+.gw-summary-sheet {
+    max-width: 900px;
+}
+
+@media print {
+    /* the printed copy is black on white: no grid, no shadows, no tabs */
+    body,
+    .gw-summary-sheet {
+        background: #fff !important;
+        background-image: none !important;
+    }
+
+    .gw-summary-sheet .gw-panel,
+    .gw-summary-sheet .gw-stat {
+        border-color: #000;
+        box-shadow: none;
+    }
+
+    .gw-summary-sheet .gw-stat[data-tab]::before {
+        border-color: #000;
+    }
+
+    .gw-summary-sheet .gw-stat-value {
+        text-shadow: none;
+    }
+
+    .gw-summary-sheet a {
+        text-decoration: none;
+    }
+
+    .gw-table-wrap {
+        overflow: visible;
+    }
+
+    .gw-table {
+        font-size: 10pt;
+    }
+}
+
+/* ---------- Narrow screens (375px) ---------- */
+@media (max-width: 575.98px) {
+    .gw-collection-item {
+        padding: 10px 12px;
+        gap: 10px;
+    }
+
+    .gw-collection-sticker {
+        flex-basis: 32px;
+        width: 32px;
+        height: 32px;
+        font-size: 0.6rem;
+    }
+
+    .gw-collection-actions .gw-btn {
+        flex: 1 1 100%;
+        text-align: center;
+    }
+
+    .gw-stat[data-tab] {
+        padding-top: 24px;
+    }
+}
+
+/* =====================================================================
+   Phase R7: faculty pages (course rows, score table, categories,
+   enrollment lists, analytics)
+   ===================================================================== */
+
+/* ---------- Page header with an action button on the right ---------- */
+.gw-page-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+    .gw-page-head .gw-page-title {
+        margin-bottom: 10px;
+    }
+
+.gw-iconbtn-add {
+    flex: 0 0 auto;
+    margin-top: 4px;
+}
+
+/* ---------- Course rows (same collection pattern as the student picker) ---------- */
+.gw-collection-row {
+    cursor: default;
+}
+
+.gw-collection-buttons {
+    flex: 0 0 auto;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 6px;
+}
+
+.gw-collection-go {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border: var(--gw-outline);
+    background: var(--gw-paper);
+    text-decoration: none;
+}
+
+    .gw-collection-go:hover {
+        background: var(--gw-lime);
+    }
+
+/* ---------- Score entry table ---------- */
+.gw-score-table .gw-score-input {
+    width: 5.5em;
+    min-width: 4.5em;
+    text-align: right;
+}
+
+/* keep the student name column visible while the score columns scroll sideways */
+.gw-score-table th.gw-sticky-col,
+.gw-score-table td.gw-sticky-col {
+    position: sticky;
+    left: 0;
+    z-index: 2;
+    background: var(--gw-paper);
+    box-shadow: 3px 0 0 var(--gw-ink);
+}
+
+.gw-score-table thead th.gw-sticky-col {
+    z-index: 3;
+    background: var(--gw-paper);
+}
+
+.gw-score-table tbody tr:hover td.gw-sticky-col {
+    background: var(--gw-lime-pale);
+}
+
+/* ---------- Categories as label | value rows ---------- */
+.gw-field-table {
+    border: var(--gw-outline);
+    border-collapse: collapse;
+}
+
+    .gw-field-table th,
+    .gw-field-table td {
+        border: 0;
+        border-bottom: var(--gw-outline);
+        padding: 0;
+        vertical-align: middle;
+    }
+
+    .gw-field-table thead th {
+        padding: 8px 12px;
+        background: var(--gw-head);
+        border-bottom: var(--gw-outline);
+        font-weight: 700;
+    }
+
+    .gw-field-table tbody tr:last-child td {
+        border-bottom: 0;
+    }
+
+    .gw-field-table tbody tr:hover td {
+        background: var(--gw-lime-pale);
+    }
+
+    .gw-field-table input[type="text"],
+    .gw-field-table input[type="number"] {
+        width: 100%;
+        padding: 10px 12px;
+        border: 0;
+        background: transparent;
+        font-family: inherit;
+        font-size: 1rem;
+        color: var(--gw-ink);
+    }
+
+        .gw-field-table input[type="text"]:focus,
+        .gw-field-table input[type="number"]:focus {
+            outline: 3px solid var(--gw-ink);
+            outline-offset: -3px;
+            box-shadow: inset 0 0 0 7px var(--gw-lime);
+        }
+
+    .gw-field-table td:last-child {
+        padding: 6px 10px;
+        text-align: right;
+        white-space: nowrap;
+    }
+
+    .gw-field-table tfoot th {
+        padding: 12px;
+        border-top: 4px double var(--gw-ink);
+        text-align: left;
+    }
+
+/* the live weight total, in the big-number style */
+.gw-total-number {
+    font-size: 2rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    text-shadow: 3px 3px 0 var(--gw-lime);
+}
+
+/* ---------- Enrollment lists ---------- */
+.gw-enroll-list {
+    border: var(--gw-outline);
+    max-height: 360px;
+    margin-bottom: 16px;
+}
+
+    .gw-enroll-list label {
+        margin: 0;
+        padding: 10px 12px;
+        border-bottom: 1.5px solid var(--gw-ink);
+        cursor: pointer;
+    }
+
+        .gw-enroll-list label:last-child {
+            border-bottom: 0;
+        }
+
+        .gw-enroll-list label:hover {
+            background: var(--gw-lime-pale);
+        }
+
+@media (max-width: 767.98px) {
+    .gw-collection-row {
+        flex-wrap: wrap;
+    }
+
+    .gw-collection-buttons {
+        flex: 1 1 100%;
+        justify-content: flex-start;
+        padding-left: 42px;
+    }
+
+    .gw-collection-go {
+        display: none;
+    }
+}
+
+/* =====================================================================
+   Phase R8: admin pages (role chips, sticky-note password, terms)
+   ===================================================================== */
+
+/* ---------- One-time temporary password as a taped sticky note ---------- */
+.gw-sticky-note {
+    position: relative;
+    max-width: 460px;
+    margin: 18px 0 30px;
+    padding: 26px 20px 16px;
+    background: var(--gw-note);
+    border: var(--gw-outline);
+    box-shadow: var(--gw-shadow);
+    transform: rotate(-1.2deg);
+}
+
+.gw-tape {
+    position: absolute;
+    top: -17px;
+    left: 50%;
+    width: 120px;
+    height: 34px;
+    transform: translateX(-50%) rotate(-2deg);
+    pointer-events: none;
+}
+
+.gw-sticky-title {
+    margin: 0 0 10px;
+    font-weight: 700;
+}
+
+.gw-sticky-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+    .gw-sticky-row .gw-temp-password {
+        flex: 1 1 auto;
+        min-width: 0;
+        overflow-x: auto;
+        white-space: nowrap;
+    }
+
+.gw-sticky-hint {
+    margin: 10px 0 0;
+    font-size: 0.85rem;
+}
+
+/* ---------- Terms: the current term gets the black-filled box ---------- */
+.gw-term-box {
+    display: inline-block;
+    padding: 2px 10px;
+    border: var(--gw-outline);
+    line-height: 1.5;
+}
+
+.gw-term-current .gw-term-box {
+    background: var(--gw-ink);
+    color: var(--gw-paper);
+}
+
+.gw-term-current td {
+    background: var(--gw-lime-pale);
+}
+
+@media (max-width: 479.98px) {
+    .gw-sticky-note {
+        transform: none;
+        box-shadow: 4px 4px 0 var(--gw-ink);
+    }
+}
+
+/* =====================================================================
+   Phase R9: delight, responsiveness, offline polish
+   ===================================================================== */
+
+/* ---------- Weekday strip with today circled (04-note-text-only.jpg) ---------- */
+.gw-weekstrip {
+    display: flex;
+    gap: 8px;
+    margin: 0 0 24px;
+}
+
+.gw-weekday {
+    display: grid;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    border: 1.5px solid transparent;
+    color: var(--gw-muted);
+    font-family: var(--gw-font-pixel);
+    font-size: 0.72rem;
+    line-height: 1;
+}
+
+.gw-weekday-today {
+    border-color: var(--gw-ink);
+    border-radius: 50%;
+    background: var(--gw-lime);
+    color: var(--gw-ink);
+}
+
+/* ---------- Grade "sticker": a round stamp next to the average ---------- */
+.gw-stat-stamp {
+    padding-right: 62px;
+}
+
+.gw-grade-stamp {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    display: grid;
+    place-items: center;
+    width: 48px;
+    height: 48px;
+}
+
+.gw-grade-stamp-ring {
+    position: absolute;
+    inset: 0;
+    width: 48px;
+    height: 48px;
+}
+
+.gw-grade-stamp-text {
+    position: relative;
+    color: var(--gw-ink);
+    font-family: var(--gw-font-pixel);
+    font-size: 0.66rem;
+    line-height: 1;
+    transform: rotate(-8deg);
+}
+
+/* ---------- Progress calendar month grid (06-month-calendar.jpg) ---------- */
+.gw-calendar-wrap {
+    border-top: 1.5px dashed var(--gw-ink);
+}
+
+.gw-calendar-title {
+    margin: 6px 0 12px;
+    font-size: 1rem;
+}
+
+.gw-calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 6px;
+    max-width: 420px;
+}
+
+.gw-cal-weekday {
+    text-align: center;
+    color: var(--gw-muted);
+    font-family: var(--gw-font-pixel);
+    font-size: 0.68rem;
+}
+
+.gw-cal-day {
+    display: grid;
+    place-items: center;
+    aspect-ratio: 1 / 1;
+    border: 1.5px solid transparent;
+    font-size: 0.9rem;
+    line-height: 1;
+}
+
+.gw-cal-blank {
+    border: 0;
+}
+
+/* a day with a saved snapshot: lime underline */
+.gw-cal-marked {
+    border-bottom: 3px solid var(--gw-lime);
+}
+
+/* a day when the average changed: black-filled number box */
+.gw-cal-changed {
+    background: var(--gw-ink);
+    border-color: var(--gw-ink);
+    color: var(--gw-paper);
+}
+
+/* ---------- Empty states with the mascot ---------- */
+.gw-empty-state {
+    padding: 28px 18px;
+    text-align: center;
+}
+
+.gw-empty-mascot {
+    display: block;
+    width: 72px;
+    height: 72px;
+    margin: 0 auto 10px;
+}
+
+.gw-empty-title {
+    margin: 0 0 6px;
+    font-size: 1.15rem;
+    font-weight: 700;
+}
+
+/* ---------- Icons inside text buttons ---------- */
+.gw-btn img {
+    width: 18px;
+    height: 18px;
+    margin-right: 6px;
+    vertical-align: -3px;
+}
+
+/* ---------- Motion: honour the user's reduced-motion setting ---------- */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        transition-duration: 0.001ms !important;
+        animation-duration: 0.001ms !important;
+        animation-iteration-count: 1 !important;
+        scroll-behavior: auto !important;
+    }
+
+    .gw-btn:hover {
+        transform: none;
+    }
+
+    .gw-sticky-note,
+    .gw-grade-stamp-text {
+        transform: none;
+    }
+}
+
+/* ---------- Phones (375px) ---------- */
+@media (max-width: 479.98px) {
+    .gw-page {
+        padding: 20px 14px 32px;
+    }
+
+    .gw-page-title {
+        font-size: 1.45rem;
+    }
+
+    .gw-stats {
+        grid-template-columns: 1fr;
+    }
+
+    .gw-stat-value {
+        font-size: 2rem;
+    }
+
+    .gw-stat-stamp {
+        padding-right: 18px;
+    }
+
+    .gw-grade-stamp {
+        position: static;
+        margin-top: 8px;
+    }
+
+    .gw-calendar-grid {
+        max-width: none;
+    }
+
+    .gw-toolbar .gw-iconbtn-text {
+        flex: 1 1 100%;
+        justify-content: flex-start;
+    }
 }

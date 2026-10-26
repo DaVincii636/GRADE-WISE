@@ -22,7 +22,7 @@
     @Html.ActionLink("Back to scores", "Course", "Faculty", new { id = Model.CourseId }, new { @class = "gw-btn gw-btn-outline" })
 </div>
 
-<section class="gw-panel">
+<section class="gw-panel gw-enroll-card">
     <div class="gw-panel-head">
         <h2 class="gw-panel-title">Enrolled (@Model.Enrolled.Count)</h2>
     </div>
@@ -70,7 +70,7 @@
     </div>
 </section>
 
-<section class="gw-panel gw-form-narrow">
+<section class="gw-panel gw-form-narrow gw-enroll-card">
     <div class="gw-panel-head">
         <h2 class="gw-panel-title">Add students</h2>
     </div>
@@ -93,7 +93,7 @@
             using (Html.BeginForm("EnrollStudents", "Faculty", new { id = Model.CourseId }, FormMethod.Post))
             {
                 @Html.AntiForgeryToken()
-                <div class="gw-check-list">
+                <div class="gw-check-list gw-enroll-list">
                     @foreach (var s in Model.Available)
                     {
                         <label>
