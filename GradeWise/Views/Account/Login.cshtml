@@ -1,0 +1,25 @@
+﻿@{
+    ViewBag.Title = "Sign in";
+}
+
+<div class="gw-login">
+    <section class="gw-panel">
+        <div class="gw-panel-head">
+            <h1 class="gw-panel-title">Sign in to GradeWise</h1>
+        </div>
+        <div class="gw-panel-body">
+            <form onsubmit="return false;">
+                <div class="gw-field">
+                    <label for="loginId">Student number or email</label>
+                    <input type="text" id="loginId" name="loginId" autocomplete="username" />
+                </div>
+                <div class="gw-field">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" name="password" autocomplete="current-password" />
+                </div>
+                <button type="submit" class="gw-btn gw-btn-block">Sign in</button>
+            </form>
+            <p class="gw-note">Sign-in is not connected yet.</p>
+        </div>
+    </section>
+</div>
