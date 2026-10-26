@@ -1,7 +1,8 @@
 /* GradeWise theme
    navy  #17306b   top bar, headings, table headers
    gold  #e8a317   brand rule, role badge, focus rings
-   page  #f3f4f8   page background                       */
+   page  #f3f4f8   page background      
+*/
 
 :root {
     --gw-navy: #17306b;
@@ -18,7 +19,7 @@
 body {
     background: var(--gw-page);
     color: var(--gw-ink);
-    font-family: "Segoe UI", system-ui, -apple-system, Roboto, "Helvetica Neue", Arial, sans-serif;
+    font-family: "Space Grotesk", sans-serif;
     line-height: 1.5;
 }
 
