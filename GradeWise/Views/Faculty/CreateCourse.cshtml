@@ -1,0 +1,53 @@
+@model GradeWise.Models.CreateCourseViewModel
+@{
+    ViewBag.Title = "Create course";
+}
+
+<h1 class="gw-page-title">Create course</h1>
+<p class="gw-page-sub">Start with the basics. You set the grading categories and enroll students next.</p>
+
+<section class="gw-panel gw-form-narrow">
+    <div class="gw-panel-head">
+        <h2 class="gw-panel-title">Course details</h2>
+    </div>
+    <div class="gw-panel-body">
+        @if (Model.Errors.Count > 0)
+        {
+            <div class="gw-alert" role="alert">
+                <strong>Please fix the following:</strong>
+                <ul class="gw-error-list">
+                    @foreach (var e in Model.Errors)
+                    {
+                        <li>@e</li>
+                    }
+                </ul>
+            </div>
+        }
+
+        @using (Html.BeginForm("CreateCourse", "Faculty", FormMethod.Post))
+        {
+            @Html.AntiForgeryToken()
+            <div class="gw-field">
+                <label for="code">Course code</label>
+                <input type="text" id="code" name="code" value="@Model.Code" maxlength="20" required autofocus placeholder="IT101" />
+            </div>
+            <div class="gw-field">
+                <label for="name">Course name</label>
+                <input type="text" id="name" name="name" value="@Model.Name" maxlength="100" required placeholder="Introduction to Programming" />
+            </div>
+            <div class="gw-field">
+                <label for="term">Term</label>
+                <select id="term" name="term" required>
+                    @foreach (var t in Model.TermNames)
+                    {
+                        <option value="@t" selected="@(t == Model.Term)">@t</option>
+                    }
+                </select>
+            </div>
+            <div class="gw-form-buttons">
+                <button type="submit" class="gw-btn">Create course</button>
+                @Html.ActionLink("Cancel", "Index", "Faculty")
+            </div>
+        }
+    </div>
+</section>

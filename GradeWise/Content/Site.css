@@ -365,3 +365,104 @@ a.gw-btn { text-decoration: none; }
 }
 
 .gw-muted { color: var(--gw-muted); }
+
+/* ---------- Faculty screens (Phase 5) ---------- */
+.gw-num { text-align: right !important; white-space: nowrap; }
+
+.gw-th-sub {
+    color: var(--gw-muted);
+    font-size: 0.8rem;
+    font-weight: 400;
+}
+
+.gw-small { font-size: 0.85rem; }
+
+.gw-alert-warn {
+    background: #fff6e0;
+    border-color: #ecd08a;
+    border-left-color: var(--gw-gold);
+    color: #6b4a00;
+}
+
+.gw-status-warn { background: #fff6e0; color: #6b4a00; }
+
+.gw-empty-block { color: var(--gw-muted); margin: 0; }
+.gw-hint-block { margin: 0 0 16px; }
+
+.gw-score-input {
+    width: 84px;
+    padding: 6px 8px;
+    border: 1px solid #b9c0d0;
+    border-radius: 6px;
+    background: var(--gw-white);
+    color: var(--gw-ink);
+    text-align: right;
+}
+
+.gw-score-input:focus {
+    border-color: var(--gw-navy);
+    outline: 3px solid var(--gw-gold);
+    outline-offset: 0;
+}
+
+.gw-input-bad {
+    border-color: #b3261e;
+    background: #fdecec;
+}
+
+.gw-check-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 320px;
+    overflow-y: auto;
+    margin-bottom: 16px;
+}
+
+.gw-check-list label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 400;
+}
+
+.gw-cat-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 16px;
+}
+
+.gw-cat-table th,
+.gw-cat-table td {
+    padding: 6px 8px 6px 0;
+    text-align: left;
+}
+
+.gw-cat-table th { color: var(--gw-navy); }
+
+.gw-cat-table input[type="text"],
+.gw-cat-table input[type="number"] {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid #b9c0d0;
+    border-radius: 6px;
+    background: var(--gw-white);
+    color: var(--gw-ink);
+}
+
+.gw-cat-table input:focus {
+    border-color: var(--gw-navy);
+    outline: 3px solid var(--gw-gold);
+    outline-offset: 0;
+}
+
+.gw-cat-table tfoot th { border-top: 1px solid var(--gw-line); padding-top: 10px; }
+
+.gw-sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+}

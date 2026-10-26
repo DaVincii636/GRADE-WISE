@@ -1,0 +1,147 @@
+@model GradeWise.Models.CourseDetailViewModel
+@using GradeWise.Services
+@{
+    ViewBag.Title = Model.Code + " scores";
+
+    var message = TempData["Message"] as string;
+    var error = TempData["Error"] as string;
+}
+
+<h1 class="gw-page-title">@Model.Code &middot; @Model.Name</h1>
+<p class="gw-page-sub">@Model.Term</p>
+
+@if (!string.IsNullOrEmpty(error))
+{
+    <div class="gw-alert" role="alert">@error</div>
+}
+@if (!string.IsNullOrEmpty(message))
+{
+    <div class="gw-alert gw-alert-ok" role="status">@message</div>
+}
+@if (Model.Errors.Count > 0)
+{
+    <div class="gw-alert" role="alert">
+        <strong>Nothing was saved. Please fix the following:</strong>
+        <ul class="gw-error-list">
+            @foreach (var e in Model.Errors)
+            {
+                <li>@e</li>
+            }
+        </ul>
+    </div>
+}
+@if (Model.Categories.Count == 0)
+{
+    <div class="gw-alert gw-alert-warn" role="status">
+        This course has no grading categories yet.
+        @Html.ActionLink("Set the categories and weights", "Categories", "Faculty", new { id = Model.CourseId }, null)
+        before entering scores.
+    </div>
+}
+else if (!Model.WeightsOk)
+{
+    <div class="gw-alert gw-alert-warn" role="status">
+        The category weights add up to <strong>@GradeCalculator.Format(Model.WeightTotal)%</strong>, not 100%.
+        Averages below use the weights as they are.
+        @Html.ActionLink("Fix the weights", "Categories", "Faculty", new { id = Model.CourseId }, null)
+    </div>
+}
+
+<section class="gw-stats" aria-label="Class summary">
+    <div class="gw-stat">
+        <div class="gw-stat-value">@Model.Rows.Count</div>
+        <div class="gw-stat-label">Students</div>
+    </div>
+    <div class="gw-stat">
+        <div class="gw-stat-value">@GradeCalculator.Format(Model.Summary.Average)</div>
+        <div class="gw-stat-label">Class average</div>
+    </div>
+    <div class="gw-stat">
+        <div class="gw-stat-value">@GradeCalculator.Format(Model.Summary.Highest)</div>
+        <div class="gw-stat-label">Highest</div>
+    </div>
+    <div class="gw-stat">
+        <div class="gw-stat-value">@GradeCalculator.Format(Model.Summary.Lowest)</div>
+        <div class="gw-stat-label">Lowest</div>
+    </div>
+</section>
+
+<div class="gw-toolbar">
+    @Html.ActionLink("Back to courses", "Index", "Faculty", null, new { @class = "gw-btn gw-btn-outline" })
+    @Html.ActionLink("Students", "Enroll", "Faculty", new { id = Model.CourseId }, new { @class = "gw-btn gw-btn-outline" })
+    @Html.ActionLink("Categories and weights", "Categories", "Faculty", new { id = Model.CourseId }, new { @class = "gw-btn gw-btn-outline" })
+</div>
+
+<section class="gw-panel">
+    <div class="gw-panel-head">
+        <h2 class="gw-panel-title">Score entry</h2>
+    </div>
+
+    @if (Model.Categories.Count == 0)
+    {
+        <div class="gw-panel-body gw-empty-block">Set the grading categories to start entering scores.</div>
+    }
+    else if (Model.Rows.Count == 0)
+    {
+        <div class="gw-panel-body gw-empty-block">
+            No students are enrolled yet.
+            @Html.ActionLink("Enroll students", "Enroll", "Faculty", new { id = Model.CourseId }, null)
+        </div>
+    }
+    else
+    {
+        using (Html.BeginForm("SaveScores", "Faculty", new { id = Model.CourseId }, FormMethod.Post))
+        {
+            @Html.AntiForgeryToken()
+            <div class="gw-table-wrap">
+                <table class="gw-table">
+                    <thead>
+                        <tr>
+                            <th>Student</th>
+                            @foreach (var c in Model.Categories)
+                            {
+                                <th class="gw-num">@c.Name<br /><span class="gw-th-sub">@GradeCalculator.Format(c.Weight)%</span></th>
+                            }
+                            <th class="gw-num">Average<br /><span class="gw-th-sub">of graded work</span></th>
+                            <th class="gw-num">Earned<br /><span class="gw-th-sub">of @GradeCalculator.Format(Model.WeightTotal)</span></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var row in Model.Rows)
+                        {
+                            <tr>
+                                <td>
+                                    @row.FullName
+                                    <div class="gw-muted gw-small">@row.StudentNo</div>
+                                </td>
+                                @for (var i = 0; i < Model.Categories.Count; i++)
+                                {
+                                    var category = Model.Categories[i];
+                                    <td class="gw-num">
+                                        <input type="number" min="0" max="100" step="any" inputmode="decimal"
+                                               class="gw-score-input @(row.Invalid[i] ? "gw-input-bad" : "")"
+                                               name="@CourseService.ScoreFieldName(row.StudentId, category.Name)"
+                                               value="@row.Inputs[i]"
+                                               aria-label="@category.Name score for @row.FullName" />
+                                    </td>
+                                }
+                                <td class="gw-num"><strong>@GradeCalculator.Format(row.Result.Average)</strong></td>
+                                <td class="gw-num">@GradeCalculator.Format(row.Result.HasGrades ? (double?)row.Result.Earned : null)</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+            <div class="gw-panel-body">
+                <div class="gw-form-buttons">
+                    <button type="submit" class="gw-btn">Save scores</button>
+                </div>
+                <p class="gw-note">
+                    Scores are percentages from 0 to 100. Leave a box empty if the work is not graded yet.
+                    <strong>Average</strong> is the weighted average of the graded categories only;
+                    <strong>Earned</strong> is the points collected so far toward the course total.
+                </p>
+            </div>
+        }
+    }
+</section>

@@ -1,0 +1,132 @@
+@model GradeWise.Models.EnrollViewModel
+@{
+    ViewBag.Title = Model.Code + " students";
+
+    var message = TempData["Message"] as string;
+    var error = TempData["Error"] as string;
+}
+
+<h1 class="gw-page-title">@Model.Code &middot; Students</h1>
+<p class="gw-page-sub">@Model.Name, @Model.Term</p>
+
+@if (!string.IsNullOrEmpty(error))
+{
+    <div class="gw-alert" role="alert">@error</div>
+}
+@if (!string.IsNullOrEmpty(message))
+{
+    <div class="gw-alert gw-alert-ok" role="status">@message</div>
+}
+
+<div class="gw-toolbar">
+    @Html.ActionLink("Back to scores", "Course", "Faculty", new { id = Model.CourseId }, new { @class = "gw-btn gw-btn-outline" })
+</div>
+
+<section class="gw-panel">
+    <div class="gw-panel-head">
+        <h2 class="gw-panel-title">Enrolled (@Model.Enrolled.Count)</h2>
+    </div>
+    <div class="gw-table-wrap">
+        <table class="gw-table">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>ID</th>
+                    <th>Email</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (Model.Enrolled.Count == 0)
+                {
+                    <tr>
+                        <td colspan="4" class="gw-empty">No students enrolled yet. Add some below.</td>
+                    </tr>
+                }
+                @foreach (var s in Model.Enrolled)
+                {
+                    <tr>
+                        <td>
+                            @s.FullName
+                            @if (!s.IsActive)
+                            {
+                                <span class="gw-status gw-status-off">Disabled</span>
+                            }
+                        </td>
+                        <td>@s.StudentNo</td>
+                        <td>@s.Email</td>
+                        <td>
+                            @using (Html.BeginForm("Unenroll", "Faculty", new { id = Model.CourseId }, FormMethod.Post, new { @class = "gw-row-form", data_confirm = "Remove " + s.FullName + " from this course? Their scores for it are deleted." }))
+                            {
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="studentId" value="@s.Id" />
+                                <button type="submit" class="gw-btn gw-btn-small gw-btn-outline">Remove</button>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<section class="gw-panel gw-form-narrow">
+    <div class="gw-panel-head">
+        <h2 class="gw-panel-title">Add students</h2>
+    </div>
+    <div class="gw-panel-body">
+        @if (Model.Available.Count == 0)
+        {
+            <p class="gw-empty-block">
+                @if (Model.Enrolled.Count == 0)
+                {
+                    @:There are no active student accounts yet. Ask an administrator to create them.
+                }
+                else
+                {
+                    @:Every active student account is already enrolled in this course.
+                }
+            </p>
+        }
+        else
+        {
+            using (Html.BeginForm("EnrollStudents", "Faculty", new { id = Model.CourseId }, FormMethod.Post))
+            {
+                @Html.AntiForgeryToken()
+                <div class="gw-check-list">
+                    @foreach (var s in Model.Available)
+                    {
+                        <label>
+                            <input type="checkbox" name="studentIds" value="@s.Id" />
+                            @s.FullName <span class="gw-muted">(@s.StudentNo)</span>
+                        </label>
+                    }
+                </div>
+                <div class="gw-form-buttons">
+                    <button type="submit" class="gw-btn">Enroll selected</button>
+                    <button type="button" class="gw-btn gw-btn-outline" id="select-all">Select all</button>
+                </div>
+            }
+        }
+    </div>
+</section>
+
+@section scripts {
+    <script>
+        // Ask before any form that has a data-confirm message.
+        document.addEventListener("submit", function (e) {
+            var msg = e.target.getAttribute("data-confirm");
+            if (msg && !window.confirm(msg)) {
+                e.preventDefault();
+            }
+        });
+
+        var selectAll = document.getElementById("select-all");
+        if (selectAll) {
+            selectAll.addEventListener("click", function () {
+                var boxes = document.querySelectorAll("input[name=studentIds]");
+                for (var i = 0; i < boxes.length; i++) { boxes[i].checked = true; }
+            });
+        }
+    </script>
+}

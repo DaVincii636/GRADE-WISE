@@ -1,0 +1,173 @@
+@model GradeWise.Models.CategoriesViewModel
+@{
+    ViewBag.Title = Model.Code + " categories";
+
+    var message = TempData["Message"] as string;
+    var error = TempData["Error"] as string;
+
+    // Always leave two empty rows at the bottom so new categories can be typed straight away.
+    var emptyRows = Model.Rows.Count(r => string.IsNullOrEmpty(r.Original) && string.IsNullOrWhiteSpace(r.Name) && string.IsNullOrWhiteSpace(r.Weight));
+    var spare = System.Math.Max(0, (Model.Rows.Count == 0 ? 4 : 2) - emptyRows);
+}
+
+<h1 class="gw-page-title">@Model.Code &middot; Categories and weights</h1>
+<p class="gw-page-sub">@Model.Name, @Model.Term</p>
+
+@if (!string.IsNullOrEmpty(error))
+{
+    <div class="gw-alert" role="alert">@error</div>
+}
+@if (!string.IsNullOrEmpty(message))
+{
+    <div class="gw-alert gw-alert-ok" role="status">@message</div>
+}
+@if (Model.Errors.Count > 0)
+{
+    <div class="gw-alert" role="alert">
+        <strong>Nothing was saved. Please fix the following:</strong>
+        <ul class="gw-error-list">
+            @foreach (var e in Model.Errors)
+            {
+                <li>@e</li>
+            }
+        </ul>
+    </div>
+}
+
+<div class="gw-toolbar">
+    @Html.ActionLink("Back to scores", "Course", "Faculty", new { id = Model.CourseId }, new { @class = "gw-btn gw-btn-outline" })
+</div>
+
+<section class="gw-panel gw-form-narrow">
+    <div class="gw-panel-head">
+        <h2 class="gw-panel-title">Grading categories</h2>
+    </div>
+    <div class="gw-panel-body">
+        <p class="gw-field-hint gw-hint-block">
+            Each weight is a percent of the final grade, for example Quizzes 20, Projects 30, Midterm 20, Final 30.
+            The weights should add up to 100. Renaming a category keeps its scores; removing one deletes them.
+        </p>
+
+        @using (Html.BeginForm("Categories", "Faculty", new { id = Model.CourseId }, FormMethod.Post, new { id = "cat-form" }))
+        {
+            @Html.AntiForgeryToken()
+            <table class="gw-cat-table">
+                <thead>
+                    <tr>
+                        <th>Category</th>
+                        <th>Weight (%)</th>
+                        <th><span class="gw-sr-only">Remove</span></th>
+                    </tr>
+                </thead>
+                <tbody id="cat-body">
+                    @foreach (var r in Model.Rows)
+                    {
+                        <tr>
+                            <td>
+                                <input type="hidden" name="originals" value="@r.Original" />
+                                <input type="text" name="names" value="@r.Name" maxlength="40" aria-label="Category name" />
+                            </td>
+                            <td><input type="number" name="weights" value="@r.Weight" min="0.01" max="100" step="any" inputmode="decimal" aria-label="Weight in percent" /></td>
+                            <td><button type="button" class="gw-btn gw-btn-small gw-btn-outline" data-remove="1">Remove</button></td>
+                        </tr>
+                    }
+                    @for (var i = 0; i < spare; i++)
+                    {
+                        <tr>
+                            <td>
+                                <input type="hidden" name="originals" value="" />
+                                <input type="text" name="names" value="" maxlength="40" aria-label="Category name" />
+                            </td>
+                            <td><input type="number" name="weights" value="" min="0.01" max="100" step="any" inputmode="decimal" aria-label="Weight in percent" /></td>
+                            <td><button type="button" class="gw-btn gw-btn-small gw-btn-outline" data-remove="1">Remove</button></td>
+                        </tr>
+                    }
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <th>Total</th>
+                        <th><span id="cat-total">0</span>%</th>
+                        <th></th>
+                    </tr>
+                </tfoot>
+            </table>
+
+            <div id="cat-warn" class="gw-alert gw-alert-warn" role="status" hidden>
+                The weights do not add up to 100%. You can still save, but averages are only meaningful when the total is 100%.
+            </div>
+
+            <div class="gw-form-buttons">
+                <button type="submit" class="gw-btn">Save categories</button>
+                <button type="button" class="gw-btn gw-btn-outline" id="cat-add">Add category</button>
+            </div>
+        }
+    </div>
+</section>
+
+@section scripts {
+    <script>
+        (function () {
+            var body = document.getElementById("cat-body");
+            var totalEl = document.getElementById("cat-total");
+            var warnEl = document.getElementById("cat-warn");
+
+            function refresh() {
+                var total = 0;
+                var inputs = body.querySelectorAll("input[name=weights]");
+                for (var i = 0; i < inputs.length; i++) {
+                    var v = parseFloat(inputs[i].value);
+                    if (!isNaN(v)) { total += v; }
+                }
+                total = Math.round(total * 100) / 100;
+                totalEl.textContent = total;
+                warnEl.hidden = Math.abs(total - 100) < 0.005;
+            }
+
+            document.getElementById("cat-add").addEventListener("click", function () {
+                var tr = document.createElement("tr");
+                tr.innerHTML =
+                    '<td><input type="hidden" name="originals" value="" />' +
+                    '<input type="text" name="names" maxlength="40" aria-label="Category name" /></td>' +
+                    '<td><input type="number" name="weights" min="0.01" max="100" step="any" inputmode="decimal" aria-label="Weight in percent" /></td>' +
+                    '<td><button type="button" class="gw-btn gw-btn-small gw-btn-outline" data-remove="1">Remove</button></td>';
+                body.appendChild(tr);
+                tr.querySelector("input[name=names]").focus();
+            });
+
+            // Remove = empty the row and hide it. The server ignores empty rows.
+            body.addEventListener("click", function (e) {
+                var btn = e.target;
+                if (!btn.getAttribute || !btn.getAttribute("data-remove")) { return; }
+                var tr = btn.closest("tr");
+                var original = tr.querySelector("input[name=originals]").value;
+                var name = tr.querySelector("input[name=names]");
+                var weight = tr.querySelector("input[name=weights]");
+                if (original && name.value) { tr.setAttribute("data-removed", name.value); }
+                name.value = "";
+                weight.value = "";
+                tr.hidden = true;
+                refresh();
+            });
+
+            body.addEventListener("input", refresh);
+
+            // Warn before saving if a category that has scores is being removed.
+            document.getElementById("cat-form").addEventListener("submit", function (e) {
+                var removed = [];
+                var rows = body.querySelectorAll("tr");
+                for (var i = 0; i < rows.length; i++) {
+                    var original = rows[i].querySelector("input[name=originals]").value;
+                    var name = rows[i].querySelector("input[name=names]").value.trim();
+                    var weight = rows[i].querySelector("input[name=weights]").value.trim();
+                    if (original && !name && !weight) { removed.push(original); }
+                }
+                if (removed.length > 0 &&
+                    !window.confirm("Removing " + removed.join(", ") + " deletes the scores already entered for it. Continue?")) {
+                    e.preventDefault();
+                }
+            });
+
+            refresh();
+        })();
+    </script>
+}

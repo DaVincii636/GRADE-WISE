@@ -1,45 +1,98 @@
-﻿@{
+@model GradeWise.Models.CourseListViewModel
+@using GradeWise.Services
+@{
     ViewBag.Title = "My courses";
+
+    var message = TempData["Message"] as string;
+    var error = TempData["Error"] as string;
 }
 
 <h1 class="gw-page-title">My courses</h1>
 <p class="gw-page-sub">Set up grading categories and enter student scores.</p>
 
+@if (!string.IsNullOrEmpty(error))
+{
+    <div class="gw-alert" role="alert">@error</div>
+}
+@if (!string.IsNullOrEmpty(message))
+{
+    <div class="gw-alert gw-alert-ok" role="status">@message</div>
+}
+
 <section class="gw-stats" aria-label="Summary">
-        <div class="gw-stat">
-            <div class="gw-stat-value">&mdash;</div>
-            <div class="gw-stat-label">Courses</div>
-        </div>
-        <div class="gw-stat">
-            <div class="gw-stat-value">&mdash;</div>
-            <div class="gw-stat-label">Enrolled students</div>
-        </div>
-        <div class="gw-stat">
-            <div class="gw-stat-value">&mdash;</div>
-            <div class="gw-stat-label">Scores not yet entered</div>
-        </div>
+    <div class="gw-stat">
+        <div class="gw-stat-value">@Model.Courses.Count</div>
+        <div class="gw-stat-label">Courses</div>
+    </div>
+    <div class="gw-stat">
+        <div class="gw-stat-value">@Model.StudentCount</div>
+        <div class="gw-stat-label">Enrolled students</div>
+    </div>
+    <div class="gw-stat">
+        <div class="gw-stat-value">@Model.MissingScores</div>
+        <div class="gw-stat-label">Scores not yet entered</div>
+    </div>
 </section>
+
+<div class="gw-toolbar">
+    @Html.ActionLink("Create course", "CreateCourse", "Faculty", null, new { @class = "gw-btn" })
+</div>
 
 <section class="gw-panel">
     <div class="gw-panel-head">
-        <h2 class="gw-panel-title">Score entry</h2>
+        <h2 class="gw-panel-title">Courses</h2>
     </div>
     <div class="gw-table-wrap">
         <table class="gw-table">
             <thead>
                 <tr>
-                        <th>Student</th>
-                        <th>Quizzes</th>
-                        <th>Projects</th>
-                        <th>Midterm</th>
-                        <th>Final</th>
-                        <th>Average</th>
+                    <th>Code</th>
+                    <th>Course</th>
+                    <th>Term</th>
+                    <th class="gw-num">Students</th>
+                    <th class="gw-num">Weights</th>
+                    <th class="gw-num">Class average</th>
+                    <th>Actions</th>
                 </tr>
             </thead>
             <tbody>
-                <tr>
-                    <td colspan="6" class="gw-empty">Create a course to start entering scores.</td>
-                </tr>
+                @if (Model.Courses.Count == 0)
+                {
+                    <tr>
+                        <td colspan="7" class="gw-empty">You have no courses yet. Create one to start entering scores.</td>
+                    </tr>
+                }
+                @foreach (var c in Model.Courses)
+                {
+                    <tr>
+                        <td>@c.Code</td>
+                        <td>@c.Name</td>
+                        <td>@c.Term</td>
+                        <td class="gw-num">@c.StudentCount</td>
+                        <td class="gw-num">
+                            @if (c.CategoryCount == 0)
+                            {
+                                <span class="gw-status gw-status-warn">None set</span>
+                            }
+                            else if (GradeCalculator.IsFullWeight(c.WeightTotal))
+                            {
+                                @:100%
+                            }
+                            else
+                            {
+                                <span class="gw-status gw-status-warn">@GradeCalculator.Format(c.WeightTotal)%</span>
+                            }
+                        </td>
+                        <td class="gw-num">@GradeCalculator.Format(c.ClassAverage)</td>
+                        <td>
+                            <div class="gw-row-actions">
+                                @Html.ActionLink("Scores", "Course", "Faculty", new { id = c.Id }, new { @class = "gw-btn gw-btn-small" })
+                                @Html.ActionLink("Students", "Enroll", "Faculty", new { id = c.Id }, new { @class = "gw-btn gw-btn-small gw-btn-outline" })
+                                @Html.ActionLink("Categories", "Categories", "Faculty", new { id = c.Id }, new { @class = "gw-btn gw-btn-small gw-btn-outline" })
+                            </div>
+                        </td>
+                    </tr>
+                }
             </tbody>
         </table>
     </div>
