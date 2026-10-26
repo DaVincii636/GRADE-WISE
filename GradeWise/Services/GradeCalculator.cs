@@ -112,6 +112,31 @@ namespace GradeWise.Services
             return Math.Abs(totalWeight - 100) < WeightTolerance;
         }
 
+        // Lowest average (percent) for each equivalent grade, highest first. Anything below the last
+        // line is 5.00 (failed). This is the common 1.00 to 5.00 scale used in Philippine universities;
+        // change the numbers here if the school uses a different table.
+        private static readonly double[][] GradeScale =
+        {
+            new[] { 97.0, 1.00 }, new[] { 94.0, 1.25 }, new[] { 91.0, 1.50 },
+            new[] { 88.0, 1.75 }, new[] { 85.0, 2.00 }, new[] { 82.0, 2.25 },
+            new[] { 79.0, 2.50 }, new[] { 76.0, 2.75 }, new[] { 75.0, 3.00 }
+        };
+
+        public const double FailingGrade = 5.00;
+
+        /// <summary>Equivalent grade (1.00 to 5.00) for an average percent. Null when there is no average yet.</summary>
+        public static double? EquivalentGrade(double? average)
+        {
+            if (!average.HasValue) return null;
+
+            foreach (var step in GradeScale)
+            {
+                if (average.Value >= step[0]) return step[1];
+            }
+
+            return FailingGrade;
+        }
+
         /// <summary>Text for showing a grade or weight: two decimals, or a dash when there is no value.</summary>
         public static string Format(double? value)
         {

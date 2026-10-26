@@ -1,23 +1,66 @@
-﻿@{
+@model GradeWise.Models.StudentDashboardViewModel
+@using GradeWise.Services
+@{
     ViewBag.Title = "My grades";
 }
 
 <h1 class="gw-page-title">My grades</h1>
 <p class="gw-page-sub">Your courses, scores, and projected final grade.</p>
 
+@if (!Model.HasCourse)
+{
+    <section class="gw-panel">
+        <div class="gw-panel-body gw-empty-block">
+            You are not enrolled in any course yet. Your instructor enrolls you, and your grades appear here once they do.
+        </div>
+    </section>
+    return;
+}
+
+<section class="gw-panel gw-picker-panel">
+    <div class="gw-panel-body">
+        @using (Html.BeginForm("Index", "Student", FormMethod.Get, new { @class = "gw-picker" }))
+        {
+            <label for="course-picker">Course</label>
+            <select id="course-picker" name="id" class="gw-inline-select">
+                @foreach (var c in Model.Courses)
+                {
+                    <option value="@c.Id" selected="@(c.Id == Model.SelectedId)">@c.Code &middot; @c.Name</option>
+                }
+            </select>
+            <button type="submit" class="gw-btn gw-btn-small gw-btn-outline">View</button>
+            <span class="gw-muted">@Model.Term</span>
+        }
+    </div>
+</section>
+
+@if (!Model.HasCategories)
+{
+    <div class="gw-alert gw-alert-warn" role="status">
+        Your instructor has not set the grading categories for this course yet, so there is nothing to calculate.
+    </div>
+}
+else if (!Model.WeightsOk)
+{
+    <div class="gw-alert gw-alert-warn" role="status">
+        The grading weights for this course add up to <strong>@GradeCalculator.Format(Model.WeightTotal)%</strong>, not 100%.
+        Your numbers may change once your instructor fixes them.
+    </div>
+}
+
 <section class="gw-stats" aria-label="Summary">
-        <div class="gw-stat">
-            <div class="gw-stat-value">&mdash;</div>
-            <div class="gw-stat-label">Current average</div>
-        </div>
-        <div class="gw-stat">
-            <div class="gw-stat-value">&mdash;</div>
-            <div class="gw-stat-label">Equivalent grade</div>
-        </div>
-        <div class="gw-stat">
-            <div class="gw-stat-value">&mdash;</div>
-            <div class="gw-stat-label">Remaining weight</div>
-        </div>
+    <div class="gw-stat">
+        <div class="gw-stat-value">@(Model.Average.HasValue ? GradeCalculator.Format(Model.Average) + "%" : "\u2014")</div>
+        <div class="gw-stat-label">Current average <span class="gw-th-sub">(graded work so far)</span></div>
+    </div>
+    <div class="gw-stat">
+        <div class="gw-stat-value">@GradeCalculator.Format(Model.Equivalent)</div>
+        <div class="gw-stat-label">Equivalent grade</div>
+    </div>
+    <div class="gw-stat">
+        <div class="gw-stat-value">@(Model.HasCategories ? GradeCalculator.Format(Model.RemainingWeight) + "%" : "\u2014")</div>
+        <div class="gw-stat-label">Remaining weight <span class="gw-th-sub">(not graded yet)</span></div>
+    </div>
 </section>
 
 <section class="gw-panel">
@@ -28,17 +71,128 @@
         <table class="gw-table">
             <thead>
                 <tr>
-                        <th>Category</th>
-                        <th>Weight</th>
-                        <th>Score</th>
-                        <th>Weighted points</th>
+                    <th>Category</th>
+                    <th class="gw-num">Weight</th>
+                    <th class="gw-num">Your score</th>
+                    <th class="gw-num">Weighted points</th>
+                    <th class="gw-num">Class average</th>
                 </tr>
             </thead>
             <tbody>
-                <tr>
-                    <td colspan="4" class="gw-empty">Your scores appear here once your instructor enters them.</td>
-                </tr>
+                @if (Model.Rows.Count == 0)
+                {
+                    <tr>
+                        <td colspan="5" class="gw-empty">Your scores appear here once your instructor enters them.</td>
+                    </tr>
+                }
+                @foreach (var r in Model.Rows)
+                {
+                    <tr>
+                        <td>@r.Category</td>
+                        <td class="gw-num">@GradeCalculator.Format(r.Weight)%</td>
+                        <td class="gw-num">
+                            @if (r.Score.HasValue)
+                            {
+                                @GradeCalculator.Format(r.Score)
+                            }
+                            else
+                            {
+                                <span class="gw-muted">Not graded yet</span>
+                            }
+                        </td>
+                        <td class="gw-num">@GradeCalculator.Format(r.WeightedPoints)</td>
+                        <td class="gw-num">
+                            @if (r.ClassAverage.HasValue)
+                            {
+                                @GradeCalculator.Format(r.ClassAverage)
+                            }
+                            else
+                            {
+                                <span class="gw-muted">&mdash;</span>
+                            }
+                        </td>
+                    </tr>
+                }
             </tbody>
+            @if (Model.Rows.Count > 0)
+            {
+                <tfoot>
+                    <tr>
+                        <th>Total</th>
+                        <th class="gw-num">@GradeCalculator.Format(Model.WeightTotal)%</th>
+                        <th></th>
+                        <th class="gw-num">@GradeCalculator.Format(Model.Earned)</th>
+                        <th></th>
+                    </tr>
+                </tfoot>
+            }
         </table>
     </div>
 </section>
+
+<div class="gw-two-col">
+    <section class="gw-panel">
+        <div class="gw-panel-head">
+            <h2 class="gw-panel-title">Class benchmark</h2>
+        </div>
+        <div class="gw-panel-body">
+            @if (Model.ClassAverage.HasValue)
+            {
+                <div class="gw-stat-value">@GradeCalculator.Format(Model.ClassAverage)%</div>
+                <p class="gw-muted">
+                    Class average across @Model.ClassGraded students who have scores.
+                    @if (Model.Average.HasValue)
+                    {
+                        var diff = Model.Average.Value - Model.ClassAverage.Value;
+                        if (System.Math.Abs(diff) < 0.005)
+                        {
+                            @:Your average is the same as the class average.
+                        }
+                        else
+                        {
+                            @:Your average is @GradeCalculator.Format(System.Math.Abs(diff)) points @(diff > 0 ? "above" : "below") it.
+                        }
+                    }
+                </p>
+            }
+            else
+            {
+                <p class="gw-empty-block">
+                    The class average appears once at least @Model.MinClassSize students have scores. This keeps everyone's grades private.
+                </p>
+            }
+            <p class="gw-note">Only averages are shown. You never see other students' names or scores.</p>
+        </div>
+    </section>
+
+    <section class="gw-panel">
+        <div class="gw-panel-head">
+            <h2 class="gw-panel-title">Notifications</h2>
+        </div>
+        <div class="gw-panel-body">
+            @if (Model.Notifications.Count == 0)
+            {
+                <p class="gw-empty-block">You have no notifications.</p>
+            }
+            else
+            {
+                <ul class="gw-notes">
+                    @foreach (var n in Model.Notifications)
+                    {
+                        <li>@n</li>
+                    }
+                </ul>
+            }
+        </div>
+    </section>
+</div>
+
+@section scripts {
+    <script>
+        // Switch course as soon as another one is picked (the View button still works without JavaScript).
+        var picker = document.getElementById("course-picker");
+        if (picker) {
+            picker.addEventListener("change", function () { picker.form.submit(); });
+        }
+    </script>
+}

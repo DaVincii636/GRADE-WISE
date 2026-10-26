@@ -466,3 +466,34 @@ a.gw-btn { text-decoration: none; }
     clip: rect(0, 0, 0, 0);
     white-space: nowrap;
 }
+
+/* ---------- Student dashboard (Phase 6) ---------- */
+.gw-picker-panel { margin-bottom: 16px; }
+
+.gw-picker {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    margin: 0;
+}
+
+.gw-picker label { font-weight: 600; margin: 0; }
+
+.gw-two-col {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 16px;
+}
+
+.gw-table tfoot th {
+    background: var(--gw-white);
+    border-top: 2px solid var(--gw-line);
+}
+
+.gw-notes {
+    margin: 0;
+    padding-left: 20px;
+}
+
+.gw-notes li { margin-bottom: 8px; }
