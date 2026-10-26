@@ -51,7 +51,7 @@
         @using (Html.BeginForm("Categories", "Faculty", new { id = Model.CourseId }, FormMethod.Post, new { id = "cat-form" }))
         {
             @Html.AntiForgeryToken()
-            <table class="gw-cat-table">
+            <table class="gw-cat-table gw-field-table">
                 <thead>
                     <tr>
                         <th>Category</th>
@@ -86,7 +86,7 @@
                 <tfoot>
                     <tr>
                         <th>Total</th>
-                        <th><span id="cat-total">0</span>%</th>
+                        <th><span id="cat-total" class="gw-total-number">0</span>%</th>
                         <th></th>
                     </tr>
                 </tfoot>

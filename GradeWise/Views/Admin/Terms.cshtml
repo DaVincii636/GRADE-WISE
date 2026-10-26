@@ -45,8 +45,8 @@
                 }
                 @foreach (var t in terms)
                 {
-                    <tr>
-                        <td>@t.Name</td>
+                    <tr class="@(t.IsCurrent ? "gw-term-current" : "")">
+                        <td><span class="gw-term-box">@t.Name</span></td>
                         <td>
                             <span class="gw-status @(t.IsCurrent ? "gw-status-active" : "gw-status-off")">@(t.IsCurrent ? "Current" : "Not current")</span>
                         </td>

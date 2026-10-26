@@ -5,34 +5,61 @@
 }
 
 <h1 class="gw-page-title">My grades</h1>
-<p class="gw-page-sub">Your courses, scores, and projected final grade.</p>
+<p class="gw-page-sub">
+    Your courses, scores, and projected final grade.
+    @if (Model.HasCourse)
+    {
+        <span class="gw-badge">@Model.Term</span>
+    }
+</p>
+
+@{
+    var today = DateTime.Now;
+    var todayIndex = (int)today.DayOfWeek;
+    var weekNames = new[] { "S", "M", "T", "W", "T", "F", "S" };
+}
+<div class="gw-weekstrip" aria-label="Today is @today.ToString("dddd, MMMM d")">
+    @for (var i = 0; i < weekNames.Length; i++)
+    {
+        <span class="gw-weekday @(i == todayIndex ? "gw-weekday-today" : "")">@weekNames[i]</span>
+    }
+</div>
 
 @if (!Model.HasCourse)
 {
     <section class="gw-panel">
-        <div class="gw-panel-body gw-empty-block">
-            You are not enrolled in any course yet. Your instructor enrolls you, and your grades appear here once they do.
+        <div class="gw-panel-body gw-empty-state">
+            <img src="@Url.Content("~/Content/img/stickers/mascot-cat.svg")" alt="" class="gw-empty-mascot" width="72" height="72" />
+            <p class="gw-empty-title">No courses yet</p>
+            <p class="gw-muted">You are not enrolled in any course yet. Your instructor enrolls you, and your grades appear here once they do.</p>
         </div>
     </section>
     return;
 }
 
 <section class="gw-panel gw-picker-panel">
-    <div class="gw-panel-body">
-        @using (Html.BeginForm("Index", "Student", FormMethod.Get, new { @class = "gw-picker" }))
+    <div class="gw-panel-head">
+        <h2 class="gw-panel-title">Your courses</h2>
+    </div>
+    <ul class="gw-collection">
+        @foreach (var c in Model.Courses)
         {
-            <label for="course-picker">Course</label>
-            <select id="course-picker" name="id" class="gw-inline-select">
-                @foreach (var c in Model.Courses)
-                {
-                    <option value="@c.Id" selected="@(c.Id == Model.SelectedId)">@c.Code &middot; @c.Name</option>
-                }
-            </select>
-            <button type="submit" class="gw-btn gw-btn-small gw-btn-outline">View</button>
-            @Html.ActionLink("What-If simulator", "WhatIf", "Student", new { id = Model.SelectedId }, new { @class = "gw-btn gw-btn-small" })
-            @Html.ActionLink("Printable summary", "Summary", "Student", new { id = Model.SelectedId }, new { @class = "gw-btn gw-btn-small gw-btn-outline" })
-            <span class="gw-muted">@Model.Term</span>
+            var current = c.Id == Model.SelectedId;
+            <li>
+                <a href="@Url.Action("Index", "Student", new { id = c.Id })" class="gw-collection-item" aria-current="@(current ? "true" : "false")">
+                    <span class="gw-collection-sticker" aria-hidden="true">@(c.Code.Length > 2 ? c.Code.Substring(0, 2) : c.Code)</span>
+                    <span class="gw-collection-main">
+                        <span class="gw-collection-code">@c.Code</span>
+                        <span class="gw-collection-meta">@c.Name</span>
+                    </span>
+                    <img src="@Url.Content("~/Content/img/icons/chevron-right.svg")" alt="" class="gw-collection-chevron" width="20" height="20" />
+                </a>
+            </li>
         }
+    </ul>
+    <div class="gw-panel-body gw-collection-actions">
+        @Html.ActionLink("What-If simulator", "WhatIf", "Student", new { id = Model.SelectedId }, new { @class = "gw-btn gw-btn-small" })
+        @Html.ActionLink("Printable summary", "Summary", "Student", new { id = Model.SelectedId }, new { @class = "gw-btn gw-btn-small gw-btn-outline" })
     </div>
 </section>
 
@@ -51,15 +78,22 @@ else if (!Model.WeightsOk)
 }
 
 <section class="gw-stats" aria-label="Summary">
-    <div class="gw-stat">
+    <div class="gw-stat gw-stat-stamp" data-tab="Average">
+        @if (Model.Equivalent.HasValue)
+        {
+            <span class="gw-grade-stamp" aria-label="Equivalent grade @GradeCalculator.Format(Model.Equivalent)">
+                <img src="@Url.Content("~/Content/img/stickers/stamp-ring.svg")" alt="" class="gw-grade-stamp-ring" width="64" height="64" />
+                <span class="gw-grade-stamp-text">@GradeCalculator.Format(Model.Equivalent)</span>
+            </span>
+        }
         <div class="gw-stat-value">@(Model.Average.HasValue ? GradeCalculator.Format(Model.Average) + "%" : "\u2014")</div>
         <div class="gw-stat-label">Current average <span class="gw-th-sub">(graded work so far)</span></div>
     </div>
-    <div class="gw-stat">
+    <div class="gw-stat" data-tab="Equivalent">
         <div class="gw-stat-value">@GradeCalculator.Format(Model.Equivalent)</div>
         <div class="gw-stat-label">Equivalent grade</div>
     </div>
-    <div class="gw-stat">
+    <div class="gw-stat" data-tab="Remaining">
         <div class="gw-stat-value">@(Model.HasCategories ? GradeCalculator.Format(Model.RemainingWeight) + "%" : "\u2014")</div>
         <div class="gw-stat-label">Remaining weight <span class="gw-th-sub">(not graded yet)</span></div>
     </div>
@@ -99,7 +133,7 @@ else if (!Model.WeightsOk)
                             }
                             else
                             {
-                                <span class="gw-muted">Not graded yet</span>
+                                <span class="gw-cell-empty">Not graded yet</span>
                             }
                         </td>
                         <td class="gw-num">@GradeCalculator.Format(r.WeightedPoints)</td>
@@ -135,11 +169,12 @@ else if (!Model.WeightsOk)
 @Html.Partial("_History", Model)
 
 <div class="gw-two-col">
-    <section class="gw-panel">
+    <section class="gw-panel gw-note-card">
         <div class="gw-panel-head">
             <h2 class="gw-panel-title">Class benchmark</h2>
         </div>
         <div class="gw-panel-body">
+            <img src="@Url.Content("~/Content/img/icons/quote.svg")" alt="" class="gw-quote" width="28" height="28" />
             @if (Model.ClassAverage.HasValue)
             {
                 <div class="gw-stat-value">@GradeCalculator.Format(Model.ClassAverage)%</div>
@@ -171,7 +206,10 @@ else if (!Model.WeightsOk)
 
     <section class="gw-panel">
         <div class="gw-panel-head">
-            <h2 class="gw-panel-title">Notifications</h2>
+            <h2 class="gw-panel-title">
+                <img src="@Url.Content("~/Content/img/icons/bell.svg")" alt="" class="gw-panel-icon" width="18" height="18" />
+                Notifications
+            </h2>
         </div>
         <div class="gw-panel-body">
             @if (Model.Notifications.Count == 0)
@@ -190,13 +228,3 @@ else if (!Model.WeightsOk)
         </div>
     </section>
 </div>
-
-@section scripts {
-    <script>
-        // Switch course as soon as another one is picked (the View button still works without JavaScript).
-        var picker = document.getElementById("course-picker");
-        if (picker) {
-            picker.addEventListener("change", function () { picker.form.submit(); });
-        }
-    </script>
-}

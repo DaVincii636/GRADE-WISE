@@ -8,7 +8,7 @@
     @Html.ActionLink("Back to my grades", "Index", "Student", new { id = Model.SelectedId }, new { @class = "gw-btn gw-btn-outline" })
     @if (Model.HasCourse)
     {
-        <button type="button" id="print-summary" class="gw-btn">Print or save as PDF</button>
+        <button type="button" id="print-summary" class="gw-btn"><img src="@Url.Content("~/Content/img/icons/print.svg")" alt="" width="18" height="18" /> Print or save as PDF</button>
     }
 </div>
 
@@ -22,7 +22,7 @@
 }
 else
 {
-    <article class="gw-summary">
+    <article class="gw-summary gw-summary-sheet">
         <header class="gw-summary-head">
             <h1 class="gw-page-title">Grade summary</h1>
             <p class="gw-page-sub">GradeWise &middot; printed @DateTime.Now.ToString("MMMM d, yyyy", System.Globalization.CultureInfo.InvariantCulture)</p>
@@ -56,15 +56,15 @@ else
         }
 
         <section class="gw-stats" aria-label="Summary">
-            <div class="gw-stat">
+            <div class="gw-stat" data-tab="Average">
                 <div class="gw-stat-value">@(Model.Average.HasValue ? GradeCalculator.Format(Model.Average) + "%" : "\u2014")</div>
                 <div class="gw-stat-label">Current average <span class="gw-th-sub">(graded work so far)</span></div>
             </div>
-            <div class="gw-stat">
+            <div class="gw-stat" data-tab="Equivalent">
                 <div class="gw-stat-value">@GradeCalculator.Format(Model.Equivalent)</div>
                 <div class="gw-stat-label">Equivalent grade</div>
             </div>
-            <div class="gw-stat">
+            <div class="gw-stat" data-tab="Remaining">
                 <div class="gw-stat-value">@(Model.HasCategories ? GradeCalculator.Format(Model.RemainingWeight) + "%" : "\u2014")</div>
                 <div class="gw-stat-label">Remaining weight <span class="gw-th-sub">(not graded yet)</span></div>
             </div>
@@ -103,7 +103,7 @@ else
                                     }
                                     else
                                     {
-                                        <span class="gw-muted">Not graded yet</span>
+                                        <span class="gw-cell-empty">Not graded yet</span>
                                     }
                                 </td>
                                 <td class="gw-num">@GradeCalculator.Format(r.WeightedPoints)</td>

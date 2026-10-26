@@ -2,8 +2,8 @@
    paper  #fdfcf9   page and card background
    ink    #111111   text, outlines
    lime   #a9d56e   main accent (always used as a background, never as text color on paper)
-   Old variable names (--gw-navy, --gw-gold, ...) are kept so existing rules keep working;
-   they now point at the new colors. Later phases (R3-R8) replace them rule by rule. */
+   The old navy/gold variables were removed in Phase R9; the few legacy names
+   still used by rules (--gw-page, --gw-head, --gw-line, --gw-muted) point at the new palette. */
 
 :root {
     /* new tokens */
@@ -18,16 +18,12 @@
     --gw-shadow: 6px 6px 0 #111111;
     --gw-font: "Space Grotesk", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     --gw-font-pixel: "Silkscreen", "Courier New", monospace;
-    /* old names, remapped */
-    --gw-navy: #111111;
-    --gw-navy-dark: #000000;
-    --gw-gold: var(--gw-lime);
+    /* old names still used by some rules, remapped to the new palette */
     --gw-page: var(--gw-paper);
     --gw-ink: #111111;
     --gw-muted: #555555;
     --gw-line: #cfcdc6;
     --gw-head: #f1efe8;
-    --gw-white: var(--gw-paper);
     /* Bootstrap 5 variables, so nothing falls back to Bootstrap blue */
     --bs-body-font-family: var(--gw-font);
     --bs-body-color: #111111;
@@ -1344,5 +1340,734 @@ input[type="range"] {
     .gw-chart-dot {
         -webkit-print-color-adjust: exact;
         print-color-adjust: exact;
+    }
+}
+
+/* =====================================================================
+   Phase R6: student pages (course list, stat tabs, notes, What-If sliders,
+   history area chart, print sheet)
+   ===================================================================== */
+
+/* ---------- Collections list (08-collections-list.jpg) ---------- */
+.gw-collection {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    border-top: var(--gw-outline);
+}
+
+.gw-collection > li {
+    margin: 0;
+    padding: 0;
+}
+
+.gw-collection-item {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 12px 16px;
+    border-bottom: var(--gw-outline);
+    background: var(--gw-paper);
+    color: var(--gw-ink);
+    text-decoration: none;
+    transition: background-color 0.08s ease;
+}
+
+    .gw-collection-item:hover,
+    .gw-collection-item:focus-visible {
+        background: var(--gw-lime-pale);
+        color: var(--gw-ink);
+        text-decoration: none;
+    }
+
+    /* the course that is currently open gets a lime edge and a pale fill */
+    .gw-collection-item[aria-current="true"] {
+        background: var(--gw-lime-pale);
+        box-shadow: inset 5px 0 0 var(--gw-lime);
+    }
+
+/* round sticker on the left */
+.gw-collection-sticker {
+    flex: 0 0 38px;
+    width: 38px;
+    height: 38px;
+    display: grid;
+    place-items: center;
+    border: var(--gw-outline);
+    border-radius: 50%;
+    background: var(--gw-lime);
+    color: var(--gw-ink);
+    font-family: var(--gw-font-pixel);
+    font-size: 0.7rem;
+    line-height: 1;
+    text-transform: uppercase;
+}
+
+.gw-collection-main {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.gw-collection-code {
+    font-weight: 700;
+    line-height: 1.3;
+}
+
+.gw-collection-meta {
+    color: var(--gw-muted);
+    font-size: 0.9rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.gw-collection-chevron {
+    flex: 0 0 auto;
+    width: 20px;
+    height: 20px;
+}
+
+.gw-collection-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    padding-top: 16px;
+}
+
+/* ---------- Stat cards with a tab label on the top-left corner ---------- */
+.gw-stat[data-tab] {
+    padding-top: 26px;
+}
+
+    .gw-stat[data-tab]::before {
+        content: attr(data-tab);
+        position: absolute;
+        top: -12px;
+        left: 12px;
+        padding: 0 9px;
+        background: var(--gw-paper);
+        border: var(--gw-outline);
+        color: var(--gw-ink);
+        font-family: var(--gw-font-pixel);
+        font-size: 0.62rem;
+        letter-spacing: 0.06em;
+        line-height: 1.6;
+        text-transform: uppercase;
+    }
+
+/* ---------- Small icon inside a card tab ---------- */
+.gw-panel-icon {
+    width: 18px;
+    height: 18px;
+    margin-right: 6px;
+    vertical-align: -3px;
+}
+
+/* ---------- Quote note card (04-note-text-only.jpg) ---------- */
+.gw-quote {
+    display: block;
+    width: 28px;
+    height: 28px;
+    margin-bottom: 6px;
+    opacity: 0.85;
+}
+
+/* ---------- Notification list: lime rule above every item ---------- */
+.gw-notes {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+    .gw-notes li {
+        margin: 0 0 14px;
+        padding: 10px 0 0;
+        border-top: 3px solid var(--gw-lime);
+    }
+
+        .gw-notes li:last-child {
+            margin-bottom: 0;
+        }
+
+/* ---------- "Not graded yet" cell: dashed outline, no fill ---------- */
+.gw-cell-empty {
+    display: inline-block;
+    padding: 0 8px;
+    border: 1.5px dashed var(--gw-ink);
+    background: none;
+    color: var(--gw-muted);
+    font-size: 0.85rem;
+    white-space: nowrap;
+}
+
+/* ---------- What-If sliders: thin ink rail, square thumb ---------- */
+.gw-sim-control input[type="range"] {
+    -webkit-appearance: none;
+    appearance: none;
+    height: 10px;
+    padding: 0;
+    background: var(--gw-paper);
+    border: 1.5px solid var(--gw-ink);
+    border-radius: 0;
+    cursor: pointer;
+}
+
+    .gw-sim-control input[type="range"]::-webkit-slider-runnable-track {
+        height: 7px;
+        background: transparent;
+        border: 0;
+    }
+
+    .gw-sim-control input[type="range"]::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 18px;
+        height: 18px;
+        margin-top: -6px;
+        background: var(--gw-ink);
+        border: 1.5px solid var(--gw-ink);
+        border-radius: 0;
+    }
+
+    .gw-sim-control input[type="range"]::-moz-range-track {
+        height: 7px;
+        background: transparent;
+        border: 0;
+    }
+
+    .gw-sim-control input[type="range"]::-moz-range-thumb {
+        width: 18px;
+        height: 18px;
+        background: var(--gw-ink);
+        border: 1.5px solid var(--gw-ink);
+        border-radius: 0;
+    }
+
+    .gw-sim-control input[type="range"]:focus-visible {
+        outline: 3px solid var(--gw-ink);
+        outline-offset: 3px;
+        box-shadow: 0 0 0 5px var(--gw-lime);
+    }
+
+/* ---------- History chart: lime area under the ink line ---------- */
+.gw-chart-area {
+    fill: var(--gw-lime);
+    fill-opacity: 0.45;
+    stroke: none;
+}
+
+/* ---------- Printable summary sheet ---------- */
+.gw-summary-sheet {
+    max-width: 900px;
+}
+
+@media print {
+    /* the printed copy is black on white: no grid, no shadows, no tabs */
+    body,
+    .gw-summary-sheet {
+        background: #fff !important;
+        background-image: none !important;
+    }
+
+    .gw-summary-sheet .gw-panel,
+    .gw-summary-sheet .gw-stat {
+        border-color: #000;
+        box-shadow: none;
+    }
+
+    .gw-summary-sheet .gw-stat[data-tab]::before {
+        border-color: #000;
+    }
+
+    .gw-summary-sheet .gw-stat-value {
+        text-shadow: none;
+    }
+
+    .gw-summary-sheet a {
+        text-decoration: none;
+    }
+
+    .gw-table-wrap {
+        overflow: visible;
+    }
+
+    .gw-table {
+        font-size: 10pt;
+    }
+}
+
+/* ---------- Narrow screens (375px) ---------- */
+@media (max-width: 575.98px) {
+    .gw-collection-item {
+        padding: 10px 12px;
+        gap: 10px;
+    }
+
+    .gw-collection-sticker {
+        flex-basis: 32px;
+        width: 32px;
+        height: 32px;
+        font-size: 0.6rem;
+    }
+
+    .gw-collection-actions .gw-btn {
+        flex: 1 1 100%;
+        text-align: center;
+    }
+
+    .gw-stat[data-tab] {
+        padding-top: 24px;
+    }
+}
+
+/* =====================================================================
+   Phase R7: faculty pages (course rows, score table, categories,
+   enrollment lists, analytics)
+   ===================================================================== */
+
+/* ---------- Page header with an action button on the right ---------- */
+.gw-page-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+    .gw-page-head .gw-page-title {
+        margin-bottom: 10px;
+    }
+
+.gw-iconbtn-add {
+    flex: 0 0 auto;
+    margin-top: 4px;
+}
+
+/* ---------- Course rows (same collection pattern as the student picker) ---------- */
+.gw-collection-row {
+    cursor: default;
+}
+
+.gw-collection-buttons {
+    flex: 0 0 auto;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 6px;
+}
+
+.gw-collection-go {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border: var(--gw-outline);
+    background: var(--gw-paper);
+    text-decoration: none;
+}
+
+    .gw-collection-go:hover {
+        background: var(--gw-lime);
+    }
+
+/* ---------- Score entry table ---------- */
+.gw-score-table .gw-score-input {
+    width: 5.5em;
+    min-width: 4.5em;
+    text-align: right;
+}
+
+/* keep the student name column visible while the score columns scroll sideways */
+.gw-score-table th.gw-sticky-col,
+.gw-score-table td.gw-sticky-col {
+    position: sticky;
+    left: 0;
+    z-index: 2;
+    background: var(--gw-paper);
+    box-shadow: 3px 0 0 var(--gw-ink);
+}
+
+.gw-score-table thead th.gw-sticky-col {
+    z-index: 3;
+    background: var(--gw-paper);
+}
+
+.gw-score-table tbody tr:hover td.gw-sticky-col {
+    background: var(--gw-lime-pale);
+}
+
+/* ---------- Categories as label | value rows ---------- */
+.gw-field-table {
+    border: var(--gw-outline);
+    border-collapse: collapse;
+}
+
+    .gw-field-table th,
+    .gw-field-table td {
+        border: 0;
+        border-bottom: var(--gw-outline);
+        padding: 0;
+        vertical-align: middle;
+    }
+
+    .gw-field-table thead th {
+        padding: 8px 12px;
+        background: var(--gw-head);
+        border-bottom: var(--gw-outline);
+        font-weight: 700;
+    }
+
+    .gw-field-table tbody tr:last-child td {
+        border-bottom: 0;
+    }
+
+    .gw-field-table tbody tr:hover td {
+        background: var(--gw-lime-pale);
+    }
+
+    .gw-field-table input[type="text"],
+    .gw-field-table input[type="number"] {
+        width: 100%;
+        padding: 10px 12px;
+        border: 0;
+        background: transparent;
+        font-family: inherit;
+        font-size: 1rem;
+        color: var(--gw-ink);
+    }
+
+        .gw-field-table input[type="text"]:focus,
+        .gw-field-table input[type="number"]:focus {
+            outline: 3px solid var(--gw-ink);
+            outline-offset: -3px;
+            box-shadow: inset 0 0 0 7px var(--gw-lime);
+        }
+
+    .gw-field-table td:last-child {
+        padding: 6px 10px;
+        text-align: right;
+        white-space: nowrap;
+    }
+
+    .gw-field-table tfoot th {
+        padding: 12px;
+        border-top: 4px double var(--gw-ink);
+        text-align: left;
+    }
+
+/* the live weight total, in the big-number style */
+.gw-total-number {
+    font-size: 2rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    text-shadow: 3px 3px 0 var(--gw-lime);
+}
+
+/* ---------- Enrollment lists ---------- */
+.gw-enroll-list {
+    border: var(--gw-outline);
+    max-height: 360px;
+    margin-bottom: 16px;
+}
+
+    .gw-enroll-list label {
+        margin: 0;
+        padding: 10px 12px;
+        border-bottom: 1.5px solid var(--gw-ink);
+        cursor: pointer;
+    }
+
+        .gw-enroll-list label:last-child {
+            border-bottom: 0;
+        }
+
+        .gw-enroll-list label:hover {
+            background: var(--gw-lime-pale);
+        }
+
+@media (max-width: 767.98px) {
+    .gw-collection-row {
+        flex-wrap: wrap;
+    }
+
+    .gw-collection-buttons {
+        flex: 1 1 100%;
+        justify-content: flex-start;
+        padding-left: 42px;
+    }
+
+    .gw-collection-go {
+        display: none;
+    }
+}
+
+/* =====================================================================
+   Phase R8: admin pages (role chips, sticky-note password, terms)
+   ===================================================================== */
+
+/* ---------- One-time temporary password as a taped sticky note ---------- */
+.gw-sticky-note {
+    position: relative;
+    max-width: 460px;
+    margin: 18px 0 30px;
+    padding: 26px 20px 16px;
+    background: var(--gw-note);
+    border: var(--gw-outline);
+    box-shadow: var(--gw-shadow);
+    transform: rotate(-1.2deg);
+}
+
+.gw-tape {
+    position: absolute;
+    top: -17px;
+    left: 50%;
+    width: 120px;
+    height: 34px;
+    transform: translateX(-50%) rotate(-2deg);
+    pointer-events: none;
+}
+
+.gw-sticky-title {
+    margin: 0 0 10px;
+    font-weight: 700;
+}
+
+.gw-sticky-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+    .gw-sticky-row .gw-temp-password {
+        flex: 1 1 auto;
+        min-width: 0;
+        overflow-x: auto;
+        white-space: nowrap;
+    }
+
+.gw-sticky-hint {
+    margin: 10px 0 0;
+    font-size: 0.85rem;
+}
+
+/* ---------- Terms: the current term gets the black-filled box ---------- */
+.gw-term-box {
+    display: inline-block;
+    padding: 2px 10px;
+    border: var(--gw-outline);
+    line-height: 1.5;
+}
+
+.gw-term-current .gw-term-box {
+    background: var(--gw-ink);
+    color: var(--gw-paper);
+}
+
+.gw-term-current td {
+    background: var(--gw-lime-pale);
+}
+
+@media (max-width: 479.98px) {
+    .gw-sticky-note {
+        transform: none;
+        box-shadow: 4px 4px 0 var(--gw-ink);
+    }
+}
+
+/* =====================================================================
+   Phase R9: delight, responsiveness, offline polish
+   ===================================================================== */
+
+/* ---------- Weekday strip with today circled (04-note-text-only.jpg) ---------- */
+.gw-weekstrip {
+    display: flex;
+    gap: 8px;
+    margin: 0 0 24px;
+}
+
+.gw-weekday {
+    display: grid;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    border: 1.5px solid transparent;
+    color: var(--gw-muted);
+    font-family: var(--gw-font-pixel);
+    font-size: 0.72rem;
+    line-height: 1;
+}
+
+.gw-weekday-today {
+    border-color: var(--gw-ink);
+    border-radius: 50%;
+    background: var(--gw-lime);
+    color: var(--gw-ink);
+}
+
+/* ---------- Grade "sticker": a round stamp next to the average ---------- */
+.gw-stat-stamp {
+    padding-right: 62px;
+}
+
+.gw-grade-stamp {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    display: grid;
+    place-items: center;
+    width: 48px;
+    height: 48px;
+}
+
+.gw-grade-stamp-ring {
+    position: absolute;
+    inset: 0;
+    width: 48px;
+    height: 48px;
+}
+
+.gw-grade-stamp-text {
+    position: relative;
+    color: var(--gw-ink);
+    font-family: var(--gw-font-pixel);
+    font-size: 0.66rem;
+    line-height: 1;
+    transform: rotate(-8deg);
+}
+
+/* ---------- Progress calendar month grid (06-month-calendar.jpg) ---------- */
+.gw-calendar-wrap {
+    border-top: 1.5px dashed var(--gw-ink);
+}
+
+.gw-calendar-title {
+    margin: 6px 0 12px;
+    font-size: 1rem;
+}
+
+.gw-calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 6px;
+    max-width: 420px;
+}
+
+.gw-cal-weekday {
+    text-align: center;
+    color: var(--gw-muted);
+    font-family: var(--gw-font-pixel);
+    font-size: 0.68rem;
+}
+
+.gw-cal-day {
+    display: grid;
+    place-items: center;
+    aspect-ratio: 1 / 1;
+    border: 1.5px solid transparent;
+    font-size: 0.9rem;
+    line-height: 1;
+}
+
+.gw-cal-blank {
+    border: 0;
+}
+
+/* a day with a saved snapshot: lime underline */
+.gw-cal-marked {
+    border-bottom: 3px solid var(--gw-lime);
+}
+
+/* a day when the average changed: black-filled number box */
+.gw-cal-changed {
+    background: var(--gw-ink);
+    border-color: var(--gw-ink);
+    color: var(--gw-paper);
+}
+
+/* ---------- Empty states with the mascot ---------- */
+.gw-empty-state {
+    padding: 28px 18px;
+    text-align: center;
+}
+
+.gw-empty-mascot {
+    display: block;
+    width: 72px;
+    height: 72px;
+    margin: 0 auto 10px;
+}
+
+.gw-empty-title {
+    margin: 0 0 6px;
+    font-size: 1.15rem;
+    font-weight: 700;
+}
+
+/* ---------- Icons inside text buttons ---------- */
+.gw-btn img {
+    width: 18px;
+    height: 18px;
+    margin-right: 6px;
+    vertical-align: -3px;
+}
+
+/* ---------- Motion: honour the user's reduced-motion setting ---------- */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        transition-duration: 0.001ms !important;
+        animation-duration: 0.001ms !important;
+        animation-iteration-count: 1 !important;
+        scroll-behavior: auto !important;
+    }
+
+    .gw-btn:hover {
+        transform: none;
+    }
+
+    .gw-sticky-note,
+    .gw-grade-stamp-text {
+        transform: none;
+    }
+}
+
+/* ---------- Phones (375px) ---------- */
+@media (max-width: 479.98px) {
+    .gw-page {
+        padding: 20px 14px 32px;
+    }
+
+    .gw-page-title {
+        font-size: 1.45rem;
+    }
+
+    .gw-stats {
+        grid-template-columns: 1fr;
+    }
+
+    .gw-stat-value {
+        font-size: 2rem;
+    }
+
+    .gw-stat-stamp {
+        padding-right: 18px;
+    }
+
+    .gw-grade-stamp {
+        position: static;
+        margin-top: 8px;
+    }
+
+    .gw-calendar-grid {
+        max-width: none;
+    }
+
+    .gw-toolbar .gw-iconbtn-text {
+        flex: 1 1 100%;
+        justify-content: flex-start;
     }
 }
