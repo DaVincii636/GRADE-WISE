@@ -1,6 +1,4 @@
 using System.Collections.Generic;
-using MongoDB.Bson;
-using MongoDB.Bson.Serialization.Attributes;
 
 namespace GradeWise.Models
 {
@@ -13,11 +11,9 @@ namespace GradeWise.Models
         public double Weight { get; set; }
     }
 
-    /// <summary>Collection: courses</summary>
+    /// <summary>A course.</summary>
     public class Course
     {
-        [BsonId]
-        [BsonRepresentation(BsonType.ObjectId)]
         public string Id { get; set; }
 
         public string Code { get; set; }
@@ -27,13 +23,11 @@ namespace GradeWise.Models
         public string Term { get; set; }
 
         /// <summary>Id of the faculty user who owns the course.</summary>
-        [BsonRepresentation(BsonType.ObjectId)]
         public string FacultyId { get; set; }
 
         public List<GradeCategory> Categories { get; set; } = new List<GradeCategory>();
 
         /// <summary>Ids of enrolled student users.</summary>
-        [BsonRepresentation(BsonType.ObjectId)]
         public List<string> StudentIds { get; set; } = new List<string>();
     }
 }

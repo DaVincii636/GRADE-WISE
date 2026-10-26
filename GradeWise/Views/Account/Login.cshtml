@@ -1,5 +1,7 @@
-﻿@{
+@{
     ViewBag.Title = "Sign in";
+    var error = ViewBag.Error as string;
+    var loginId = ViewBag.LoginId as string;
 }
 
 <div class="gw-login">
@@ -8,18 +10,29 @@
             <h1 class="gw-panel-title">Sign in to GradeWise</h1>
         </div>
         <div class="gw-panel-body">
-            <form onsubmit="return false;">
+            @if (!string.IsNullOrEmpty(error))
+            {
+                <div class="gw-alert" role="alert">@error</div>
+            }
+
+            @using (Html.BeginForm("Login", "Account", FormMethod.Post))
+            {
+                @Html.AntiForgeryToken()
                 <div class="gw-field">
                     <label for="loginId">Student number or email</label>
-                    <input type="text" id="loginId" name="loginId" autocomplete="username" />
+                    <input type="text" id="loginId" name="loginId" value="@loginId" autocomplete="username" autofocus />
                 </div>
                 <div class="gw-field">
                     <label for="password">Password</label>
                     <input type="password" id="password" name="password" autocomplete="current-password" />
                 </div>
                 <button type="submit" class="gw-btn gw-btn-block">Sign in</button>
-            </form>
-            <p class="gw-note">Sign-in is not connected yet.</p>
+            }
+
+            @* TEMPORARY demo logins: delete this note in Phase 9. *@
+            <p class="gw-note">
+                Demo accounts: admin / Admin@123, faculty / Faculty@123, 2026-0001 / Student@123
+            </p>
         </div>
     </section>
 </div>

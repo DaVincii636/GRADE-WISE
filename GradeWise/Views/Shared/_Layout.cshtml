@@ -1,7 +1,14 @@
-﻿@{
-    // Static for now. Phase 3 replaces these with the signed-in user.
-    var role = ViewBag.Role as string;
-    var userName = ViewBag.UserName as string;
+@{
+    // Who is signed in? The forms ticket's UserData holds "Role|FullName" (set in AccountController.SignIn).
+    string role = null;
+    string userName = null;
+    var formsIdentity = User.Identity as System.Web.Security.FormsIdentity;
+    if (formsIdentity != null)
+    {
+        var parts = (formsIdentity.Ticket.UserData ?? string.Empty).Split('|');
+        role = parts[0];
+        userName = parts.Length > 1 ? parts[1] : User.Identity.Name;
+    }
 }
 <!DOCTYPE html>
 <html lang="en">
@@ -21,7 +28,7 @@
                 <div class="gw-user">
                     <span class="gw-user-name">@userName</span>
                     <span class="gw-role">@role</span>
-                    @Html.ActionLink("Sign out", "Login", "Account", new { area = "" }, new { @class = "gw-signout" })
+                    @Html.ActionLink("Sign out", "Logout", "Account", new { area = "" }, new { @class = "gw-signout" })
                 </div>
             }
         </div>

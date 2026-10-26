@@ -1,22 +1,44 @@
 using System.Collections.Generic;
+using GradeWise.Helpers;
 using GradeWise.Models;
 
 namespace GradeWise.Data
 {
     /// <summary>
-    /// In-memory demo data used until a real database is added.
-    /// Passwords are filled in later (Phase 3).
+    /// In-memory demo data. Everything the app shows or changes lives here until a real
+    /// database is added later. Restarting the site resets it to the values below.
+    ///
+    /// Demo logins:  admin / Admin@123   faculty / Faculty@123
+    ///               2026-0001, 2026-0002, 2026-0003 / Student@123
     /// </summary>
     public static class SampleData
     {
         public static readonly List<User> Users = new List<User>
         {
-            new User { Id = "u-admin", StudentNo = "admin", FullName = "Demo Administrator", Email = "admin@example.com", Role = Roles.Administrator, IsActive = true },
-            new User { Id = "u-faculty", StudentNo = "faculty", FullName = "Demo Faculty", Email = "faculty@example.com", Role = Roles.Faculty, IsActive = true },
-            new User { Id = "u-student1", StudentNo = "2026-0001", FullName = "Demo Student One", Email = "student1@example.com", Role = Roles.Student, IsActive = true },
-            new User { Id = "u-student2", StudentNo = "2026-0002", FullName = "Demo Student Two", Email = "student2@example.com", Role = Roles.Student, IsActive = true },
-            new User { Id = "u-student3", StudentNo = "2026-0003", FullName = "Demo Student Three", Email = "student3@example.com", Role = Roles.Student, IsActive = true }
+            MakeUser("u-admin",    "admin",     "Demo Administrator", "admin@example.com",    "Admin@123",   Roles.Administrator),
+            MakeUser("u-faculty",  "faculty",   "Demo Faculty",       "faculty@example.com",  "Faculty@123", Roles.Faculty),
+            MakeUser("u-student1", "2026-0001", "Demo Student One",   "student1@example.com", "Student@123", Roles.Student),
+            MakeUser("u-student2", "2026-0002", "Demo Student Two",   "student2@example.com", "Student@123", Roles.Student),
+            MakeUser("u-student3", "2026-0003", "Demo Student Three", "student3@example.com", "Student@123", Roles.Student)
         };
+
+        private static User MakeUser(string id, string loginId, string fullName, string email, string password, string role)
+        {
+            string salt;
+            var hash = PasswordHelper.CreateHash(password, out salt);
+
+            return new User
+            {
+                Id = id,
+                StudentNo = loginId,
+                FullName = fullName,
+                Email = email.ToLowerInvariant(),
+                PasswordHash = hash,
+                Salt = salt,
+                Role = role,
+                IsActive = true
+            };
+        }
 
         public static readonly List<Course> Courses = new List<Course>
         {

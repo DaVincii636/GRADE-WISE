@@ -1,14 +1,13 @@
-﻿using System.Web.Mvc;
+using System.Web.Mvc;
+using GradeWise.Models;
 
 namespace GradeWise.Controllers
 {
+    [Authorize(Roles = Roles.Student)]
     public class StudentController : Controller
     {
         public ActionResult Index()
         {
-            // Static for now. Phase 3 replaces these with the signed-in user.
-            ViewBag.UserName = "Demo Student";
-            ViewBag.Role = "Student";
             return View();
         }
     }

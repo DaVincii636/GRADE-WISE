@@ -1,6 +1,4 @@
 using System.Collections.Generic;
-using MongoDB.Bson;
-using MongoDB.Bson.Serialization.Attributes;
 
 namespace GradeWise.Models
 {
@@ -13,17 +11,13 @@ namespace GradeWise.Models
         public double? Score { get; set; }
     }
 
-    /// <summary>Collection: grades (one document per student per course)</summary>
+    /// <summary>Grades of one student in one course.</summary>
     public class GradeRecord
     {
-        [BsonId]
-        [BsonRepresentation(BsonType.ObjectId)]
         public string Id { get; set; }
 
-        [BsonRepresentation(BsonType.ObjectId)]
         public string CourseId { get; set; }
 
-        [BsonRepresentation(BsonType.ObjectId)]
         public string StudentId { get; set; }
 
         public List<ScoreEntry> Scores { get; set; } = new List<ScoreEntry>();

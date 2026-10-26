@@ -1,9 +1,6 @@
-using MongoDB.Bson;
-using MongoDB.Bson.Serialization.Attributes;
-
 namespace GradeWise.Models
 {
-    /// <summary>The three roles in GradeWise. Stored in MongoDB as plain strings.</summary>
+    /// <summary>The three roles in GradeWise. Stored as plain strings.</summary>
     public static class Roles
     {
         public const string Student = "Student";
@@ -11,11 +8,9 @@ namespace GradeWise.Models
         public const string Administrator = "Administrator";
     }
 
-    /// <summary>Collection: users</summary>
+    /// <summary>A user account.</summary>
     public class User
     {
-        [BsonId]
-        [BsonRepresentation(BsonType.ObjectId)]
         public string Id { get; set; }
 
         /// <summary>Student number or username used to sign in.</summary>
@@ -25,7 +20,7 @@ namespace GradeWise.Models
 
         public string Email { get; set; }
 
-        /// <summary>PBKDF2 hash (filled in Phase 3). Never store plain passwords.</summary>
+        /// <summary>PBKDF2 hash. Never store plain passwords.</summary>
         public string PasswordHash { get; set; }
 
         public string Salt { get; set; }

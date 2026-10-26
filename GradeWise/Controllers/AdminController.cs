@@ -1,14 +1,13 @@
-﻿using System.Web.Mvc;
+using System.Web.Mvc;
+using GradeWise.Models;
 
 namespace GradeWise.Controllers
 {
+    [Authorize(Roles = Roles.Administrator)]
     public class AdminController : Controller
     {
         public ActionResult Index()
         {
-            // Static for now. Phase 3 replaces these with the signed-in user.
-            ViewBag.UserName = "Demo Administrator";
-            ViewBag.Role = "Administrator";
             return View();
         }
     }
