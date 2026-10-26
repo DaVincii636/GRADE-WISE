@@ -48,9 +48,7 @@ namespace GradeWise.Controllers
                 return View();
             }
 
-            var email = loginId.ToLowerInvariant();
-            var user = SampleData.Users.FirstOrDefault(u =>
-                string.Equals(u.StudentNo, loginId, StringComparison.OrdinalIgnoreCase) || u.Email == email);
+            var user = SampleData.FindByLoginOrEmail(loginId);
 
             // Same message for "no such user" and "wrong password" so the form doesn't reveal which IDs exist.
             if (user == null || !PasswordHelper.Verify(password, user.PasswordHash, user.Salt))

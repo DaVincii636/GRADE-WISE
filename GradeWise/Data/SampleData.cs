@@ -1,4 +1,6 @@
+using System;
 using System.Collections.Generic;
+using System.Linq;
 using GradeWise.Helpers;
 using GradeWise.Models;
 
@@ -13,6 +15,32 @@ namespace GradeWise.Data
     /// </summary>
     public static class SampleData
     {
+        /// <summary>
+        /// Lock this while reading or changing the lists below. Several requests can run at the
+        /// same time and a List is not safe to change while another request reads it.
+        /// </summary>
+        public static readonly object Sync = new object();
+
+        /// <summary>Finds a user by student number / username (not case sensitive).</summary>
+        public static User FindByLogin(string loginId)
+        {
+            lock (Sync)
+            {
+                return Users.FirstOrDefault(u => string.Equals(u.StudentNo, loginId, StringComparison.OrdinalIgnoreCase));
+            }
+        }
+
+        /// <summary>Finds a user by student number / username or by email (not case sensitive).</summary>
+        public static User FindByLoginOrEmail(string value)
+        {
+            lock (Sync)
+            {
+                return Users.FirstOrDefault(u =>
+                    string.Equals(u.StudentNo, value, StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(u.Email, value, StringComparison.OrdinalIgnoreCase));
+            }
+        }
+
         public static readonly List<User> Users = new List<User>
         {
             MakeUser("u-admin",    "admin",     "Demo Administrator", "admin@example.com",    "Admin@123",   Roles.Administrator),
@@ -95,6 +123,13 @@ namespace GradeWise.Data
                     new ScoreEntry { Category = "Final", Score = null }
                 }
             }
+        };
+
+        public static readonly List<AcademicTerm> Terms = new List<AcademicTerm>
+        {
+            new AcademicTerm { Id = "t-2025-2", Name = "2nd Semester, S.Y. 2025-2026", IsCurrent = false },
+            new AcademicTerm { Id = "t-2026-1", Name = "1st Semester, S.Y. 2026-2027", IsCurrent = true },
+            new AcademicTerm { Id = "t-2026-2", Name = "2nd Semester, S.Y. 2026-2027", IsCurrent = false }
         };
     }
 }

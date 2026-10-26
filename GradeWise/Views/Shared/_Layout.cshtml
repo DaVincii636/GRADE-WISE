@@ -1,13 +1,16 @@
+@using GradeWise.Data
 @{
-    // Who is signed in? The forms ticket's UserData holds "Role|FullName" (set in AccountController.SignIn).
+    // Who is signed in? Look the account up so a name or role change by the admin shows right away.
     string role = null;
     string userName = null;
-    var formsIdentity = User.Identity as System.Web.Security.FormsIdentity;
-    if (formsIdentity != null)
+    if (User.Identity.IsAuthenticated)
     {
-        var parts = (formsIdentity.Ticket.UserData ?? string.Empty).Split('|');
-        role = parts[0];
-        userName = parts.Length > 1 ? parts[1] : User.Identity.Name;
+        var me = SampleData.FindByLogin(User.Identity.Name);
+        if (me != null)
+        {
+            role = me.Role;
+            userName = me.FullName;
+        }
     }
 }
 <!DOCTYPE html>

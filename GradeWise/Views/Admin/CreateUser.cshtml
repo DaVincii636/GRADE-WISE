@@ -1,0 +1,65 @@
+@{
+    ViewBag.Title = "Add user";
+
+    var errors = ViewBag.Errors as System.Collections.Generic.List<string>;
+    var fullName = ViewBag.FullName as string;
+    var loginId = ViewBag.LoginId as string;
+    var email = ViewBag.Email as string;
+    var selectedRole = (ViewBag.Role as string) ?? GradeWise.Models.Roles.Student;
+    var roles = new[] { GradeWise.Models.Roles.Student, GradeWise.Models.Roles.Faculty, GradeWise.Models.Roles.Administrator };
+}
+
+<h1 class="gw-page-title">Add user</h1>
+<p class="gw-page-sub">Create a student, faculty or administrator account.</p>
+
+<section class="gw-panel gw-form-narrow">
+    <div class="gw-panel-head">
+        <h2 class="gw-panel-title">Account details</h2>
+    </div>
+    <div class="gw-panel-body">
+        @if (errors != null && errors.Count > 0)
+        {
+            <div class="gw-alert" role="alert">
+                <strong>Please fix the following:</strong>
+                <ul class="gw-error-list">
+                    @foreach (var e in errors)
+                    {
+                        <li>@e</li>
+                    }
+                </ul>
+            </div>
+        }
+
+        @using (Html.BeginForm("CreateUser", "Admin", FormMethod.Post))
+        {
+            @Html.AntiForgeryToken()
+            <div class="gw-field">
+                <label for="fullName">Full name</label>
+                <input type="text" id="fullName" name="fullName" value="@fullName" maxlength="100" required autofocus />
+            </div>
+            <div class="gw-field">
+                <label for="loginId">Student number or username</label>
+                <input type="text" id="loginId" name="loginId" value="@loginId" maxlength="50" required autocomplete="off" />
+                <p class="gw-field-hint">This is what the person types to sign in. It must be unique.</p>
+            </div>
+            <div class="gw-field">
+                <label for="email">Email</label>
+                <input type="email" id="email" name="email" value="@email" required autocomplete="off" />
+            </div>
+            <div class="gw-field">
+                <label for="role">Role</label>
+                <select id="role" name="role">
+                    @foreach (var r in roles)
+                    {
+                        <option value="@r" selected="@(r == selectedRole)">@r</option>
+                    }
+                </select>
+            </div>
+            <p class="gw-note">A temporary password is generated and shown once after you save.</p>
+            <div class="gw-form-buttons">
+                <button type="submit" class="gw-btn">Create account</button>
+                @Html.ActionLink("Cancel", "Index", "Admin")
+            </div>
+        }
+    </div>
+</section>

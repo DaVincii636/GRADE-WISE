@@ -1,24 +1,58 @@
-﻿@{
+@model IEnumerable<GradeWise.Models.User>
+@using GradeWise.Models
+@{
     ViewBag.Title = "Accounts and terms";
+
+    var users = Model.ToList();
+    var meLogin = ViewBag.MeLogin as string;
+    var currentTerm = ViewBag.CurrentTerm as string;
+    var roles = new[] { GradeWise.Models.Roles.Administrator, GradeWise.Models.Roles.Faculty, GradeWise.Models.Roles.Student };
+
+    var message = TempData["Message"] as string;
+    var error = TempData["Error"] as string;
+    var tempPassword = TempData["TempPassword"] as string;
+    var tempPasswordFor = TempData["TempPasswordFor"] as string;
 }
 
 <h1 class="gw-page-title">Accounts and terms</h1>
 <p class="gw-page-sub">Manage user accounts and the academic term.</p>
 
+@if (!string.IsNullOrEmpty(error))
+{
+    <div class="gw-alert" role="alert">@error</div>
+}
+@if (!string.IsNullOrEmpty(message))
+{
+    <div class="gw-alert gw-alert-ok" role="status">@message</div>
+}
+@if (!string.IsNullOrEmpty(tempPassword))
+{
+    <div class="gw-alert gw-alert-ok" role="status">
+        Temporary password for <strong>@tempPasswordFor</strong>:
+        <span class="gw-temp-password">@tempPassword</span><br />
+        Copy it now and give it to the user. It is not shown again.
+    </div>
+}
+
 <section class="gw-stats" aria-label="Summary">
-        <div class="gw-stat">
-            <div class="gw-stat-value">&mdash;</div>
-            <div class="gw-stat-label">Users</div>
-        </div>
-        <div class="gw-stat">
-            <div class="gw-stat-value">&mdash;</div>
-            <div class="gw-stat-label">Active accounts</div>
-        </div>
-        <div class="gw-stat">
-            <div class="gw-stat-value">&mdash;</div>
-            <div class="gw-stat-label">Current term</div>
-        </div>
+    <div class="gw-stat">
+        <div class="gw-stat-value">@users.Count</div>
+        <div class="gw-stat-label">Users</div>
+    </div>
+    <div class="gw-stat">
+        <div class="gw-stat-value">@users.Count(u => u.IsActive)</div>
+        <div class="gw-stat-label">Active accounts</div>
+    </div>
+    <div class="gw-stat">
+        <div class="gw-stat-value gw-stat-value-text">@(string.IsNullOrEmpty(currentTerm) ? "Not set" : currentTerm)</div>
+        <div class="gw-stat-label">Current term</div>
+    </div>
 </section>
+
+<div class="gw-toolbar">
+    @Html.ActionLink("Add user", "CreateUser", "Admin", null, new { @class = "gw-btn" })
+    @Html.ActionLink("Academic terms", "Terms", "Admin", null, new { @class = "gw-btn gw-btn-outline" })
+</div>
 
 <section class="gw-panel">
     <div class="gw-panel-head">
@@ -28,16 +62,91 @@
         <table class="gw-table">
             <thead>
                 <tr>
-                        <th>Name</th>
-                        <th>Role</th>
-                        <th>Status</th>
+                    <th>Name</th>
+                    <th>ID</th>
+                    <th>Email</th>
+                    <th>Role</th>
+                    <th>Status</th>
+                    <th>Actions</th>
                 </tr>
             </thead>
             <tbody>
-                <tr>
-                    <td colspan="3" class="gw-empty">User accounts appear here.</td>
-                </tr>
+                @foreach (var u in users)
+                {
+                    var isMe = string.Equals(u.StudentNo, meLogin, StringComparison.OrdinalIgnoreCase);
+                    <tr>
+                        <td>
+                            @u.FullName
+                            @if (isMe)
+                            {
+                                <span class="gw-muted">(you)</span>
+                            }
+                        </td>
+                        <td>@u.StudentNo</td>
+                        <td>@u.Email</td>
+                        <td>
+                            @if (isMe)
+                            {
+                                @u.Role
+                            }
+                            else
+                            {
+                                using (Html.BeginForm("ChangeRole", "Admin", new { id = u.Id }, FormMethod.Post, new { @class = "gw-row-form" }))
+                                {
+                                    @Html.AntiForgeryToken()
+                                    <select name="role" class="gw-inline-select" aria-label="Role for @u.FullName">
+                                        @foreach (var r in roles)
+                                        {
+                                            <option value="@r" selected="@(u.Role == r)">@r</option>
+                                        }
+                                    </select>
+                                    <button type="submit" class="gw-btn gw-btn-small gw-btn-outline">Save</button>
+                                }
+                            }
+                        </td>
+                        <td>
+                            <span class="gw-status @(u.IsActive ? "gw-status-active" : "gw-status-off")">@(u.IsActive ? "Active" : "Disabled")</span>
+                        </td>
+                        <td>
+                            <div class="gw-row-actions">
+                                @if (!isMe)
+                                {
+                                    using (Html.BeginForm("SetActive", "Admin", new { id = u.Id }, FormMethod.Post, new { @class = "gw-row-form" }))
+                                    {
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="active" value="@((!u.IsActive).ToString().ToLowerInvariant())" />
+                                        if (u.IsActive)
+                                        {
+                                            <button type="submit" class="gw-btn gw-btn-small gw-btn-outline">Disable</button>
+                                        }
+                                        else
+                                        {
+                                            <button type="submit" class="gw-btn gw-btn-small">Enable</button>
+                                        }
+                                    }
+                                }
+                                @using (Html.BeginForm("ResetPassword", "Admin", new { id = u.Id }, FormMethod.Post, new { @class = "gw-row-form", data_confirm = "Reset the password for " + u.FullName + "? The old password stops working." }))
+                                {
+                                    @Html.AntiForgeryToken()
+                                    <button type="submit" class="gw-btn gw-btn-small gw-btn-outline">Reset password</button>
+                                }
+                            </div>
+                        </td>
+                    </tr>
+                }
             </tbody>
         </table>
     </div>
 </section>
+
+@section scripts {
+    <script>
+        // Ask before any form that has a data-confirm message.
+        document.addEventListener("submit", function (e) {
+            var msg = e.target.getAttribute("data-confirm");
+            if (msg && !window.confirm(msg)) {
+                e.preventDefault();
+            }
+        });
+    </script>
+}

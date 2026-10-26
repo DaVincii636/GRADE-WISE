@@ -2,9 +2,11 @@ using System;
 using System.Security.Principal;
 using System.Web;
 using System.Web.Mvc;
+using System.Web.Helpers;
 using System.Web.Optimization;
 using System.Web.Routing;
 using System.Web.Security;
+using GradeWise.Data;
 
 namespace GradeWise
 {
@@ -16,11 +18,14 @@ namespace GradeWise
             FilterConfig.RegisterGlobalFilters(GlobalFilters.Filters);
             RouteConfig.RegisterRoutes(RouteTable.Routes);
             BundleConfig.RegisterBundles(BundleTable.Bundles);
+
+            // Our sign-in identity has no NameIdentifier claim, so tell the anti-forgery check to use the user name.
+            AntiForgeryConfig.SuppressIdentityHeuristicChecks = true;
         }
 
         /// <summary>
-        /// Forms authentication only gives us the user name. Read the role back out of the
-        /// ticket so [Authorize(Roles = "...")] and User.IsInRole(...) work.
+        /// Forms authentication only gives us the user name. Look up the current role of that
+        /// account so [Authorize(Roles = "...")] and User.IsInRole(...) work.
         /// </summary>
         protected void Application_PostAuthenticateRequest(object sender, EventArgs e)
         {
@@ -45,8 +50,16 @@ namespace GradeWise
                 return;
             }
 
-            var role = (ticket.UserData ?? string.Empty).Split('|')[0];
-            Context.User = new GenericPrincipal(new FormsIdentity(ticket), new[] { role });
+            // Look the account up on every request, so a disabled or removed account is signed out
+            // straight away and a role change by the admin takes effect without signing in again.
+            var user = SampleData.FindByLogin(ticket.Name);
+            if (user == null || !user.IsActive)
+            {
+                Context.User = new GenericPrincipal(new GenericIdentity(string.Empty), new string[0]);
+                return;
+            }
+
+            Context.User = new GenericPrincipal(new FormsIdentity(ticket), new[] { user.Role });
         }
     }
 }

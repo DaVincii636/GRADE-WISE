@@ -1,0 +1,85 @@
+@model IEnumerable<GradeWise.Models.AcademicTerm>
+@{
+    ViewBag.Title = "Academic terms";
+
+    var terms = Model.ToList();
+    var message = TempData["Message"] as string;
+    var error = TempData["Error"] as string;
+}
+
+<h1 class="gw-page-title">Academic terms</h1>
+<p class="gw-page-sub">One term is current at a time. Add a term, then mark it as current when it starts.</p>
+
+@if (!string.IsNullOrEmpty(error))
+{
+    <div class="gw-alert" role="alert">@error</div>
+}
+@if (!string.IsNullOrEmpty(message))
+{
+    <div class="gw-alert gw-alert-ok" role="status">@message</div>
+}
+
+<div class="gw-toolbar">
+    @Html.ActionLink("Back to accounts", "Index", "Admin", null, new { @class = "gw-btn gw-btn-outline" })
+</div>
+
+<section class="gw-panel">
+    <div class="gw-panel-head">
+        <h2 class="gw-panel-title">Terms</h2>
+    </div>
+    <div class="gw-table-wrap">
+        <table class="gw-table">
+            <thead>
+                <tr>
+                    <th>Term</th>
+                    <th>Status</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (terms.Count == 0)
+                {
+                    <tr>
+                        <td colspan="3" class="gw-empty">No terms yet. Add one below.</td>
+                    </tr>
+                }
+                @foreach (var t in terms)
+                {
+                    <tr>
+                        <td>@t.Name</td>
+                        <td>
+                            <span class="gw-status @(t.IsCurrent ? "gw-status-active" : "gw-status-off")">@(t.IsCurrent ? "Current" : "Not current")</span>
+                        </td>
+                        <td>
+                            @if (!t.IsCurrent)
+                            {
+                                using (Html.BeginForm("SetCurrentTerm", "Admin", new { id = t.Id }, FormMethod.Post, new { @class = "gw-row-form" }))
+                                {
+                                    @Html.AntiForgeryToken()
+                                    <button type="submit" class="gw-btn gw-btn-small gw-btn-outline">Make current</button>
+                                }
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<section class="gw-panel gw-form-narrow">
+    <div class="gw-panel-head">
+        <h2 class="gw-panel-title">Add a term</h2>
+    </div>
+    <div class="gw-panel-body">
+        @using (Html.BeginForm("AddTerm", "Admin", FormMethod.Post))
+        {
+            @Html.AntiForgeryToken()
+            <div class="gw-field">
+                <label for="name">Term name</label>
+                <input type="text" id="name" name="name" maxlength="80" required placeholder="1st Semester, S.Y. 2027-2028" />
+            </div>
+            <button type="submit" class="gw-btn">Add term</button>
+        }
+    </div>
+</section>

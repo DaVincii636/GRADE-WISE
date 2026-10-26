@@ -1,11 +1,12 @@
 using System;
+using System.Collections.Generic;
 using System.Security.Cryptography;
 
 namespace GradeWise.Helpers
 {
     /// <summary>
     /// Password hashing with PBKDF2 (Rfc2898DeriveBytes) and a random salt per user.
-    /// Plain passwords are never stored: only the Base64 hash and salt go in MongoDB.
+    /// Plain passwords are never stored: only the Base64 hash and salt are kept.
     /// </summary>
     public static class PasswordHelper
     {
@@ -58,6 +59,62 @@ namespace GradeWise.Helpers
                 diff |= actual[i] ^ expected[i];
             }
             return diff == 0;
+        }
+
+        private const string UpperLetters = "ABCDEFGHJKLMNPQRSTUVWXYZ";   // no I or O
+        private const string LowerLetters = "abcdefghijkmnopqrstuvwxyz";   // no l
+        private const string Digits = "23456789";                           // no 0 or 1
+
+        private static readonly RandomNumberGenerator Rng = RandomNumberGenerator.Create();
+
+        /// <summary>
+        /// Makes a random temporary password with at least one upper-case letter, one lower-case
+        /// letter and one digit. Look-alike characters (0/O, 1/l/I) are left out so it is easy to read out.
+        /// </summary>
+        public static string GenerateTemporaryPassword(int length = 10)
+        {
+            var all = UpperLetters + LowerLetters + Digits;
+            var chars = new List<char>
+            {
+                Pick(UpperLetters),
+                Pick(LowerLetters),
+                Pick(Digits)
+            };
+            while (chars.Count < length)
+            {
+                chars.Add(Pick(all));
+            }
+
+            // Shuffle so the three guaranteed characters are not always first.
+            for (var i = chars.Count - 1; i > 0; i--)
+            {
+                var j = RandomIndex(i + 1);
+                var tmp = chars[i];
+                chars[i] = chars[j];
+                chars[j] = tmp;
+            }
+
+            return new string(chars.ToArray());
+        }
+
+        private static char Pick(string set)
+        {
+            return set[RandomIndex(set.Length)];
+        }
+
+        /// <summary>Random number from 0 to max-1 without modulo bias.</summary>
+        private static int RandomIndex(int max)
+        {
+            var buffer = new byte[4];
+            var limit = uint.MaxValue - (uint.MaxValue % (uint)max);
+            uint value;
+            do
+            {
+                Rng.GetBytes(buffer);
+                value = BitConverter.ToUInt32(buffer, 0);
+            } while (value >= limit);
+
+            return (int)(value % (uint)max);
         }
 
         private static byte[] Derive(string password, byte[] salt)
