@@ -7,6 +7,8 @@ using System.Web.Optimization;
 using System.Web.Routing;
 using System.Web.Security;
 using GradeWise.Data;
+using GradeWise.Models;
+using MongoDB.Driver;
 
 namespace GradeWise
 {
@@ -21,12 +23,11 @@ namespace GradeWise
 
             // Our sign-in identity has no NameIdentifier claim, so tell the anti-forgery check to use the user name.
             AntiForgeryConfig.SuppressIdentityHeuristicChecks = true;
+
+            // Seed initial data into MongoDB Atlas if the database is empty
+            MongoDbSeeder.Initialize();
         }
 
-        /// <summary>
-        /// Forms authentication only gives us the user name. Look up the current role of that
-        /// account so [Authorize(Roles = "...")] and User.IsInRole(...) work.
-        /// </summary>
         protected void Application_PostAuthenticateRequest(object sender, EventArgs e)
         {
             var cookie = Request.Cookies[FormsAuthentication.FormsCookieName];
@@ -50,9 +51,18 @@ namespace GradeWise
                 return;
             }
 
-            // Look the account up on every request, so a disabled or removed account is signed out
-            // straight away and a role change by the admin takes effect without signing in again.
-            var user = SampleData.FindByLogin(ticket.Name);
+            // Look up the account in MongoDB Atlas on every request
+            User user = null;
+            try
+            {
+                var db = new MongoDbContext();
+                user = db.Users.Find(u => u.StudentNo.ToLower() == ticket.Name.ToLower()).FirstOrDefault();
+            }
+            catch (Exception)
+            {
+                // Fallback or handle connection issues gracefully if needed
+            }
+
             if (user == null || !user.IsActive)
             {
                 Context.User = new GenericPrincipal(new GenericIdentity(string.Empty), new string[0]);

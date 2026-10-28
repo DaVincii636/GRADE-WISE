@@ -5,12 +5,12 @@ using System.Linq;
 using System.Text;
 using GradeWise.Data;
 using GradeWise.Models;
+using MongoDB.Driver;
 
 namespace GradeWise.Services
 {
     /// <summary>
-    /// Faculty reports: the class analytics page and the class record CSV. Like CourseService, it reads
-    /// only through SampleData and only opens courses owned by the given faculty id.
+    /// Faculty reports: the class analytics page and the class record CSV backed by MongoDB Atlas.
     /// </summary>
     public static class ReportService
     {
@@ -19,57 +19,55 @@ namespace GradeWise.Services
         /// <summary>Distribution, class summary and per-category averages for one course. Null if it is not the faculty member's course.</summary>
         public static AnalyticsViewModel GetAnalytics(string courseId, string facultyId)
         {
-            lock (SampleData.Sync)
-            {
-                var course = FindOwned(courseId, facultyId);
-                if (course == null) return null;
+            var db = new MongoDbContext();
+            var course = FindOwned(db, courseId, facultyId);
+            if (course == null) return null;
 
-                var students = EnrolledStudents(course);
-                var averages = students
-                    .Select(s => GradeCalculator.Calculate(course.Categories, ScoresOf(course, s.Id)).Average)
+            var students = EnrolledStudents(db, course);
+            var averages = students
+                .Select(s => GradeCalculator.Calculate(course.Categories, ScoresOf(db, course, s.Id)).Average)
+                .ToList();
+
+            var summary = GradeCalculator.Summarize(averages);
+            var bins = GradeCalculator.Distribution(averages);
+
+            var biggest = Math.Max(1, bins.Max(b => b.Count));
+            foreach (var bin in bins)
+            {
+                bin.BarPercent = (int)Math.Round(bin.Count * 100.0 / biggest);
+            }
+
+            var model = new AnalyticsViewModel
+            {
+                CourseId = course.Id,
+                Code = course.Code,
+                Name = course.Name,
+                Term = course.Term,
+                StudentCount = students.Count,
+                NotGraded = students.Count - summary.Graded,
+                WeightTotal = GradeCalculator.TotalWeight(course.Categories),
+                Summary = summary,
+                Bins = bins
+            };
+
+            foreach (var category in course.Categories)
+            {
+                var scores = students
+                    .Select(s => FindScore(ScoresOf(db, course, s.Id), category.Name))
+                    .Where(v => v.HasValue)
+                    .Select(v => v.Value)
                     .ToList();
 
-                var summary = GradeCalculator.Summarize(averages);
-                var bins = GradeCalculator.Distribution(averages);
-
-                var biggest = Math.Max(1, bins.Max(b => b.Count));
-                foreach (var bin in bins)
+                model.Categories.Add(new CategoryStat
                 {
-                    bin.BarPercent = (int)Math.Round(bin.Count * 100.0 / biggest);
-                }
-
-                var model = new AnalyticsViewModel
-                {
-                    CourseId = course.Id,
-                    Code = course.Code,
-                    Name = course.Name,
-                    Term = course.Term,
-                    StudentCount = students.Count,
-                    NotGraded = students.Count - summary.Graded,
-                    WeightTotal = GradeCalculator.TotalWeight(course.Categories),
-                    Summary = summary,
-                    Bins = bins
-                };
-
-                foreach (var category in course.Categories)
-                {
-                    var scores = students
-                        .Select(s => FindScore(ScoresOf(course, s.Id), category.Name))
-                        .Where(v => v.HasValue)
-                        .Select(v => v.Value)
-                        .ToList();
-
-                    model.Categories.Add(new CategoryStat
-                    {
-                        Name = category.Name,
-                        Weight = category.Weight,
-                        Graded = scores.Count,
-                        Average = scores.Count > 0 ? (double?)scores.Average() : null
-                    });
-                }
-
-                return model;
+                    Name = category.Name,
+                    Weight = category.Weight,
+                    Graded = scores.Count,
+                    Average = scores.Count > 0 ? (double?)scores.Average() : null
+                });
             }
+
+            return model;
         }
 
         // ---------- class record CSV ----------
@@ -83,78 +81,71 @@ namespace GradeWise.Services
         {
             fileName = null;
 
-            lock (SampleData.Sync)
+            var db = new MongoDbContext();
+            var course = FindOwned(db, courseId, facultyId);
+            if (course == null) return null;
+
+            fileName = SafeFileName(course.Code) + "-class-record-"
+                + DateTime.Now.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) + ".csv";
+
+            var students = EnrolledStudents(db, course);
+            var width = 2 + course.Categories.Count + 3;
+            var sb = new StringBuilder();
+
+            var header = new List<string> { Text("Student No"), Text("Name") };
+            header.AddRange(course.Categories.Select(c => Text(c.Name + " (" + Whole(c.Weight) + "%)")));
+            header.Add(Text("Average (%)"));
+            header.Add(Text("Equivalent grade"));
+            header.Add(Text("Points earned"));
+            AppendRow(sb, header);
+
+            var averages = new List<double?>();
+            var categoryScores = course.Categories.Select(c => new List<double>()).ToList();
+
+            foreach (var student in students)
             {
-                var course = FindOwned(courseId, facultyId);
-                if (course == null) return null;
+                var scores = ScoresOf(db, course, student.Id);
+                var result = GradeCalculator.Calculate(course.Categories, scores);
+                averages.Add(result.Average);
 
-                fileName = SafeFileName(course.Code) + "-class-record-"
-                    + DateTime.Now.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) + ".csv";
+                var cells = new List<string> { Text(student.StudentNo), Text(student.FullName) };
 
-                var students = EnrolledStudents(course);
-                var width = 2 + course.Categories.Count + 3;
-                var sb = new StringBuilder();
-
-                var header = new List<string> { Text("Student No"), Text("Name") };
-                header.AddRange(course.Categories.Select(c => Text(c.Name + " (" + Whole(c.Weight) + "%)")));
-                header.Add(Text("Average (%)"));
-                header.Add(Text("Equivalent grade"));
-                header.Add(Text("Points earned"));
-                AppendRow(sb, header);
-
-                var averages = new List<double?>();
-                var categoryScores = course.Categories.Select(c => new List<double>()).ToList();
-
-                foreach (var student in students)
+                for (var i = 0; i < course.Categories.Count; i++)
                 {
-                    var scores = ScoresOf(course, student.Id);
-                    var result = GradeCalculator.Calculate(course.Categories, scores);
-                    averages.Add(result.Average);
-
-                    var cells = new List<string> { Text(student.StudentNo), Text(student.FullName) };
-
-                    for (var i = 0; i < course.Categories.Count; i++)
-                    {
-                        var value = FindScore(scores, course.Categories[i].Name);
-                        cells.Add(value.HasValue ? Whole(value.Value) : string.Empty);
-                        if (value.HasValue) categoryScores[i].Add(value.Value);
-                    }
-
-                    var equivalent = GradeCalculator.EquivalentGrade(result.Average);
-                    cells.Add(result.Average.HasValue ? Fixed(result.Average.Value) : string.Empty);
-                    cells.Add(equivalent.HasValue ? Fixed(equivalent.Value) : string.Empty);
-                    cells.Add(result.HasGrades ? Fixed(result.Earned) : string.Empty);
-                    AppendRow(sb, cells);
+                    var value = FindScore(scores, course.Categories[i].Name);
+                    cells.Add(value.HasValue ? Whole(value.Value) : string.Empty);
+                    if (value.HasValue) categoryScores[i].Add(value.Value);
                 }
 
-                var summary = GradeCalculator.Summarize(averages);
-                if (summary.Graded > 0)
-                {
-                    AppendRow(sb, Enumerable.Repeat(string.Empty, width));
-
-                    var average = new List<string> { string.Empty, Text("Class average") };
-                    average.AddRange(categoryScores.Select(l => l.Count > 0 ? Fixed(l.Average()) : string.Empty));
-                    average.Add(Fixed(summary.Average.Value));
-                    var classGrade = GradeCalculator.EquivalentGrade(summary.Average);
-                    average.Add(classGrade.HasValue ? Fixed(classGrade.Value) : string.Empty);
-                    average.Add(string.Empty);
-                    AppendRow(sb, average);
-
-                    AppendRow(sb, SummaryRow("Highest", summary.Highest.Value, course.Categories.Count));
-                    AppendRow(sb, SummaryRow("Lowest", summary.Lowest.Value, course.Categories.Count));
-                }
-
-                return sb.ToString();
+                var equivalent = GradeCalculator.EquivalentGrade(result.Average);
+                cells.Add(result.Average.HasValue ? Fixed(result.Average.Value) : string.Empty);
+                cells.Add(equivalent.HasValue ? Fixed(equivalent.Value) : string.Empty);
+                cells.Add(result.HasGrades ? Fixed(result.Earned) : string.Empty);
+                AppendRow(sb, cells);
             }
+
+            var summary = GradeCalculator.Summarize(averages);
+            if (summary.Graded > 0)
+            {
+                AppendRow(sb, Enumerable.Repeat(string.Empty, width));
+
+                var average = new List<string> { string.Empty, Text("Class average") };
+                average.AddRange(categoryScores.Select(l => l.Count > 0 ? Fixed(l.Average()) : string.Empty));
+                average.Add(Fixed(summary.Average.Value));
+                var classGrade = GradeCalculator.EquivalentGrade(summary.Average);
+                average.Add(classGrade.HasValue ? Fixed(classGrade.Value) : string.Empty);
+                average.Add(string.Empty);
+                AppendRow(sb, average);
+
+                AppendRow(sb, SummaryRow("Highest", summary.Highest.Value, course.Categories.Count));
+                AppendRow(sb, SummaryRow("Lowest", summary.Lowest.Value, course.Categories.Count));
+            }
+
+            return sb.ToString();
         }
 
-        // ---------- CSV helpers (public so they can be checked on their own) ----------
+        // ---------- CSV helpers ----------
 
-        /// <summary>
-        /// Makes a text safe for a CSV cell. A text that starts with = + - @ (or a tab / line break) is
-        /// prefixed with an apostrophe so Excel shows it as text instead of running it as a formula.
-        /// Texts with a comma, quote or line break are put in double quotes.
-        /// </summary>
         public static string Text(string value)
         {
             if (string.IsNullOrEmpty(value)) return string.Empty;
@@ -173,7 +164,6 @@ namespace GradeWise.Services
             return value;
         }
 
-        /// <summary>A file name made only of letters, digits, dash and underscore.</summary>
         public static string SafeFileName(string value)
         {
             var chars = (value ?? string.Empty)
@@ -197,7 +187,7 @@ namespace GradeWise.Services
         private static void AppendRow(StringBuilder sb, IEnumerable<string> cells)
         {
             sb.Append(string.Join(",", cells));
-            sb.Append("\r\n");   // Excel expects Windows line breaks
+            sb.Append("\r\n");
         }
 
         private static string Fixed(double value)
@@ -210,27 +200,24 @@ namespace GradeWise.Services
             return value.ToString("0.##", CultureInfo.InvariantCulture);
         }
 
-        // ---------- helpers (call only while holding SampleData.Sync) ----------
+        // ---------- helpers ----------
 
-        private static Course FindOwned(string courseId, string facultyId)
+        private static Course FindOwned(MongoDbContext db, string courseId, string facultyId)
         {
             if (string.IsNullOrEmpty(courseId) || string.IsNullOrEmpty(facultyId)) return null;
-            return SampleData.Courses.FirstOrDefault(c => c.Id == courseId && c.FacultyId == facultyId);
+            return db.Courses.Find(c => c.Id == courseId && c.FacultyId == facultyId).FirstOrDefault();
         }
 
-        /// <summary>Enrolled students sorted by name, the same order as the score entry table.</summary>
-        private static List<User> EnrolledStudents(Course course)
+        private static List<User> EnrolledStudents(MongoDbContext db, Course course)
         {
-            return course.StudentIds
-                .Select(id => SampleData.Users.FirstOrDefault(u => u.Id == id))
-                .Where(u => u != null)
-                .OrderBy(u => u.FullName)
+            return db.Users.Find(u => course.StudentIds.Contains(u.Id))
+                .SortBy(u => u.FullName)
                 .ToList();
         }
 
-        private static List<ScoreEntry> ScoresOf(Course course, string studentId)
+        private static List<ScoreEntry> ScoresOf(MongoDbContext db, Course course, string studentId)
         {
-            var record = SampleData.Grades.FirstOrDefault(g => g.CourseId == course.Id && g.StudentId == studentId);
+            var record = db.Grades.Find(g => g.CourseId == course.Id && g.StudentId == studentId).FirstOrDefault();
             return record == null ? new List<ScoreEntry>() : record.Scores;
         }
 

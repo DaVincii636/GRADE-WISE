@@ -1,15 +1,26 @@
 @using GradeWise.Data
+@using MongoDB.Driver
 @{
-    // Who is signed in? Look the account up so a name or role change by the admin shows right away.
+    // Who is signed in? Look the account up in MongoDB so updates show right away.
     string role = null;
     string userName = null;
     if (User.Identity.IsAuthenticated)
     {
-        var me = SampleData.FindByLogin(User.Identity.Name);
-        if (me != null)
+        try
         {
-            role = me.Role;
-            userName = me.FullName;
+            var db = new MongoDbContext();
+            var identityName = User.Identity.Name;
+            var me = db.Users.Find(u => u.StudentNo == identityName || u.Email == identityName).FirstOrDefault();
+            if (me != null)
+            {
+                role = me.Role;
+                userName = me.FullName;
+            }
+        }
+        catch (Exception)
+        {
+            role = null;
+            userName = null;
         }
     }
 }

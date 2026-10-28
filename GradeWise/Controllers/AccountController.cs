@@ -6,6 +6,7 @@ using System.Web.Security;
 using GradeWise.Data;
 using GradeWise.Helpers;
 using GradeWise.Models;
+using MongoDB.Driver;
 using Roles = GradeWise.Models.Roles;
 
 namespace GradeWise.Controllers
@@ -48,7 +49,17 @@ namespace GradeWise.Controllers
                 return View();
             }
 
-            var user = SampleData.FindByLoginOrEmail(loginId);
+            User user = null;
+            try
+            {
+                var db = new MongoDbContext();
+                var lowerLogin = loginId.ToLower();
+                user = db.Users.Find(u => u.StudentNo.ToLower() == lowerLogin || u.Email.ToLower() == lowerLogin).FirstOrDefault();
+            }
+            catch (Exception)
+            {
+                // Handle connection errors gracefully
+            }
 
             // Same message for "no such user" and "wrong password" so the form doesn't reveal which IDs exist.
             if (user == null || !PasswordHelper.Verify(password, user.PasswordHash, user.Salt))

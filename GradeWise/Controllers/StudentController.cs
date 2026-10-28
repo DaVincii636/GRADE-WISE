@@ -1,7 +1,9 @@
+using System;
 using System.Web.Mvc;
 using GradeWise.Data;
 using GradeWise.Models;
 using GradeWise.Services;
+using MongoDB.Driver;
 
 namespace GradeWise.Controllers
 {
@@ -15,7 +17,7 @@ namespace GradeWise.Controllers
         // GET: /Student  or  /Student?id={courseId}
         public ActionResult Index(string id)
         {
-            var me = SampleData.FindByLogin(User.Identity.Name);
+            var me = CurrentStudentUser();
             if (me == null) return new HttpUnauthorizedResult();
 
             return View(StudentService.GetDashboard(me.Id, id));
@@ -24,7 +26,7 @@ namespace GradeWise.Controllers
         // GET: /Student/Summary  or  /Student/Summary/{courseId}  (printable page)
         public ActionResult Summary(string id)
         {
-            var me = SampleData.FindByLogin(User.Identity.Name);
+            var me = CurrentStudentUser();
             if (me == null) return new HttpUnauthorizedResult();
 
             return View(StudentService.GetDashboard(me.Id, id));
@@ -33,10 +35,26 @@ namespace GradeWise.Controllers
         // GET: /Student/WhatIf  or  /Student/WhatIf/{courseId}
         public ActionResult WhatIf(string id)
         {
-            var me = SampleData.FindByLogin(User.Identity.Name);
+            var me = CurrentStudentUser();
             if (me == null) return new HttpUnauthorizedResult();
 
             return View(StudentService.GetWhatIf(me.Id, id));
+        }
+
+        // ---------- helpers ----------
+
+        private User CurrentStudentUser()
+        {
+            try
+            {
+                var db = new MongoDbContext();
+                var identityName = User.Identity.Name.ToLower();
+                return db.Users.Find(u => u.StudentNo.ToLower() == identityName || u.Email.ToLower() == identityName).FirstOrDefault();
+            }
+            catch (Exception)
+            {
+                return null;
+            }
         }
     }
 }

@@ -7,12 +7,13 @@ using System.Web.Mvc;
 using GradeWise.Data;
 using GradeWise.Helpers;
 using GradeWise.Models;
+using MongoDB.Driver;
+using Roles = GradeWise.Models.Roles;
 
 namespace GradeWise.Controllers
 {
     /// <summary>
-    /// Admin module: user accounts and academic terms. Everything is kept in memory (SampleData),
-    /// so changes are lost when the site restarts. All changes are POST with an anti-forgery token.
+    /// Admin module: user accounts and academic terms backed by MongoDB Atlas.
     /// </summary>
     [Authorize(Roles = Roles.Administrator)]
     public class AdminController : Controller
@@ -27,16 +28,14 @@ namespace GradeWise.Controllers
         // GET: /Admin
         public ActionResult Index()
         {
-            List<User> users;
-            AcademicTerm current;
-            lock (SampleData.Sync)
-            {
-                users = SampleData.Users
-                    .OrderBy(u => Array.IndexOf(AllRoles, u.Role))
-                    .ThenBy(u => u.FullName)
-                    .ToList();
-                current = SampleData.Terms.FirstOrDefault(t => t.IsCurrent);
-            }
+            var db = new MongoDbContext();
+
+            var users = db.Users.Find(_ => true).ToList()
+                .OrderBy(u => Array.IndexOf(AllRoles, u.Role))
+                .ThenBy(u => u.FullName)
+                .ToList();
+
+            var current = db.Terms.Find(t => t.IsCurrent).FirstOrDefault();
 
             ViewBag.CurrentTerm = current == null ? null : current.Name;
             ViewBag.MeLogin = User.Identity.Name;
@@ -76,31 +75,35 @@ namespace GradeWise.Controllers
             string tempPassword = null;
             if (errors.Count == 0)
             {
-                lock (SampleData.Sync)
+                var db = new MongoDbContext();
+
+                var existingUser = db.Users.Find(u => u.StudentNo.ToLower() == loginId.ToLower()).FirstOrDefault();
+                if (existingUser != null)
+                    errors.Add("That student number or username is already taken.");
+
+                var existingEmail = db.Users.Find(u => u.Email.ToLower() == email.ToLower()).FirstOrDefault();
+                if (existingEmail != null)
+                    errors.Add("That email is already used by another account.");
+
+                if (errors.Count == 0)
                 {
-                    if (SampleData.Users.Any(u => string.Equals(u.StudentNo, loginId, StringComparison.OrdinalIgnoreCase)))
-                        errors.Add("That student number or username is already taken.");
-                    if (SampleData.Users.Any(u => string.Equals(u.Email, email, StringComparison.OrdinalIgnoreCase)))
-                        errors.Add("That email is already used by another account.");
+                    tempPassword = PasswordHelper.GenerateTemporaryPassword();
+                    string salt;
+                    var hash = PasswordHelper.CreateHash(tempPassword, out salt);
 
-                    if (errors.Count == 0)
+                    var newUser = new User
                     {
-                        tempPassword = PasswordHelper.GenerateTemporaryPassword();
-                        string salt;
-                        var hash = PasswordHelper.CreateHash(tempPassword, out salt);
+                        Id = "u-" + Guid.NewGuid().ToString("N").Substring(0, 8),
+                        StudentNo = loginId,
+                        FullName = fullName,
+                        Email = email,
+                        PasswordHash = hash,
+                        Salt = salt,
+                        Role = role,
+                        IsActive = true
+                    };
 
-                        SampleData.Users.Add(new User
-                        {
-                            Id = "u-" + Guid.NewGuid().ToString("N").Substring(0, 8),
-                            StudentNo = loginId,
-                            FullName = fullName,
-                            Email = email,
-                            PasswordHash = hash,
-                            Salt = salt,
-                            Role = role,
-                            IsActive = true
-                        });
-                    }
+                    db.Users.InsertOne(newUser);
                 }
             }
 
@@ -131,26 +134,26 @@ namespace GradeWise.Controllers
                 return RedirectToAction("Index");
             }
 
-            lock (SampleData.Sync)
+            var db = new MongoDbContext();
+            var target = db.Users.Find(u => u.Id == id).FirstOrDefault();
+
+            if (target == null)
             {
-                var target = SampleData.Users.FirstOrDefault(u => u.Id == id);
-                if (target == null)
-                {
-                    TempData["Error"] = "That user no longer exists.";
-                }
-                else if (IsMe(target))
-                {
-                    TempData["Error"] = "You cannot change your own role. Ask another administrator.";
-                }
-                else if (target.Role == role)
-                {
-                    TempData["Message"] = target.FullName + " is already " + role + ".";
-                }
-                else
-                {
-                    target.Role = role;
-                    TempData["Message"] = target.FullName + " is now " + role + ".";
-                }
+                TempData["Error"] = "That user no longer exists.";
+            }
+            else if (IsMe(target))
+            {
+                TempData["Error"] = "You cannot change your own role. Ask another administrator.";
+            }
+            else if (target.Role == role)
+            {
+                TempData["Message"] = target.FullName + " is already " + role + ".";
+            }
+            else
+            {
+                var update = Builders<User>.Update.Set(u => u.Role, role);
+                db.Users.UpdateOne(u => u.Id == id, update);
+                TempData["Message"] = target.FullName + " is now " + role + ".";
             }
 
             return RedirectToAction("Index");
@@ -161,22 +164,22 @@ namespace GradeWise.Controllers
         [ValidateAntiForgeryToken]
         public ActionResult SetActive(string id, bool active)
         {
-            lock (SampleData.Sync)
+            var db = new MongoDbContext();
+            var target = db.Users.Find(u => u.Id == id).FirstOrDefault();
+
+            if (target == null)
             {
-                var target = SampleData.Users.FirstOrDefault(u => u.Id == id);
-                if (target == null)
-                {
-                    TempData["Error"] = "That user no longer exists.";
-                }
-                else if (IsMe(target))
-                {
-                    TempData["Error"] = "You cannot disable your own account.";
-                }
-                else
-                {
-                    target.IsActive = active;
-                    TempData["Message"] = target.FullName + (active ? " can sign in again." : " has been disabled and can no longer sign in.");
-                }
+                TempData["Error"] = "That user no longer exists.";
+            }
+            else if (IsMe(target))
+            {
+                TempData["Error"] = "You cannot disable your own account.";
+            }
+            else
+            {
+                var update = Builders<User>.Update.Set(u => u.IsActive, active);
+                db.Users.UpdateOne(u => u.Id == id, update);
+                TempData["Message"] = target.FullName + (active ? " can sign in again." : " has been disabled and can no longer sign in.");
             }
 
             return RedirectToAction("Index");
@@ -187,24 +190,28 @@ namespace GradeWise.Controllers
         [ValidateAntiForgeryToken]
         public ActionResult ResetPassword(string id)
         {
-            lock (SampleData.Sync)
-            {
-                var target = SampleData.Users.FirstOrDefault(u => u.Id == id);
-                if (target == null)
-                {
-                    TempData["Error"] = "That user no longer exists.";
-                }
-                else
-                {
-                    var tempPassword = PasswordHelper.GenerateTemporaryPassword();
-                    string salt;
-                    target.PasswordHash = PasswordHelper.CreateHash(tempPassword, out salt);
-                    target.Salt = salt;
+            var db = new MongoDbContext();
+            var target = db.Users.Find(u => u.Id == id).FirstOrDefault();
 
-                    TempData["Message"] = "Password reset for " + target.FullName + ".";
-                    TempData["TempPassword"] = tempPassword;
-                    TempData["TempPasswordFor"] = target.FullName + " (" + target.StudentNo + ")";
-                }
+            if (target == null)
+            {
+                TempData["Error"] = "That user no longer exists.";
+            }
+            else
+            {
+                var tempPassword = PasswordHelper.GenerateTemporaryPassword();
+                string salt;
+                var hash = PasswordHelper.CreateHash(tempPassword, out salt);
+
+                var update = Builders<User>.Update
+                    .Set(u => u.PasswordHash, hash)
+                    .Set(u => u.Salt, salt);
+
+                db.Users.UpdateOne(u => u.Id == id, update);
+
+                TempData["Message"] = "Password reset for " + target.FullName + ".";
+                TempData["TempPassword"] = tempPassword;
+                TempData["TempPasswordFor"] = target.FullName + " (" + target.StudentNo + ")";
             }
 
             return RedirectToAction("Index");
@@ -215,12 +222,8 @@ namespace GradeWise.Controllers
         // GET: /Admin/Terms
         public ActionResult Terms()
         {
-            List<AcademicTerm> terms;
-            lock (SampleData.Sync)
-            {
-                terms = SampleData.Terms.ToList();
-            }
-
+            var db = new MongoDbContext();
+            var terms = db.Terms.Find(_ => true).ToList();
             return View(terms);
         }
 
@@ -241,22 +244,24 @@ namespace GradeWise.Controllers
             }
             else
             {
-                lock (SampleData.Sync)
+                var db = new MongoDbContext();
+                var existingTerm = db.Terms.Find(t => t.Name.ToLower() == name.ToLower()).FirstOrDefault();
+
+                if (existingTerm != null)
                 {
-                    if (SampleData.Terms.Any(t => string.Equals(t.Name, name, StringComparison.OrdinalIgnoreCase)))
+                    TempData["Error"] = "That term already exists.";
+                }
+                else
+                {
+                    var newTerm = new AcademicTerm
                     {
-                        TempData["Error"] = "That term already exists.";
-                    }
-                    else
-                    {
-                        SampleData.Terms.Add(new AcademicTerm
-                        {
-                            Id = "t-" + Guid.NewGuid().ToString("N").Substring(0, 8),
-                            Name = name,
-                            IsCurrent = false
-                        });
-                        TempData["Message"] = "Term added: " + name + ".";
-                    }
+                        Id = "t-" + Guid.NewGuid().ToString("N").Substring(0, 8),
+                        Name = name,
+                        IsCurrent = false
+                    };
+
+                    db.Terms.InsertOne(newTerm);
+                    TempData["Message"] = "Term added: " + name + ".";
                 }
             }
 
@@ -268,21 +273,24 @@ namespace GradeWise.Controllers
         [ValidateAntiForgeryToken]
         public ActionResult SetCurrentTerm(string id)
         {
-            lock (SampleData.Sync)
+            var db = new MongoDbContext();
+            var chosen = db.Terms.Find(t => t.Id == id).FirstOrDefault();
+
+            if (chosen == null)
             {
-                var chosen = SampleData.Terms.FirstOrDefault(t => t.Id == id);
-                if (chosen == null)
-                {
-                    TempData["Error"] = "That term no longer exists.";
-                }
-                else
-                {
-                    foreach (var t in SampleData.Terms)
-                    {
-                        t.IsCurrent = (t == chosen);
-                    }
-                    TempData["Message"] = chosen.Name + " is now the current term.";
-                }
+                TempData["Error"] = "That term no longer exists.";
+            }
+            else
+            {
+                // Unset IsCurrent for all terms
+                var unsetUpdate = Builders<AcademicTerm>.Update.Set(t => t.IsCurrent, false);
+                db.Terms.UpdateMany(_ => true, unsetUpdate);
+
+                // Set IsCurrent to true for the chosen term
+                var setUpdt = Builders<AcademicTerm>.Update.Set(t => t.IsCurrent, true);
+                db.Terms.UpdateOne(t => t.Id == id, setUpdt);
+
+                TempData["Message"] = chosen.Name + " is now the current term.";
             }
 
             return RedirectToAction("Terms");

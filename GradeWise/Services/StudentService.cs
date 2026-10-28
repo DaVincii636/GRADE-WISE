@@ -1,15 +1,15 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using GradeWise.Data;
 using GradeWise.Models;
+using MongoDB.Driver;
 
 namespace GradeWise.Services
 {
     /// <summary>
-    /// Builds the student dashboard. Reads only through SampleData and only returns the signed-in
-    /// student's own scores plus class averages. Class numbers are shown only when at least
-    /// MinClassSize students are behind them, so one classmate's score can never be worked out.
+    /// Builds the student dashboard backed by MongoDB Atlas.
     /// </summary>
     public static class StudentService
     {
@@ -17,100 +17,94 @@ namespace GradeWise.Services
         public const int MinClassSize = 3;
 
         /// <summary>
-        /// Dashboard for one student. <paramref name="requestedCourseId"/> picks the course; if it is empty,
-        /// unknown or not one of the student's courses, the first enrolled course is shown instead.
+        /// Dashboard for one student.
         /// </summary>
         public static StudentDashboardViewModel GetDashboard(string studentId, string requestedCourseId)
         {
             var model = new StudentDashboardViewModel { MinClassSize = MinClassSize };
+            var db = new MongoDbContext();
 
-            lock (SampleData.Sync)
+            var me = db.Users.Find(u => u.Id == studentId).FirstOrDefault();
+            model.StudentName = me == null ? null : me.FullName;
+            model.StudentNo = me == null ? null : me.StudentNo;
+
+            var mine = db.Courses
+                .Find(c => c.StudentIds.Contains(studentId))
+                .SortBy(c => c.Code)
+                .ThenBy(c => c.Name)
+                .ToList();
+
+            model.Courses = mine.Select(c => new StudentCourseOption { Id = c.Id, Code = c.Code, Name = c.Name }).ToList();
+            if (mine.Count == 0) return model;
+
+            var course = mine.FirstOrDefault(c => c.Id == requestedCourseId) ?? mine[0];
+
+            foreach (var c in mine)
             {
-                var me = SampleData.Users.FirstOrDefault(u => u.Id == studentId);
-                model.StudentName = me == null ? null : me.FullName;
-                model.StudentNo = me == null ? null : me.StudentNo;
-
-                var mine = SampleData.Courses
-                    .Where(c => c.StudentIds.Contains(studentId))
-                    .OrderBy(c => c.Code)
-                    .ThenBy(c => c.Name)
-                    .ToList();
-
-                model.Courses = mine.Select(c => new StudentCourseOption { Id = c.Id, Code = c.Code, Name = c.Name }).ToList();
-                if (mine.Count == 0) return model;
-
-                var course = mine.FirstOrDefault(c => c.Id == requestedCourseId) ?? mine[0];
-
-                foreach (var c in mine)
-                {
-                    model.Notifications.AddRange(NotificationsFor(c, studentId));
-                }
-
-                FillCourse(model, course, studentId);
+                model.Notifications.AddRange(NotificationsFor(db, c, studentId));
             }
+
+            FillCourse(db, model, course, studentId);
 
             return model;
         }
 
         /// <summary>
-        /// Data for the What-If simulator: the student's own graded and ungraded categories in one course.
-        /// The course is picked the same safe way as the dashboard (only courses the student is enrolled in).
+        /// Data for the What-If simulator backed by MongoDB Atlas.
         /// </summary>
         public static WhatIfViewModel GetWhatIf(string studentId, string requestedCourseId)
         {
             var model = new WhatIfViewModel();
+            var db = new MongoDbContext();
 
-            lock (SampleData.Sync)
+            var mine = db.Courses
+                .Find(c => c.StudentIds.Contains(studentId))
+                .SortBy(c => c.Code)
+                .ThenBy(c => c.Name)
+                .ToList();
+
+            model.Courses = mine.Select(c => new StudentCourseOption { Id = c.Id, Code = c.Code, Name = c.Name }).ToList();
+            if (mine.Count == 0) return model;
+
+            var course = mine.FirstOrDefault(c => c.Id == requestedCourseId) ?? mine[0];
+            var scores = ScoresOf(db, course, studentId);
+            var result = GradeCalculator.Calculate(course.Categories, scores);
+
+            model.HasCourse = true;
+            model.SelectedId = course.Id;
+            model.Code = course.Code;
+            model.Name = course.Name;
+            model.Term = course.Term;
+            model.HasCategories = course.Categories.Count > 0;
+            model.WeightTotal = result.TotalWeight;
+            model.WeightsOk = model.HasCategories && GradeCalculator.IsFullWeight(result.TotalWeight);
+            model.Average = result.Average;
+            model.Equivalent = GradeCalculator.EquivalentGrade(result.Average);
+            model.Earned = result.Earned;
+            model.RemainingWeight = result.RemainingWeight;
+            model.NothingLeft = model.WeightsOk && result.RemainingWeight <= GradeCalculator.WeightTolerance;
+
+            model.DefaultScore = result.Average.HasValue
+                ? Math.Max(0, Math.Min(100, Math.Round(result.Average.Value)))
+                : 75;
+
+            foreach (var category in course.Categories)
             {
-                var mine = SampleData.Courses
-                    .Where(c => c.StudentIds.Contains(studentId))
-                    .OrderBy(c => c.Code)
-                    .ThenBy(c => c.Name)
-                    .ToList();
+                var own = FindScore(scores, category.Name);
 
-                model.Courses = mine.Select(c => new StudentCourseOption { Id = c.Id, Code = c.Code, Name = c.Name }).ToList();
-                if (mine.Count == 0) return model;
-
-                var course = mine.FirstOrDefault(c => c.Id == requestedCourseId) ?? mine[0];
-                var scores = ScoresOf(course, studentId);
-                var result = GradeCalculator.Calculate(course.Categories, scores);
-
-                model.HasCourse = true;
-                model.SelectedId = course.Id;
-                model.Code = course.Code;
-                model.Name = course.Name;
-                model.Term = course.Term;
-                model.HasCategories = course.Categories.Count > 0;
-                model.WeightTotal = result.TotalWeight;
-                model.WeightsOk = model.HasCategories && GradeCalculator.IsFullWeight(result.TotalWeight);
-                model.Average = result.Average;
-                model.Equivalent = GradeCalculator.EquivalentGrade(result.Average);
-                model.Earned = result.Earned;
-                model.RemainingWeight = result.RemainingWeight;
-                model.NothingLeft = model.WeightsOk && result.RemainingWeight <= GradeCalculator.WeightTolerance;
-
-                model.DefaultScore = result.Average.HasValue
-                    ? Math.Max(0, Math.Min(100, Math.Round(result.Average.Value)))
-                    : 75;
-
-                foreach (var category in course.Categories)
+                if (own.HasValue)
                 {
-                    var own = FindScore(scores, category.Name);
-
-                    if (own.HasValue)
+                    model.Graded.Add(new BreakdownRow
                     {
-                        model.Graded.Add(new BreakdownRow
-                        {
-                            Category = category.Name,
-                            Weight = category.Weight,
-                            Score = own,
-                            WeightedPoints = category.Weight * own.Value / 100.0
-                        });
-                    }
-                    else
-                    {
-                        model.Ungraded.Add(new GradeCategory { Name = category.Name, Weight = category.Weight });
-                    }
+                        Category = category.Name,
+                        Weight = category.Weight,
+                        Score = own,
+                        WeightedPoints = category.Weight * own.Value / 100.0
+                    });
+                }
+                else
+                {
+                    model.Ungraded.Add(new GradeCategory { Name = category.Name, Weight = category.Weight });
                 }
             }
 
@@ -119,8 +113,6 @@ namespace GradeWise.Services
             return model;
         }
 
-        // Fixed examples. The server works out the answer with GradeCalculator; the page works it out again
-        // in JavaScript and shows whether the two agree. They use no student data.
         private static List<WhatIfCheck> BuildChecks()
         {
             return new List<WhatIfCheck>
@@ -164,11 +156,9 @@ namespace GradeWise.Services
             };
         }
 
-        // ---------- helpers (call only while holding SampleData.Sync) ----------
-
-        private static void FillCourse(StudentDashboardViewModel model, Course course, string studentId)
+        private static void FillCourse(MongoDbContext db, StudentDashboardViewModel model, Course course, string studentId)
         {
-            var mine = ScoresOf(course, studentId);
+            var mine = ScoresOf(db, course, studentId);
             var result = GradeCalculator.Calculate(course.Categories, mine);
 
             model.HasCourse = true;
@@ -185,8 +175,7 @@ namespace GradeWise.Services
             model.RemainingWeight = result.RemainingWeight;
             model.History = HistoryService.GetHistory(course.Id, studentId);
 
-            // Everyone's scores in this course, used only to make averages.
-            var everyone = course.StudentIds.Select(id => ScoresOf(course, id)).ToList();
+            var everyone = course.StudentIds.Select(id => ScoresOf(db, course, id)).ToList();
 
             var averages = everyone.Select(s => GradeCalculator.Calculate(course.Categories, s).Average).ToList();
             var summary = GradeCalculator.Summarize(averages);
@@ -214,7 +203,7 @@ namespace GradeWise.Services
             }
         }
 
-        private static IEnumerable<string> NotificationsFor(Course course, string studentId)
+        private static IEnumerable<string> NotificationsFor(MongoDbContext db, Course course, string studentId)
         {
             var label = course.Code + ": ";
 
@@ -224,7 +213,7 @@ namespace GradeWise.Services
                 yield break;
             }
 
-            var scores = ScoresOf(course, studentId);
+            var scores = ScoresOf(db, course, studentId);
             var result = GradeCalculator.Calculate(course.Categories, scores);
 
             var waiting = course.Categories
@@ -249,9 +238,9 @@ namespace GradeWise.Services
             }
         }
 
-        private static List<ScoreEntry> ScoresOf(Course course, string studentId)
+        private static List<ScoreEntry> ScoresOf(MongoDbContext db, Course course, string studentId)
         {
-            var record = SampleData.Grades.FirstOrDefault(g => g.CourseId == course.Id && g.StudentId == studentId);
+            var record = db.Grades.Find(g => g.CourseId == course.Id && g.StudentId == studentId).FirstOrDefault();
             return record == null ? new List<ScoreEntry>() : record.Scores;
         }
 

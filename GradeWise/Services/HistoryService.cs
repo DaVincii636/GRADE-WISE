@@ -4,13 +4,13 @@ using System.Globalization;
 using System.Linq;
 using GradeWise.Data;
 using GradeWise.Models;
+using MongoDB.Driver;
 
 namespace GradeWise.Services
 {
     /// <summary>
-    /// Keeps and reads the progress history (SampleData.Snapshots). Call Record after any change that can
-    /// move a student's numbers; it only keeps a snapshot when something really changed, so calling it for
-    /// every student of a course is fine. Call these only while holding SampleData.Sync.
+    /// Keeps and reads the progress history backed by MongoDB Atlas. Call Record after any change that can
+    /// move a student's numbers; it only keeps a snapshot when something really changed.
     /// </summary>
     public static class HistoryService
     {
@@ -21,11 +21,12 @@ namespace GradeWise.Services
 
         public static void Record(Course course, string studentId, DateTime when)
         {
-            var record = SampleData.Grades.FirstOrDefault(g => g.CourseId == course.Id && g.StudentId == studentId);
+            var db = new MongoDbContext();
+            var record = db.Grades.Find(g => g.CourseId == course.Id && g.StudentId == studentId).FirstOrDefault();
             var scores = record == null ? new List<ScoreEntry>() : record.Scores;
             var result = GradeCalculator.Calculate(course.Categories, scores);
 
-            var mine = SampleData.Snapshots.Where(s => s.CourseId == course.Id && s.StudentId == studentId).ToList();
+            var mine = db.Snapshots.Find(s => s.CourseId == course.Id && s.StudentId == studentId).SortBy(s => s.TakenAt).ToList();
             var last = mine.Count == 0 ? null : mine[mine.Count - 1];
 
             // Nothing graded and nothing recorded before: there is no history to keep yet.
@@ -33,11 +34,13 @@ namespace GradeWise.Services
 
             if (last != null && SameNumbers(last, result)) return;
 
-            SampleData.Snapshots.Add(Make(course.Id, studentId, when, result));
+            var newSnapshot = Make(course.Id, studentId, when, result);
+            db.Snapshots.InsertOne(newSnapshot);
 
             if (mine.Count + 1 > MaxPerStudent)
             {
-                SampleData.Snapshots.Remove(mine[0]);
+                var oldest = mine[0];
+                db.Snapshots.DeleteOne(s => s.Id == oldest.Id);
             }
         }
 
@@ -59,12 +62,13 @@ namespace GradeWise.Services
         /// <summary>The student's history in this course, oldest first.</summary>
         public static List<HistoryPoint> GetHistory(string courseId, string studentId)
         {
+            var db = new MongoDbContext();
             var points = new List<HistoryPoint>();
             double? previous = null;
 
-            var snapshots = SampleData.Snapshots
-                .Where(s => s.CourseId == courseId && s.StudentId == studentId)
-                .OrderBy(s => s.TakenAt)
+            var snapshots = db.Snapshots
+                .Find(s => s.CourseId == courseId && s.StudentId == studentId)
+                .SortBy(s => s.TakenAt)
                 .ToList();
 
             foreach (var s in snapshots)

@@ -1,10 +1,12 @@
+using GradeWise.Data;
+using GradeWise.Models;
+using GradeWise.Services;
+using MongoDB.Driver;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Web.Mvc;
-using GradeWise.Data;
-using GradeWise.Models;
-using GradeWise.Services;
 
 namespace GradeWise.Controllers
 {
@@ -190,8 +192,17 @@ namespace GradeWise.Controllers
         /// <summary>Id of the signed-in faculty member (looked up by sign-in name, like the rest of the app).</summary>
         private string CurrentFacultyId()
         {
-            var me = SampleData.FindByLogin(User.Identity.Name);
-            return me == null ? null : me.Id;
+            try
+            {
+                var db = new MongoDbContext();
+                var identityName = User.Identity.Name.ToLower();
+                var me = db.Users.Find(u => u.StudentNo.ToLower() == identityName || u.Email.ToLower() == identityName).FirstOrDefault();
+                return me == null ? null : me.Id;
+            }
+            catch (Exception)
+            {
+                return null;
+            }
         }
     }
 }
