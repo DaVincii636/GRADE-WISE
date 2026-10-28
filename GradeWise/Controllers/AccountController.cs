@@ -20,13 +20,11 @@ namespace GradeWise.Controllers
         {
             if (User.Identity.IsAuthenticated)
             {
-                // Signed in and landed here with no ReturnUrl: go to your own dashboard.
                 if (string.IsNullOrEmpty(returnUrl))
                 {
                     return RedirectToDashboard(CurrentRole());
                 }
 
-                // Signed in but sent here by [Authorize]: wrong role for that page.
                 ViewBag.Error = "Your account does not have access to that page. Sign in with a different account to continue.";
             }
 
@@ -50,8 +48,12 @@ namespace GradeWise.Controllers
 
             var user = SampleData.FindByLoginOrEmail(loginId);
 
-            // Same message for "no such user" and "wrong password" so the form doesn't reveal which IDs exist.
-            if (user == null || !PasswordHelper.Verify(password, user.PasswordHash, user.Salt))
+            // Same message for "no such user" and "wrong password".
+            // Use the per-user iteration count so upgraded hashes still verify.
+            var passwordOk = user != null &&
+                             PasswordHelper.Verify(password, user.PasswordHash, user.Salt, user.PasswordIterations);
+
+            if (!passwordOk)
             {
                 ViewBag.Error = "Incorrect ID/email or password.";
                 return View();
@@ -63,7 +65,26 @@ namespace GradeWise.Controllers
                 return View();
             }
 
+            if (!Roles.IsValid(user.Role))
+            {
+                ViewBag.Error = "This account has an invalid role. Contact your administrator.";
+                return View();
+            }
+
+            // Record the successful sign-in for the DB team's audit trail.
+            lock (SampleData.Sync)
+            {
+                user.LastLoginAt = DateTime.UtcNow;
+            }
+
             SignIn(user);
+
+            // Honor returnUrl if it is a safe local URL.
+            if (Url.IsLocalUrl(Request.QueryString["ReturnUrl"]))
+            {
+                return Redirect(Request.QueryString["ReturnUrl"]);
+            }
+
             return RedirectToDashboard(user.Role);
         }
 
@@ -77,7 +98,6 @@ namespace GradeWise.Controllers
 
         // ---------- helpers ----------
 
-        /// <summary>Controller name of the dashboard that belongs to a role.</summary>
         public static string DashboardController(string role)
         {
             switch (role)
@@ -100,10 +120,6 @@ namespace GradeWise.Controllers
             return Roles.Student;
         }
 
-        /// <summary>
-        /// Issues the forms-auth cookie. UserData holds "Role|FullName";
-        /// Global.asax.cs reads it back on every request to rebuild the principal.
-        /// </summary>
         private void SignIn(User user)
         {
             var now = DateTime.Now;
