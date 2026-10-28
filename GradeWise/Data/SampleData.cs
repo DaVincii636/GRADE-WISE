@@ -46,15 +46,16 @@ namespace GradeWise.Data
         {
             MakeUser("u-admin",    "admin",     "Demo Administrator", "admin@example.com",    "Admin@123",   Roles.Administrator),
             MakeUser("u-faculty",  "faculty",   "Demo Faculty",       "faculty@example.com",  "Faculty@123", Roles.Faculty),
-            MakeUser("u-student1", "2026-0001", "Demo Student One",   "student1@example.com", "Student@123", Roles.Student),
-            MakeUser("u-student2", "2026-0002", "Demo Student Two",   "student2@example.com", "Student@123", Roles.Student),
-            MakeUser("u-student3", "2026-0003", "Demo Student Three", "student3@example.com", "Student@123", Roles.Student)
+            MakeUser("u-student1", "2026-0001", "Jerick Du-ay",   "duay@example.com", "Student@123", Roles.Student),
+            MakeUser("u-student2", "2026-0002", "Daniel Ponce",   "daniel@example.com", "Student@123", Roles.Student),
+            MakeUser("u-student3", "2026-0003", "Khyle Castro", "khyle@example.com", "Student@123", Roles.Student)
         };
 
         private static User MakeUser(string id, string loginId, string fullName, string email, string password, string role)
         {
             string salt;
-            var hash = PasswordHelper.CreateHash(password, out salt);
+            int iterations;
+            var hash = PasswordHelper.CreateHash(password, out salt, out iterations);
 
             return new User
             {
@@ -64,8 +65,12 @@ namespace GradeWise.Data
                 Email = email.ToLowerInvariant(),
                 PasswordHash = hash,
                 Salt = salt,
+                PasswordIterations = iterations,
                 Role = role,
-                IsActive = true
+                IsActive = true,
+                CreatedAt = new DateTime(2026, 10, 26, 0, 0, 0, DateTimeKind.Utc),
+                LastLoginAt = null,
+                MustChangePassword = false
             };
         }
 
