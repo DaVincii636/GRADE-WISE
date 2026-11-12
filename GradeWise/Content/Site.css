@@ -2800,3 +2800,67 @@ body.gw-modal-open {
     min-width: 6.5em;
     font-weight: 700;
 }
+
+
+/* ---------- Phase 3b: Midterm / Final Term tabs on the Categories page ----------
+   Generic tab classes (.gw-tabs, .gw-tab, .gw-tabpanel). Phase 4 reuses these on the Course page;
+   the Academic Terms page keeps its own .gw-terms-tab rules. */
+.gw-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0;
+    margin: 0 0 14px;
+    border-bottom: var(--gw-outline);
+}
+
+.gw-tab {
+    position: relative;
+    margin: 0 -1.5px -1.5px 0;
+    padding: 8px 16px;
+    background: var(--gw-head);
+    color: var(--gw-ink);
+    border: var(--gw-outline);
+    border-radius: 0;
+    font: inherit;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+    .gw-tab:hover {
+        background: var(--gw-lime-pale);
+    }
+
+    .gw-tab[aria-selected="true"] {
+        z-index: 1;
+        background: var(--gw-paper);
+        border-bottom-color: var(--gw-paper);
+        box-shadow: inset 0 4px 0 var(--gw-lime);
+    }
+
+    .gw-tab:focus-visible {
+        z-index: 2;
+    }
+
+/* small "60 / 100" note inside a tab label (Categories page only) */
+.gw-tab-note {
+    margin-left: 6px;
+    font-family: var(--gw-font-pixel);
+    font-size: 0.7rem;
+    font-weight: 400;
+    letter-spacing: 0.04em;
+}
+
+.gw-tabpanel[hidden] {
+    display: none;
+}
+
+.gw-panel-actions {
+    margin-bottom: 8px;
+}
+
+@media (max-width: 479.98px) {
+    .gw-tab {
+        flex: 1 1 auto;
+        padding: 8px 10px;
+    }
+}

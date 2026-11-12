@@ -6,9 +6,11 @@
     var message = TempData["Message"] as string;
     var error = TempData["Error"] as string;
 
-    // Always leave two empty rows at the bottom so new categories can be typed straight away.
-    var emptyRows = Model.Rows.Count(r => string.IsNullOrEmpty(r.Original) && string.IsNullOrWhiteSpace(r.Name) && string.IsNullOrWhiteSpace(r.Weight));
-    var spare = System.Math.Max(0, (Model.Rows.Count == 0 ? 4 : 2) - emptyRows);
+    // The Final Term list copies the Midterm list until the faculty member changes it by hand.
+    // Copying only happens when no Final Term category is saved yet and the page is not an error echo.
+    var hasFinalRows = Model.Rows.Any(r => r.Period == GradePeriods.FinalTerm
+        && (!string.IsNullOrEmpty(r.Original) || !string.IsNullOrWhiteSpace(r.Name) || !string.IsNullOrWhiteSpace(r.Weight)));
+    var autoCopy = !hasFinalRows && Model.Errors.Count == 0;
 }
 
 <h1 class="gw-page-title">@Model.Code &middot; Categories and weights</h1>
@@ -45,64 +47,85 @@
     </div>
     <div class="gw-panel-body">
         <p class="gw-field-hint gw-hint-block">
-            Put every category in the Midterm or the Final Term. Inside each term the weights add up to exactly 100,
-            and the final grade is half Midterm and half Final Term. Each name must be unique in the course, for example
-            Midterm Quizzes and Final Quizzes. Renaming or moving a category keeps its scores; removing one deletes them.
+            Use the Midterm and Final Term buttons to switch lists. Inside each term the weights add up to exactly 100,
+            and the final grade is half Midterm and half Final Term. Each name must be unique in the course, so the Final Term
+            copy starts with "Final". Renaming a category keeps its scores; removing one deletes them.
         </p>
 
-        @using (Html.BeginForm("Categories", "Faculty", new { id = Model.CourseId }, FormMethod.Post, new { id = "cat-form" }))
+        @using (Html.BeginForm("Categories", "Faculty", new { id = Model.CourseId }, FormMethod.Post, new { id = "cat-form", data_autocopy = autoCopy ? "1" : "0" }))
         {
             @Html.AntiForgeryToken()
-            <table class="gw-cat-table gw-field-table">
-                <thead>
-                    <tr>
-                        <th>Category</th>
-                        <th>Period</th>
-                        <th>Weight (%)</th>
-                        <th><span class="gw-sr-only">Remove</span></th>
-                    </tr>
-                </thead>
-                <tbody id="cat-body">
-                    @foreach (var r in Model.Rows)
+
+            <div class="gw-tabs" role="tablist" aria-label="Grading period">
+                @foreach (var p in GradePeriods.All)
+                {
+                    var key = p == GradePeriods.Midterm ? "midterm" : "final-term";
+                    <button type="button" class="gw-tab" role="tab" id="tab-@key" aria-controls="panel-@key"
+                            aria-selected="@(p == GradePeriods.Midterm ? "true" : "false")" tabindex="@(p == GradePeriods.Midterm ? 0 : -1)"
+                            data-period="@p">
+                        @p <span class="gw-tab-note" data-tab-note>0 / 100</span>
+                    </button>
+                }
+            </div>
+
+            foreach (var p in GradePeriods.All)
+            {
+                var key = p == GradePeriods.Midterm ? "midterm" : "final-term";
+                var isFinal = p == GradePeriods.FinalTerm;
+                var periodRows = Model.Rows.Where(r => r.Period == p).ToList();
+                var emptyCount = periodRows.Count(r => string.IsNullOrEmpty(r.Original) && string.IsNullOrWhiteSpace(r.Name) && string.IsNullOrWhiteSpace(r.Weight));
+                var spare = (isFinal && autoCopy) ? 0 : System.Math.Max(0, (periodRows.Count == 0 ? 3 : 1) - emptyCount);
+
+                <div class="gw-tabpanel" role="tabpanel" id="panel-@key" aria-labelledby="tab-@key" data-period="@p" hidden="@(p == GradePeriods.Midterm ? null : "hidden")">
+                    <table class="gw-cat-table gw-field-table">
+                        <thead>
+                            <tr>
+                                <th>Category</th>
+                                <th>Weight (%)</th>
+                                <th><span class="gw-sr-only">Remove</span></th>
+                            </tr>
+                        </thead>
+                        <tbody data-body="@p">
+                            @foreach (var r in periodRows)
+                            {
+                                <tr>
+                                    <td>
+                                        <input type="hidden" name="originals" value="@r.Original" />
+                                        <input type="hidden" name="periods" value="@p" />
+                                        <input type="text" name="names" value="@r.Name" maxlength="40" aria-label="Category name" />
+                                    </td>
+                                    <td><input type="number" name="weights" value="@r.Weight" min="0.01" max="100" step="any" inputmode="decimal" aria-label="Weight in percent" /></td>
+                                    <td><button type="button" class="gw-btn gw-btn-small gw-btn-outline" data-remove="1">Remove</button></td>
+                                </tr>
+                            }
+                            @for (var i = 0; i < spare; i++)
+                            {
+                                <tr>
+                                    <td>
+                                        <input type="hidden" name="originals" value="" />
+                                        <input type="hidden" name="periods" value="@p" />
+                                        <input type="text" name="names" value="" maxlength="40" aria-label="Category name" />
+                                    </td>
+                                    <td><input type="number" name="weights" value="" min="0.01" max="100" step="any" inputmode="decimal" aria-label="Weight in percent" /></td>
+                                    <td><button type="button" class="gw-btn gw-btn-small gw-btn-outline" data-remove="1">Remove</button></td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+
+                    <div class="gw-form-buttons gw-panel-actions">
+                        <button type="button" class="gw-btn gw-btn-small gw-btn-outline" data-add="@p">Add category</button>
+                        @if (isFinal)
+                        {
+                            <button type="button" class="gw-btn gw-btn-small gw-btn-outline" id="cat-copy">Copy from Midterm</button>
+                        }
+                    </div>
+                    @if (isFinal)
                     {
-                        <tr>
-                            <td>
-                                <input type="hidden" name="originals" value="@r.Original" />
-                                <input type="text" name="names" value="@r.Name" maxlength="40" aria-label="Category name" />
-                            </td>
-                            <td>
-                                <select name="periods" aria-label="Period">
-                                    @foreach (var p in GradePeriods.All)
-                                    {
-                                        <option value="@p" selected="@(p == r.Period)">@p</option>
-                                    }
-                                </select>
-                            </td>
-                            <td><input type="number" name="weights" value="@r.Weight" min="0.01" max="100" step="any" inputmode="decimal" aria-label="Weight in percent" /></td>
-                            <td><button type="button" class="gw-btn gw-btn-small gw-btn-outline" data-remove="1">Remove</button></td>
-                        </tr>
+                        <p class="gw-note" id="final-note" aria-live="polite"></p>
                     }
-                    @for (var i = 0; i < spare; i++)
-                    {
-                        <tr>
-                            <td>
-                                <input type="hidden" name="originals" value="" />
-                                <input type="text" name="names" value="" maxlength="40" aria-label="Category name" />
-                            </td>
-                            <td>
-                                <select name="periods" aria-label="Period">
-                                    @foreach (var p in GradePeriods.All)
-                                    {
-                                        <option value="@p">@p</option>
-                                    }
-                                </select>
-                            </td>
-                            <td><input type="number" name="weights" value="" min="0.01" max="100" step="any" inputmode="decimal" aria-label="Weight in percent" /></td>
-                            <td><button type="button" class="gw-btn gw-btn-small gw-btn-outline" data-remove="1">Remove</button></td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
+                </div>
+            }
 
             <div class="gw-period-totals" aria-live="polite">
                 @foreach (var p in GradePeriods.All)
@@ -117,7 +140,6 @@
 
             <div class="gw-form-buttons">
                 <button type="submit" class="gw-btn">Save categories</button>
-                <button type="button" class="gw-btn gw-btn-outline" id="cat-add">Add category</button>
             </div>
         }
     </div>
@@ -127,24 +149,30 @@
     <script>
         (function () {
             var PERIODS = ["Midterm", "Final Term"];
-            var body = document.getElementById("cat-body");
             var form = document.getElementById("cat-form");
+            var tabs = [].slice.call(form.querySelectorAll('[role="tab"]'));
+            var finalNote = document.getElementById("final-note");
             var confirmed = false;
 
+            // The Final Term list follows the Midterm list until the faculty member changes it by hand.
+            var finalTouched = form.getAttribute("data-autocopy") !== "1";
+
             function round2(n) { return Math.round(n * 100) / 100; }
-
-            function liveRows() {
-                // removed rows are hidden (and emptied), so they never count
-                return [].slice.call(body.querySelectorAll("tr")).filter(function (tr) { return !tr.hidden; });
-            }
-
-            function periodOf(tr) { return tr.querySelector("select[name=periods]").value; }
+            function bodyOf(period) { return form.querySelector('tbody[data-body="' + period + '"]'); }
             function weightOf(tr) { return tr.querySelector("input[name=weights]"); }
+            function nameOf(tr) { return tr.querySelector("input[name=names]"); }
+            function originalOf(tr) { return tr.querySelector("input[name=originals]").value; }
+            function periodOfRow(tr) { return tr.closest("tbody").getAttribute("data-body"); }
+
+            // removed rows are hidden (and emptied), so they never count
+            function liveRows(period) {
+                return [].slice.call(bodyOf(period).querySelectorAll("tr")).filter(function (tr) { return !tr.hidden; });
+            }
 
             function totalFor(period, skipRow) {
                 var total = 0;
-                liveRows().forEach(function (tr) {
-                    if (tr === skipRow || periodOf(tr) !== period) { return; }
+                liveRows(period).forEach(function (tr) {
+                    if (tr === skipRow) { return; }
                     var v = parseFloat(weightOf(tr).value);
                     if (!isNaN(v)) { total += v; }
                 });
@@ -156,66 +184,157 @@
                 var input = weightOf(tr);
                 var v = parseFloat(input.value);
                 if (isNaN(v)) { return; }
-                var max = round2(100 - totalFor(periodOf(tr), tr));
+                var max = round2(100 - totalFor(periodOfRow(tr), tr));
                 if (max <= 0) { input.value = ""; }
                 else if (v > max) { input.value = max; }
             }
 
             function refresh() {
                 PERIODS.forEach(function (p) {
-                    var box = document.querySelector('.gw-period-total[data-period="' + p + '"]');
                     var total = totalFor(p, null);
                     var left = round2(100 - total);
+                    var box = form.querySelector('.gw-period-total[data-period="' + p + '"]');
                     box.querySelector("[data-total]").textContent = total;
                     box.querySelector("[data-left]").textContent = "(" + (left > 0 ? left + " left" : "full") + ")";
+                    form.querySelector('.gw-tab[data-period="' + p + '"] [data-tab-note]').textContent = total + " / 100";
                 });
-            }
-
-            function nextPeriod() {
-                for (var i = 0; i < PERIODS.length; i++) {
-                    if (totalFor(PERIODS[i], null) < 100) { return PERIODS[i]; }
+                if (finalNote) {
+                    finalNote.textContent = finalTouched
+                        ? "You changed this list by hand, so it no longer follows the Midterm. Use Copy from Midterm to start over."
+                        : "This list copies the Midterm. Change anything here and it stops following the Midterm.";
                 }
-                return PERIODS[0];
             }
 
-            document.getElementById("cat-add").addEventListener("click", function () {
-                var period = nextPeriod();
+            // ---------- tabs ----------
+            function selectTab(tab, focus) {
+                tabs.forEach(function (t) {
+                    var on = t === tab;
+                    t.setAttribute("aria-selected", on ? "true" : "false");
+                    t.tabIndex = on ? 0 : -1;
+                    document.getElementById(t.getAttribute("aria-controls")).hidden = !on;
+                });
+                if (focus) { tab.focus(); }
+            }
+
+            tabs.forEach(function (tab) {
+                tab.addEventListener("click", function () { selectTab(tab, false); });
+                tab.addEventListener("keydown", function (e) {
+                    if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") { return; }
+                    var next = tabs[(tabs.indexOf(tab) + (e.key === "ArrowRight" ? 1 : tabs.length - 1)) % tabs.length];
+                    selectTab(next, true);
+                });
+            });
+
+            // ---------- rows ----------
+            function makeRow(period, name, weight) {
                 var tr = document.createElement("tr");
-                var options = PERIODS.map(function (p) {
-                    return '<option value="' + p + '"' + (p === period ? " selected" : "") + ">" + p + "</option>";
-                }).join("");
-                tr.innerHTML =
-                    '<td><input type="hidden" name="originals" value="" />' +
-                    '<input type="text" name="names" maxlength="40" aria-label="Category name" /></td>' +
-                    '<td><select name="periods" aria-label="Period">' + options + "</select></td>" +
-                    '<td><input type="number" name="weights" min="0.01" max="100" step="any" inputmode="decimal" aria-label="Weight in percent" /></td>' +
-                    '<td><button type="button" class="gw-btn gw-btn-small gw-btn-outline" data-remove="1">Remove</button></td>';
-                body.appendChild(tr);
-                tr.querySelector("input[name=names]").focus();
-            });
 
-            // Remove = empty the row and hide it. The server ignores empty rows.
-            body.addEventListener("click", function (e) {
+                var td1 = document.createElement("td");
+                var original = document.createElement("input");
+                original.type = "hidden"; original.name = "originals"; original.value = "";
+                var per = document.createElement("input");
+                per.type = "hidden"; per.name = "periods"; per.value = period;
+                var nm = document.createElement("input");
+                nm.type = "text"; nm.name = "names"; nm.maxLength = 40; nm.value = name || "";
+                nm.setAttribute("aria-label", "Category name");
+                td1.appendChild(original); td1.appendChild(per); td1.appendChild(nm);
+
+                var td2 = document.createElement("td");
+                var w = document.createElement("input");
+                w.type = "number"; w.name = "weights"; w.min = "0.01"; w.max = "100"; w.step = "any";
+                w.setAttribute("inputmode", "decimal"); w.setAttribute("aria-label", "Weight in percent");
+                w.value = weight || "";
+                td2.appendChild(w);
+
+                var td3 = document.createElement("td");
+                var rm = document.createElement("button");
+                rm.type = "button"; rm.className = "gw-btn gw-btn-small gw-btn-outline";
+                rm.setAttribute("data-remove", "1"); rm.textContent = "Remove";
+                td3.appendChild(rm);
+
+                tr.appendChild(td1); tr.appendChild(td2); tr.appendChild(td3);
+                return tr;
+            }
+
+            // "Quiz" becomes "Final Quiz", "Midterm Quizzes" becomes "Final Quizzes" (names must stay unique in the course).
+            function finalName(name) {
+                var base = name.replace(/^Midterm\s+/i, "").trim();
+                return ("Final " + base).slice(0, 40);
+            }
+
+            // Rebuild the Final Term list from the Midterm list. Rows that already exist in the database
+            // (they have an original name) are never touched here.
+            function copyMidterm() {
+                var body = bodyOf("Final Term");
+                [].slice.call(body.querySelectorAll("tr")).forEach(function (tr) {
+                    if (!originalOf(tr)) { body.removeChild(tr); }
+                });
+                liveRows("Midterm").forEach(function (tr) {
+                    var name = nameOf(tr).value.trim();
+                    var weight = weightOf(tr).value;
+                    if (!name && !weight) { return; }
+                    body.appendChild(makeRow("Final Term", name ? finalName(name) : "", weight));
+                });
+                refresh();
+            }
+
+            function syncFinal() {
+                if (!finalTouched) { copyMidterm(); }
+            }
+
+            function nextFreshPeriod() {
+                return totalFor("Midterm", null) < 100 ? "Midterm" : "Final Term";
+            }
+
+            form.addEventListener("click", function (e) {
                 var btn = e.target;
-                if (!btn.getAttribute || !btn.getAttribute("data-remove")) { return; }
-                var tr = btn.closest("tr");
-                var original = tr.querySelector("input[name=originals]").value;
-                var name = tr.querySelector("input[name=names]");
-                var weight = weightOf(tr);
-                if (original && name.value) { tr.setAttribute("data-removed", name.value); }
-                name.value = "";
-                weight.value = "";
-                tr.hidden = true;
-                refresh();
+                if (!btn.getAttribute) { return; }
+
+                var addFor = btn.getAttribute("data-add");
+                if (addFor) {
+                    var tr = makeRow(addFor, "", "");
+                    bodyOf(addFor).appendChild(tr);
+                    if (addFor === "Final Term") { finalTouched = true; }
+                    refresh();
+                    nameOf(tr).focus();
+                    return;
+                }
+
+                if (btn.id === "cat-copy") {
+                    finalTouched = false;
+                    // rows that exist in the database are emptied and hidden: saving removes them
+                    [].slice.call(bodyOf("Final Term").querySelectorAll("tr")).forEach(function (tr) {
+                        if (originalOf(tr)) {
+                            if (nameOf(tr).value) { tr.setAttribute("data-removed", nameOf(tr).value); }
+                            nameOf(tr).value = "";
+                            weightOf(tr).value = "";
+                            tr.hidden = true;
+                        }
+                    });
+                    copyMidterm();
+                    return;
+                }
+
+                // Remove = empty the row and hide it. The server ignores empty rows.
+                if (btn.getAttribute("data-remove")) {
+                    var row = btn.closest("tr");
+                    var period = periodOfRow(row);
+                    if (originalOf(row) && nameOf(row).value) { row.setAttribute("data-removed", nameOf(row).value); }
+                    nameOf(row).value = "";
+                    weightOf(row).value = "";
+                    row.hidden = true;
+                    if (period === "Final Term") { finalTouched = true; }
+                    else { syncFinal(); }
+                    refresh();
+                }
             });
 
-            body.addEventListener("input", function (e) {
-                if (e.target.name === "weights") { clampRow(e.target.closest("tr")); }
-                refresh();
-            });
-
-            body.addEventListener("change", function (e) {
-                if (e.target.name === "periods") { clampRow(e.target.closest("tr")); }
+            form.addEventListener("input", function (e) {
+                var tr = e.target.closest ? e.target.closest("tr") : null;
+                if (!tr || !tr.closest("tbody[data-body]")) { return; }
+                if (e.target.name === "weights") { clampRow(tr); }
+                if (periodOfRow(tr) === "Final Term") { finalTouched = true; }
+                else { syncFinal(); }
                 refresh();
             });
 
@@ -224,11 +343,9 @@
                 if (confirmed) { return; }
 
                 var removed = [];
-                body.querySelectorAll("tr").forEach(function (tr) {
-                    var original = tr.querySelector("input[name=originals]").value;
-                    var name = tr.querySelector("input[name=names]").value.trim();
-                    var weight = weightOf(tr).value.trim();
-                    if (original && !name && !weight) { removed.push(original); }
+                form.querySelectorAll("tbody[data-body] tr").forEach(function (tr) {
+                    var original = originalOf(tr);
+                    if (original && !nameOf(tr).value.trim() && !weightOf(tr).value.trim()) { removed.push(original); }
                 });
                 if (removed.length === 0) { return; }
 
@@ -245,7 +362,21 @@
                 });
             });
 
+            // first load: fill the Final Term copy, and after a failed save open the tab that needs fixing
+            syncFinal();
             refresh();
+
+            var hasErrors = form.parentNode.querySelector(".gw-error-list") !== null ||
+                            document.querySelector(".gw-error-list") !== null;
+            if (hasErrors) {
+                for (var i = 0; i < PERIODS.length; i++) {
+                    var rows = liveRows(PERIODS[i]).filter(function (tr) { return nameOf(tr).value.trim() || weightOf(tr).value.trim(); });
+                    if (rows.length > 0 && Math.abs(totalFor(PERIODS[i], null) - 100) >= 0.005) {
+                        selectTab(tabs[i], false);
+                        break;
+                    }
+                }
+            }
         })();
     </script>
 }
