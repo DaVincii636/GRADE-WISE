@@ -42,6 +42,14 @@ namespace GradeWise.Models
         public double? Change { get; set; }
     }
 
+    /// <summary>A student and their calculated average inside a grade distribution range.</summary>
+    public class DistributionStudent
+    {
+        public string StudentNo { get; set; }
+        public string FullName { get; set; }
+        public double? Average { get; set; }
+    }
+
     /// <summary>One score range of the grade distribution. Min is included, Max is not (the last range includes 100).</summary>
     public class DistributionBin
     {
@@ -57,6 +65,8 @@ namespace GradeWise.Models
 
         /// <summary>Bar length, 0 to 100, matching the percentage of students.</summary>
         public int BarPercent { get; set; }
+
+        public List<DistributionStudent> Students { get; set; } = new List<DistributionStudent>();
 
         public string PercentText
         {
@@ -99,6 +109,7 @@ namespace GradeWise.Models
         public double WeightTotal { get; set; }
         public ClassSummary Summary { get; set; }
         public List<DistributionBin> Bins { get; set; } = new List<DistributionBin>();
+        public List<DistributionStudent> NotGradedStudents { get; set; } = new List<DistributionStudent>();
         public List<CategoryStat> Categories { get; set; } = new List<CategoryStat>();
 
         public bool WeightsOk

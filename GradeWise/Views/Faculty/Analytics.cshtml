@@ -69,6 +69,7 @@
             <p class="gw-hint-block gw-muted">
                 Number of students whose average (graded work so far) falls in each range.
                 A range includes its lower number but not its upper one, and averages are rounded to 2 decimals, as in the score table.
+                <strong>Click any bar</strong> to view the students and their specific averages in that range.
             </p>
         </div>
         <div class="gw-table-wrap">
@@ -82,15 +83,17 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach (var bin in Model.Bins)
+                    @for (var i = 0; i < Model.Bins.Count; i++)
                     {
+                        var bin = Model.Bins[i];
+                        var modalId = "gw-bin-modal-" + i;
                         var studentWord = Model.StudentCount == 1 ? "student" : "students";
-                        var tooltip = bin.Label + ": " + bin.PercentText + " (" + bin.Count + " of " + Model.StudentCount + " " + studentWord + ")";
-                        <tr title="@tooltip">
+                        var tooltip = bin.Label + ": " + bin.PercentText + " (" + bin.Count + " of " + Model.StudentCount + " " + studentWord + ") — Click to view students";
+                        <tr class="gw-dist-row" data-modal-target="@modalId" title="@tooltip">
                             <th scope="row">@bin.Label</th>
                             <td class="gw-num">@bin.Count</td>
                             <td class="gw-dist-col">
-                                <div class="gw-bar-track" data-tooltip="@tooltip" aria-label="@tooltip">
+                                <div class="gw-bar-track gw-bar-clickable" role="button" tabindex="0" data-modal-target="@modalId" data-tooltip="@tooltip" aria-label="@tooltip">
                                     @if (bin.Count > 0)
                                     {
                                         <div class="gw-bar" style="width:@(GradeCalculator.Raw(bin.Percent))%">
@@ -107,13 +110,14 @@
                     }
                     @if (Model.NotGraded > 0)
                     {
+                        var notGradedModalId = "gw-bin-modal-notgraded";
                         var notGradedWord = Model.StudentCount == 1 ? "student" : "students";
-                        var notGradedTip = "Not graded yet: " + Model.NotGradedPercentText + " (" + Model.NotGraded + " of " + Model.StudentCount + " " + notGradedWord + ")";
-                        <tr class="gw-dist-none" title="@notGradedTip">
+                        var notGradedTip = "Not graded yet: " + Model.NotGradedPercentText + " (" + Model.NotGraded + " of " + Model.StudentCount + " " + notGradedWord + ") — Click to view students";
+                        <tr class="gw-dist-none gw-dist-row" data-modal-target="@notGradedModalId" title="@notGradedTip">
                             <th scope="row">Not graded yet</th>
                             <td class="gw-num">@Model.NotGraded</td>
                             <td class="gw-dist-col">
-                                <div class="gw-bar-track" data-tooltip="@notGradedTip" aria-label="@notGradedTip">
+                                <div class="gw-bar-track gw-bar-clickable" role="button" tabindex="0" data-modal-target="@notGradedModalId" data-tooltip="@notGradedTip" aria-label="@notGradedTip">
                                     <div class="gw-bar" style="width:@(GradeCalculator.Raw(Model.NotGradedPercent))%">
                                         <span class="gw-bar-label">@Model.NotGradedPercentText</span>
                                     </div>
@@ -131,6 +135,110 @@
                 </tfoot>
             </table>
         </div>
+
+        for (var i = 0; i < Model.Bins.Count; i++)
+        {
+            var bin = Model.Bins[i];
+            var modalId = "gw-bin-modal-" + i;
+            var studentWord = Model.StudentCount == 1 ? "student" : "students";
+            <div id="@modalId" class="gw-modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="@(modalId)-title" hidden>
+                <div class="gw-panel gw-card-raised gw-modal-card">
+                    <div class="gw-panel-head">
+                        <h3 id="@(modalId)-title" class="gw-panel-title">Average: @bin.Label</h3>
+                    </div>
+                    <div class="gw-modal-top">
+                        <div class="gw-modal-meta">
+                            <span class="gw-badge gw-status-active">@bin.PercentText</span>
+                            <span class="gw-muted">@bin.Count of @Model.StudentCount @studentWord in this range</span>
+                        </div>
+                        <button type="button" class="gw-iconbtn gw-modal-close" data-modal-close aria-label="Close modal" title="Close">
+                            <img src="@Url.Content("~/Content/img/icons/close.svg")" alt="" width="20" height="20" />
+                        </button>
+                    </div>
+                    @if (bin.Students.Count == 0)
+                    {
+                        <div class="gw-panel-body gw-empty-block">
+                            No students currently fall in the <strong>@bin.Label</strong> range.
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="gw-table-wrap gw-modal-table-wrap">
+                            <table class="gw-table">
+                                <thead>
+                                    <tr>
+                                        <th scope="col">Name</th>
+                                        <th scope="col" class="gw-num">Specific average</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var s in bin.Students)
+                                    {
+                                        <tr>
+                                            <td>
+                                                <strong>@s.FullName</strong><br />
+                                                <span class="gw-muted gw-small">@s.StudentNo</span>
+                                            </td>
+                                            <td class="gw-num"><strong>@GradeCalculator.Format(s.Average)</strong></td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                    <div class="gw-modal-foot">
+                        <button type="button" class="gw-btn gw-btn-outline gw-btn-small" data-modal-close>Close</button>
+                    </div>
+                </div>
+            </div>
+        }
+
+        if (Model.NotGraded > 0)
+        {
+            var notGradedModalId = "gw-bin-modal-notgraded";
+            var notGradedWord = Model.StudentCount == 1 ? "student" : "students";
+            <div id="@notGradedModalId" class="gw-modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="@(notGradedModalId)-title" hidden>
+                <div class="gw-panel gw-card-raised gw-modal-card">
+                    <div class="gw-panel-head">
+                        <h3 id="@(notGradedModalId)-title" class="gw-panel-title">Not graded yet</h3>
+                    </div>
+                    <div class="gw-modal-top">
+                        <div class="gw-modal-meta">
+                            <span class="gw-badge">@Model.NotGradedPercentText</span>
+                            <span class="gw-muted">@Model.NotGraded of @Model.StudentCount @notGradedWord with no scores yet</span>
+                        </div>
+                        <button type="button" class="gw-iconbtn gw-modal-close" data-modal-close aria-label="Close modal" title="Close">
+                            <img src="@Url.Content("~/Content/img/icons/close.svg")" alt="" width="20" height="20" />
+                        </button>
+                    </div>
+                    <div class="gw-table-wrap gw-modal-table-wrap">
+                        <table class="gw-table">
+                            <thead>
+                                <tr>
+                                    <th scope="col">Name</th>
+                                    <th scope="col" class="gw-num">Specific average</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var s in Model.NotGradedStudents)
+                                {
+                                    <tr>
+                                        <td>
+                                            <strong>@s.FullName</strong><br />
+                                            <span class="gw-muted gw-small">@s.StudentNo</span>
+                                        </td>
+                                        <td class="gw-num"><span class="gw-cell-empty">Not graded yet</span></td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="gw-modal-foot">
+                        <button type="button" class="gw-btn gw-btn-outline gw-btn-small" data-modal-close>Close</button>
+                    </div>
+                </div>
+            </div>
+        }
     }
 </section>
 
@@ -173,3 +281,60 @@
         </table>
     </div>
 </section>
+
+@section scripts {
+    <script>
+        (function () {
+            function openModal(id) {
+                var modal = document.getElementById(id);
+                if (!modal) return;
+                modal.hidden = false;
+                document.body.classList.add("gw-modal-open");
+                var closeBtn = modal.querySelector("[data-modal-close]");
+                if (closeBtn) closeBtn.focus();
+            }
+
+            function closeModal(modal) {
+                if (!modal) return;
+                modal.hidden = true;
+                document.body.classList.remove("gw-modal-open");
+            }
+
+            document.addEventListener("click", function (e) {
+                var trigger = e.target.closest("[data-modal-target]");
+                if (trigger) {
+                    openModal(trigger.getAttribute("data-modal-target"));
+                    return;
+                }
+
+                var closeBtn = e.target.closest("[data-modal-close]");
+                if (closeBtn) {
+                    closeModal(closeBtn.closest(".gw-modal-backdrop"));
+                    return;
+                }
+
+                if (e.target.classList && e.target.classList.contains("gw-modal-backdrop")) {
+                    closeModal(e.target);
+                }
+            });
+
+            document.addEventListener("keydown", function (e) {
+                if (e.key === "Escape") {
+                    var openModals = document.querySelectorAll(".gw-modal-backdrop:not([hidden])");
+                    for (var i = 0; i < openModals.length; i++) {
+                        closeModal(openModals[i]);
+                    }
+                    return;
+                }
+
+                if (e.key === "Enter" || e.key === " ") {
+                    var focused = document.activeElement;
+                    if (focused && focused.hasAttribute("data-modal-target")) {
+                        e.preventDefault();
+                        openModal(focused.getAttribute("data-modal-target"));
+                    }
+                }
+            });
+        })();
+    </script>
+}

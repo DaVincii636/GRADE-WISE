@@ -31,6 +31,35 @@ namespace GradeWise.Services
             var summary = GradeCalculator.Summarize(averages);
             var bins = GradeCalculator.Distribution(averages);
 
+            var notGradedStudents = new List<DistributionStudent>();
+            for (var sIdx = 0; sIdx < students.Count; sIdx++)
+            {
+                var student = students[sIdx];
+                var avg = averages[sIdx];
+                var entry = new DistributionStudent
+                {
+                    StudentNo = student.StudentNo,
+                    FullName = student.FullName,
+                    Average = avg
+                };
+
+                if (!avg.HasValue)
+                {
+                    notGradedStudents.Add(entry);
+                    continue;
+                }
+
+                var rounded = Math.Round(avg.Value, 2);
+                for (var i = bins.Count - 1; i >= 0; i--)
+                {
+                    if (rounded >= bins[i].Min || i == 0)
+                    {
+                        bins[i].Students.Add(entry);
+                        break;
+                    }
+                }
+            }
+
             var totalStudents = Math.Max(1, students.Count);
             foreach (var bin in bins)
             {
@@ -50,7 +79,8 @@ namespace GradeWise.Services
                 NotGradedPercent = Math.Round(notGradedCount * 100.0 / totalStudents, 2),
                 WeightTotal = GradeCalculator.TotalWeight(course.Categories),
                 Summary = summary,
-                Bins = bins
+                Bins = bins,
+                NotGradedStudents = notGradedStudents
             };
 
             foreach (var category in course.Categories)
