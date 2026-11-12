@@ -22,17 +22,6 @@
     var areaPoints = linePoints + " " + GradeCalculator.Raw(W - R) + "," + GradeCalculator.Raw(H - B)
         + " " + GradeCalculator.Raw(L) + "," + GradeCalculator.Raw(H - B);
 
-    // R9 progress calendar: the month of the newest snapshot, no new data needed.
-    var lastWhen = Model.History.Count > 0 ? Model.History[Model.History.Count - 1].TakenAt : DateTime.Today;
-    var calMonth = new DateTime(lastWhen.Year, lastWhen.Month, 1);
-    var changedDays = new HashSet<int>(Model.History
-        .Where(h => h.Change.HasValue && Math.Abs(h.Change.Value) > 0.000000001)
-        .Select(h => h.TakenAt.Day));
-    var snapshotDays = new HashSet<int>(Model.History.Select(h => h.TakenAt.Day));
-    var firstWeekday = (int)calMonth.DayOfWeek;
-    var daysInMonth = DateTime.DaysInMonth(calMonth.Year, calMonth.Month);
-    var weekNames = new[] { "S", "M", "T", "W", "T", "F", "S" };
-    var monthName = calMonth.ToString("MMMM yyyy", CultureInfo.InvariantCulture);
 }
 
 <section class="gw-panel">
@@ -110,29 +99,5 @@
             </table>
         </div>
 
-        <div class="gw-panel-body gw-calendar-wrap">
-            <h3 class="gw-calendar-title">Progress calendar &middot; @monthName</h3>
-            <div class="gw-calendar-grid" role="grid" aria-label="Days with a saved snapshot or a change in @monthName">
-                @foreach (var w in weekNames)
-                {
-                    <span class="gw-cal-weekday" aria-hidden="true">@w</span>
-                }
-                @for (var b = 0; b < firstWeekday; b++)
-                {
-                    <span class="gw-cal-day gw-cal-blank" aria-hidden="true"></span>
-                }
-                @for (var d = 1; d <= daysInMonth; d++)
-                {
-                    var isChanged = changedDays.Contains(d);
-                    var hasSnapshot = snapshotDays.Contains(d);
-                    var classes = "gw-cal-day"
-                        + (hasSnapshot ? " gw-cal-marked" : "")
-                        + (isChanged ? " gw-cal-changed" : "");
-                    var dayLabel = new DateTime(calMonth.Year, calMonth.Month, d).ToString("MMMM d", CultureInfo.InvariantCulture);
-                    <span class="@classes" title="@dayLabel@(isChanged ? ": average changed" : hasSnapshot ? ": snapshot saved" : "")">@d</span>
-                }
-            </div>
-            <p class="gw-note">A black box marks a day when your average changed. A lime underline marks any day with a saved snapshot.</p>
-        </div>
     }
 </section>

@@ -8,6 +8,9 @@ namespace GradeWise.Models
         public string Id { get; set; }
         public string Code { get; set; }
         public string Name { get; set; }
+
+        /// <summary>The instructor's full name, or "Unassigned" when the course has none.</summary>
+        public string FacultyName { get; set; }
     }
 
     /// <summary>One line of the assessment breakdown. Only the student's own score is here.</summary>
@@ -53,15 +56,19 @@ namespace GradeWise.Models
         /// <summary>Weighted average of the graded work, percent. Null until something is graded.</summary>
         public double? Average { get; set; }
 
-        /// <summary>Equivalent grade such as 1.75, or null until something is graded.</summary>
+        /// <summary>Equivalent grade such as 1.75 from the points earned so far (ungraded work counts as 0). Null until something is graded.</summary>
         public double? Equivalent { get; set; }
 
         public double Earned { get; set; }
+
+        /// <summary>Points earned out of 100, or null until something is graded. Same number the instructor sees as Earned Grade.</summary>
+        public double? EarnedGrade { get; set; }
+
         public double RemainingWeight { get; set; }
 
         public List<BreakdownRow> Rows { get; set; } = new List<BreakdownRow>();
 
-        /// <summary>Anonymous class average. Null when too few students have scores to keep it anonymous.</summary>
+        /// <summary>Anonymous class average of Earned Grade. Null when too few students have scores to keep it anonymous.</summary>
         public double? ClassAverage { get; set; }
 
         /// <summary>How many students the class average is based on.</summary>

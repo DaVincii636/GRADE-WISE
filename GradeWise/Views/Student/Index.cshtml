@@ -1,28 +1,64 @@
 @model GradeWise.Models.StudentDashboardViewModel
+@using System.Globalization
 @using GradeWise.Services
 @{
     ViewBag.Title = "My grades";
 }
 
-<h1 class="gw-page-title">My grades</h1>
-<p class="gw-page-sub">
-    Your courses, scores, and projected final grade.
-    @if (Model.HasCourse)
-    {
-        <span class="gw-badge">@Model.Term</span>
-    }
-</p>
+@* Defined before any early return below, so it also runs when the student has no courses. *@
+@section scripts {
+    <script>
+        (function () {
+            // Day and date come from the browser, so they match the student's own time zone.
+            var names = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+            var now = new Date();
+            var two = function (n) { return n < 10 ? "0" + n : "" + n; };
+            var day = document.getElementById("gw-day");
+            var date = document.getElementById("gw-date");
+            if (day) { day.textContent = names[now.getDay()]; }
+            if (date) { date.textContent = two(now.getMonth() + 1) + "/" + two(now.getDate()) + "/" + now.getFullYear(); }
 
-@{
-    var today = DateTime.Now;
-    var todayIndex = (int)today.DayOfWeek;
-    var weekNames = new[] { "S", "M", "T", "W", "T", "F", "S" };
+            // Choosing a course scrolls down to its numbers. The flag survives the page reload.
+            var rows = document.querySelectorAll(".gw-picker-panel a.gw-collection-item");
+            for (var r = 0; r < rows.length; r++) {
+                rows[r].addEventListener("click", function () {
+                    try { sessionStorage.setItem("gwScroll", "1"); } catch (e) { }
+                });
+            }
+
+            var flag = null;
+            try {
+                flag = sessionStorage.getItem("gwScroll");
+                sessionStorage.removeItem("gwScroll");
+            } catch (e) { }
+
+            var target = document.getElementById("course-summary");
+            if (flag === "1" && target) {
+                var calm = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+                window.scrollTo(0, 0);
+                window.requestAnimationFrame(function () {
+                    target.scrollIntoView({ behavior: calm ? "auto" : "smooth", block: "start" });
+                });
+            }
+        })();
+    </script>
 }
-<div class="gw-weekstrip" aria-label="Today is @today.ToString("dddd, MMMM d")">
-    @for (var i = 0; i < weekNames.Length; i++)
-    {
-        <span class="gw-weekday @(i == todayIndex ? "gw-weekday-today" : "")">@weekNames[i]</span>
-    }
+
+<div class="gw-page-head gw-page-head-date">
+    <div>
+        <h1 class="gw-page-title">My grades</h1>
+        <p class="gw-page-sub">
+            Your courses, scores, and projected final grade.
+            @if (Model.HasCourse)
+            {
+                <span class="gw-badge">@Model.Term</span>
+            }
+        </p>
+    </div>
+    <div class="gw-datebox" aria-live="off">
+        <span class="gw-datebox-day" id="gw-day">@DateTime.Now.ToString("dddd", CultureInfo.InvariantCulture)</span>
+        <span class="gw-datebox-date" id="gw-date">@DateTime.Now.ToString("MM/dd/yyyy", CultureInfo.InvariantCulture)</span>
+    </div>
 </div>
 
 @if (!Model.HasCourse)
@@ -46,11 +82,11 @@
         {
             var current = c.Id == Model.SelectedId;
             <li>
-                <a href="@Url.Action("Index", "Student", new { id = c.Id })" class="gw-collection-item" aria-current="@(current ? "true" : "false")">
+                <a href="@(Url.Action("Index", "Student", new { id = c.Id }) + "#course-summary")" class="gw-collection-item" aria-current="@(current ? "true" : "false")">
                     <span class="gw-collection-sticker" aria-hidden="true">@(c.Code.Length > 2 ? c.Code.Substring(0, 2) : c.Code)</span>
                     <span class="gw-collection-main">
                         <span class="gw-collection-code">@c.Code</span>
-                        <span class="gw-collection-meta">@c.Name</span>
+                        <span class="gw-collection-meta">@c.Name &middot; @c.FacultyName</span>
                     </span>
                     <img src="@Url.Content("~/Content/img/icons/chevron-right.svg")" alt="" class="gw-collection-chevron" width="20" height="20" />
                 </a>
@@ -77,7 +113,7 @@ else if (!Model.WeightsOk)
     </div>
 }
 
-<section class="gw-stats" aria-label="Summary">
+<section class="gw-stats" id="course-summary" aria-label="Summary">
     <div class="gw-stat gw-stat-stamp" data-tab="Average">
         @if (Model.Equivalent.HasValue)
         {
@@ -91,7 +127,7 @@ else if (!Model.WeightsOk)
     </div>
     <div class="gw-stat" data-tab="Equivalent">
         <div class="gw-stat-value">@GradeCalculator.Format(Model.Equivalent)</div>
-        <div class="gw-stat-label">Equivalent grade</div>
+        <div class="gw-stat-label">Equivalent grade <span class="gw-th-sub">(based on points earned so far)</span></div>
     </div>
     <div class="gw-stat" data-tab="Remaining">
         <div class="gw-stat-value">@(Model.HasCategories ? GradeCalculator.Format(Model.RemainingWeight) + "%" : "\u2014")</div>
@@ -171,63 +207,45 @@ else if (!Model.WeightsOk)
 
 @Html.Partial("_History", Model)
 
-<div class="gw-two-col">
-    <section class="gw-panel gw-note-card">
-        <div class="gw-panel-head">
-            <h2 class="gw-panel-title">Class benchmark</h2>
-        </div>
-        <div class="gw-panel-body">
-            <img src="@Url.Content("~/Content/img/icons/quote.svg")" alt="" class="gw-quote" width="28" height="28" />
-            @if (Model.ClassAverage.HasValue)
-            {
-                <div class="gw-stat-value">@GradeCalculator.Format(Model.ClassAverage)%</div>
-                <p class="gw-muted">
-                    Class average across @Model.ClassGraded students who have scores.
-                    @if (Model.Average.HasValue)
-                    {
-                        var diff = Model.Average.Value - Model.ClassAverage.Value;
-                        if (System.Math.Abs(diff) < 0.005)
-                        {
-                            @:Your average is the same as the class average.
-                        }
-                        else
-                        {
-                            @:Your average is @GradeCalculator.Format(System.Math.Abs(diff)) points @(diff > 0 ? "above" : "below") it.
-                        }
-                    }
-                </p>
-            }
-            else
-            {
-                <p class="gw-empty-block">
-                    The class average appears once at least @Model.MinClassSize students have scores. This keeps everyone's grades private.
-                </p>
-            }
-            <p class="gw-note">Only averages are shown. You never see other students' names or scores.</p>
-        </div>
-    </section>
+@{
+    var hasClass = Model.ClassAverage.HasValue;
+    string gapText = null;
+    if (hasClass && Model.EarnedGrade.HasValue)
+    {
+        var diff = Model.EarnedGrade.Value - Model.ClassAverage.Value;
+        gapText = System.Math.Abs(diff) < 0.005
+            ? "the same as the class"
+            : GradeCalculator.Format(System.Math.Abs(diff)) + " points " + (diff > 0 ? "above" : "below") + " the class";
+    }
+}
 
-    <section class="gw-panel">
-        <div class="gw-panel-head">
-            <h2 class="gw-panel-title">
-                <img src="@Url.Content("~/Content/img/icons/bell.svg")" alt="" class="gw-panel-icon" width="18" height="18" />
-                Notifications
-            </h2>
+<section class="@(hasClass ? "gw-panel gw-benchmark" : "gw-panel gw-benchmark gw-benchmark-empty")" aria-labelledby="benchmark-title">
+    @if (hasClass)
+    {
+        <div class="gw-benchmark-figure">
+            <img src="@Url.Content("~/Content/img/icons/quote.svg")" alt="" class="gw-quote" width="28" height="28" />
+            <div class="gw-stat-value">@GradeCalculator.Format(Model.ClassAverage)%</div>
         </div>
-        <div class="gw-panel-body">
-            @if (Model.Notifications.Count == 0)
-            {
-                <p class="gw-empty-block">You have no notifications.</p>
-            }
-            else
-            {
-                <ul class="gw-notes">
-                    @foreach (var n in Model.Notifications)
-                    {
-                        <li>@n</li>
-                    }
-                </ul>
-            }
+        <div class="gw-benchmark-body">
+            <h2 id="benchmark-title" class="gw-panel-title">How you compare</h2>
+            <p>
+                Across <strong>@Model.ClassGraded</strong> students with scores, the class earned average is
+                <strong>@GradeCalculator.Format(Model.ClassAverage)%</strong>.
+                @if (gapText != null)
+                {
+                    <span>Yours is <strong>@GradeCalculator.Format(Model.EarnedGrade)%</strong>, which is <strong>@gapText</strong>.</span>
+                }
+            </p>
         </div>
-    </section>
-</div>
+        <p class="gw-benchmark-note">Only averages are shown. You never see other students' names or scores.</p>
+    }
+    else
+    {
+        <div class="gw-benchmark-body">
+            <h2 id="benchmark-title" class="gw-panel-title">How you compare</h2>
+            <p class="gw-muted">
+                The class benchmark appears once at least @Model.MinClassSize students have scores. This keeps everyone's grades private.
+            </p>
+        </div>
+    }
+</section>

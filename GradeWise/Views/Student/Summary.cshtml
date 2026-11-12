@@ -62,7 +62,7 @@ else
             </div>
             <div class="gw-stat" data-tab="Equivalent">
                 <div class="gw-stat-value">@GradeCalculator.Format(Model.Equivalent)</div>
-                <div class="gw-stat-label">Equivalent grade</div>
+                <div class="gw-stat-label">Equivalent grade <span class="gw-th-sub">(based on points earned so far)</span></div>
             </div>
             <div class="gw-stat" data-tab="Remaining">
                 <div class="gw-stat-value">@(Model.HasCategories ? GradeCalculator.Format(Model.RemainingWeight) + "%" : "\u2014")</div>

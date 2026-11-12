@@ -354,10 +354,8 @@ a:hover {
     box-shadow: var(--gw-shadow);
 }
 
-/* the first card inside .gw-stats or .gw-two-col should not add extra top margin */
-.gw-stats>.gw-card,
-.gw-two-col>.gw-card,
-.gw-two-col>.gw-panel {
+/* the first card inside .gw-stats should not add extra top margin */
+.gw-stats>.gw-card {
     margin-top: 0;
     margin-bottom: 0;
 }
@@ -1159,12 +1157,6 @@ input[type="range"] {
 .gw-picker label {
     font-weight: 700;
     margin: 0;
-}
-
-.gw-two-col {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-    gap: 20px;
 }
 
 .gw-notes {
@@ -2032,32 +2024,6 @@ body.gw-modal-open {
    Phase R9: delight, responsiveness, offline polish
    ===================================================================== */
 
-/* ---------- Weekday strip with today circled (04-note-text-only.jpg) ---------- */
-.gw-weekstrip {
-    display: flex;
-    gap: 8px;
-    margin: 0 0 24px;
-}
-
-.gw-weekday {
-    display: grid;
-    place-items: center;
-    width: 32px;
-    height: 32px;
-    border: 1.5px solid transparent;
-    color: var(--gw-muted);
-    font-family: var(--gw-font-pixel);
-    font-size: 0.72rem;
-    line-height: 1;
-}
-
-.gw-weekday-today {
-    border-color: var(--gw-ink);
-    border-radius: 50%;
-    background: var(--gw-lime);
-    color: var(--gw-ink);
-}
-
 /* ---------- Grade "sticker": a round stamp next to the average ---------- */
 .gw-stat-stamp {
     padding-right: 62px;
@@ -2087,55 +2053,6 @@ body.gw-modal-open {
     font-size: 0.66rem;
     line-height: 1;
     transform: rotate(-8deg);
-}
-
-/* ---------- Progress calendar month grid (06-month-calendar.jpg) ---------- */
-.gw-calendar-wrap {
-    border-top: 1.5px dashed var(--gw-ink);
-}
-
-.gw-calendar-title {
-    margin: 6px 0 12px;
-    font-size: 1rem;
-}
-
-.gw-calendar-grid {
-    display: grid;
-    grid-template-columns: repeat(7, 1fr);
-    gap: 6px;
-    max-width: 420px;
-}
-
-.gw-cal-weekday {
-    text-align: center;
-    color: var(--gw-muted);
-    font-family: var(--gw-font-pixel);
-    font-size: 0.68rem;
-}
-
-.gw-cal-day {
-    display: grid;
-    place-items: center;
-    aspect-ratio: 1 / 1;
-    border: 1.5px solid transparent;
-    font-size: 0.9rem;
-    line-height: 1;
-}
-
-.gw-cal-blank {
-    border: 0;
-}
-
-/* a day with a saved snapshot: lime underline */
-.gw-cal-marked {
-    border-bottom: 3px solid var(--gw-lime);
-}
-
-/* a day when the average changed: black-filled number box */
-.gw-cal-changed {
-    background: var(--gw-ink);
-    border-color: var(--gw-ink);
-    color: var(--gw-paper);
 }
 
 /* ---------- Empty states with the mascot ---------- */
@@ -2212,10 +2129,6 @@ body.gw-modal-open {
     .gw-grade-stamp {
         position: static;
         margin-top: 8px;
-    }
-
-    .gw-calendar-grid {
-        max-width: none;
     }
 
     .gw-toolbar .gw-iconbtn-text {
@@ -2876,4 +2789,104 @@ body.gw-modal-open {
 
 .gw-note-first {
     margin-top: 0;
+}
+
+/* =====================================================================
+   Phase 6: student dashboard (date box, course rows, class benchmark)
+   ===================================================================== */
+
+/* ---------- Day and date, top right of the page header ---------- */
+.gw-datebox {
+    flex: 0 0 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    margin-top: 4px;
+    line-height: 1.25;
+    text-align: right;
+}
+
+.gw-datebox-day {
+    font-size: 1.15rem;
+    font-weight: 700;
+}
+
+.gw-datebox-date {
+    color: var(--gw-muted);
+    font-family: var(--gw-font-pixel);
+    font-size: 0.85rem;
+}
+
+@media (max-width: 575.98px) {
+    .gw-page-head-date {
+        flex-direction: column;
+        gap: 0;
+    }
+
+    .gw-page-head-date .gw-datebox {
+        flex-direction: row;
+        align-items: baseline;
+        gap: 8px;
+        margin: 0 0 12px;
+    }
+}
+
+/* ---------- Course rows: the arrow points down to the numbers ---------- */
+.gw-picker-panel .gw-collection-chevron {
+    transform: rotate(90deg);
+}
+
+#course-summary {
+    scroll-margin-top: 12px;
+}
+
+/* ---------- Class benchmark: full-width panel ---------- */
+.gw-benchmark {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: 24px;
+    padding: 18px 20px;
+}
+
+.gw-benchmark-empty {
+    grid-template-columns: 1fr;
+}
+
+.gw-benchmark-figure {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.gw-benchmark-figure .gw-quote {
+    margin: 0;
+}
+
+.gw-benchmark-body .gw-panel-title {
+    margin: 0 0 6px;
+}
+
+.gw-benchmark-body p {
+    margin: 0;
+}
+
+.gw-benchmark-note {
+    max-width: 260px;
+    margin: 0;
+    padding: 8px 12px;
+    border: 1.5px dashed var(--gw-ink);
+    color: var(--gw-muted);
+    font-size: 0.85rem;
+}
+
+@media (max-width: 719.98px) {
+    .gw-benchmark {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+
+    .gw-benchmark-note {
+        max-width: none;
+    }
 }

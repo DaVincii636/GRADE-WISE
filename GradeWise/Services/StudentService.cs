@@ -34,7 +34,7 @@ namespace GradeWise.Services
                 .ThenBy(c => c.Name)
                 .ToList();
 
-            model.Courses = mine.Select(c => new StudentCourseOption { Id = c.Id, Code = c.Code, Name = c.Name }).ToList();
+            model.Courses = CourseOptions(db, mine);
             if (mine.Count == 0) return model;
 
             var course = mine.FirstOrDefault(c => c.Id == requestedCourseId) ?? mine[0];
@@ -63,7 +63,7 @@ namespace GradeWise.Services
                 .ThenBy(c => c.Name)
                 .ToList();
 
-            model.Courses = mine.Select(c => new StudentCourseOption { Id = c.Id, Code = c.Code, Name = c.Name }).ToList();
+            model.Courses = CourseOptions(db, mine);
             if (mine.Count == 0) return model;
 
             var course = mine.FirstOrDefault(c => c.Id == requestedCourseId) ?? mine[0];
@@ -79,7 +79,7 @@ namespace GradeWise.Services
             model.WeightTotal = result.TotalWeight;
             model.WeightsOk = model.HasCategories && GradeCalculator.IsFullWeight(result.TotalWeight);
             model.Average = result.Average;
-            model.Equivalent = GradeCalculator.EquivalentGrade(result.Average);
+            model.Equivalent = GradeCalculator.EquivalentFromEarned(result);
             model.Earned = result.Earned;
             model.RemainingWeight = result.RemainingWeight;
             model.NothingLeft = model.WeightsOk && result.RemainingWeight <= GradeCalculator.WeightTolerance;
@@ -158,6 +158,46 @@ namespace GradeWise.Services
             };
         }
 
+        /// <summary>
+        /// Course picker entries. The instructors' names are loaded with one query for all the courses.
+        /// </summary>
+        private static List<StudentCourseOption> CourseOptions(MongoDbContext db, List<Course> courses)
+        {
+            var facultyIds = courses
+                .Select(c => c.FacultyId)
+                .Where(id => !string.IsNullOrEmpty(id))
+                .Distinct()
+                .ToList();
+
+            var names = new Dictionary<string, string>();
+            if (facultyIds.Count > 0)
+            {
+                foreach (var teacher in db.Users.Find(u => facultyIds.Contains(u.Id)).ToList())
+                {
+                    names[teacher.Id] = teacher.FullName;
+                }
+            }
+
+            return courses.Select(c => new StudentCourseOption
+            {
+                Id = c.Id,
+                Code = c.Code,
+                Name = c.Name,
+                FacultyName = FacultyNameOf(names, c.FacultyId)
+            }).ToList();
+        }
+
+        private static string FacultyNameOf(Dictionary<string, string> names, string facultyId)
+        {
+            string name;
+            if (!string.IsNullOrEmpty(facultyId) && names.TryGetValue(facultyId, out name) && !string.IsNullOrWhiteSpace(name))
+            {
+                return name;
+            }
+
+            return "Unassigned";
+        }
+
         private static void FillCourse(MongoDbContext db, StudentDashboardViewModel model, Course course, string studentId)
         {
             var mine = ScoresOf(db, course, studentId);
@@ -172,15 +212,17 @@ namespace GradeWise.Services
             model.WeightTotal = result.TotalWeight;
             model.WeightsOk = model.HasCategories && GradeCalculator.IsFullWeight(result.TotalWeight);
             model.Average = result.Average;
-            model.Equivalent = GradeCalculator.EquivalentGrade(result.Average);
+            model.Equivalent = GradeCalculator.EquivalentFromEarned(result);
             model.Earned = result.Earned;
+            model.EarnedGrade = result.EarnedOrNull;
             model.RemainingWeight = result.RemainingWeight;
             model.History = HistoryService.GetHistory(course.Id, studentId);
 
             var everyone = course.StudentIds.Select(id => ScoresOf(db, course, id)).ToList();
 
-            var averages = everyone.Select(s => GradeCalculator.Calculate(course.Categories, s).Average).ToList();
-            var summary = GradeCalculator.Summarize(averages);
+            // The class benchmark is the average of every student's Earned Grade (null = nothing graded yet).
+            var earned = everyone.Select(s => GradeCalculator.Calculate(course.Categories, s).EarnedOrNull).ToList();
+            var summary = GradeCalculator.Summarize(earned);
             model.ClassGraded = summary.Graded;
             model.ClassAverage = summary.Graded >= MinClassSize ? summary.Average : null;
 
