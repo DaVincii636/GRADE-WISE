@@ -3271,3 +3271,23 @@ body.gw-modal-open {
 .gw-editcourse-form .gw-modal-foot {
     gap: 10px;
 }
+
+/* ---------- Plan 2, Phase 4 ---------- */
+/* the selected scope button: ink fill, paper text (used on the Course and Analytics pages) */
+.gw-scope-toggle .gw-scope-on,
+.gw-scope-toggle .gw-scope-on:hover {
+    background: var(--gw-ink);
+    color: var(--gw-paper);
+}
+
+.gw-scope-toggle a.gw-btn {
+    text-decoration: none;
+}
+
+.gw-history-note {
+    padding-bottom: 0;
+}
+
+.gw-history-note p {
+    margin: 0;
+}

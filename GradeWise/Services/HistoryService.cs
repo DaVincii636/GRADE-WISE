@@ -37,8 +37,9 @@ namespace GradeWise.Services
             if (course == null || string.IsNullOrEmpty(studentId)) return;
             if (changes == null || changes.Count == 0) return;
 
-            var result = GradeCalculator.Calculate(course.Categories, savedScores ?? new List<ScoreEntry>());
-            var snapshot = Make(course.Id, studentId, whenUtc, result);
+            var scoreList = (savedScores ?? new List<ScoreEntry>()).ToList();
+            var result = GradeCalculator.Calculate(course.Categories, scoreList);
+            var snapshot = Make(course.Id, studentId, whenUtc, result, course.Categories, scoreList);
             snapshot.Reason = string.IsNullOrEmpty(reason) ? ReasonScores : reason;
             snapshot.Changes = changes.ToList();
 
@@ -53,7 +54,10 @@ namespace GradeWise.Services
         {
             if (course == null || string.IsNullOrEmpty(studentId)) return;
 
-            var result = GradeCalculator.Calculate(course.Categories, savedScores ?? new List<ScoreEntry>());
+            var scoreList = (savedScores ?? new List<ScoreEntry>()).ToList();
+            var result = GradeCalculator.Calculate(course.Categories, scoreList);
+            var midterm = GradeCalculator.CalculatePeriod(course.Categories, scoreList, GradePeriods.Midterm);
+            var finalTerm = GradeCalculator.CalculatePeriod(course.Categories, scoreList, GradePeriods.FinalTerm);
 
             var db = new MongoDbContext();
             var last = db.Snapshots
@@ -64,18 +68,28 @@ namespace GradeWise.Services
             // Nothing graded and nothing recorded before: there is no history to keep yet.
             if (last == null && !result.HasGrades) return;
 
-            if (last != null && Math.Abs(last.Earned - result.Earned) <= Same) return;
+            // Kept only when one of the three numbers moved. An older snapshot with no period values
+            // counts as changed, so a categories save also gives it a first period-aware snapshot.
+            if (last != null
+                && last.MidtermEarned.HasValue && last.FinalTermEarned.HasValue
+                && Math.Abs(last.Earned - result.Earned) <= Same
+                && Math.Abs(last.MidtermEarned.Value - midterm.Earned) <= Same
+                && Math.Abs(last.FinalTermEarned.Value - finalTerm.Earned) <= Same) return;
 
-            var snapshot = Make(course.Id, studentId, whenUtc, result);
+            var snapshot = Make(course.Id, studentId, whenUtc, result, course.Categories, scoreList);
             snapshot.Reason = ReasonCategories;
 
             Insert(snapshot);
         }
 
-        /// <summary>Builds a snapshot from a calculated result.</summary>
-        public static ScoreSnapshot Make(string courseId, string studentId, DateTime when, GradeResult result)
+        /// <summary>
+        /// Builds a snapshot from a calculated result. When the categories and scores are given, the Midterm and
+        /// Final Term numbers are stored too (so the history can be shown per scope).
+        /// </summary>
+        public static ScoreSnapshot Make(string courseId, string studentId, DateTime when, GradeResult result,
+            IEnumerable<GradeCategory> categories = null, IEnumerable<ScoreEntry> scores = null)
         {
-            return new ScoreSnapshot
+            var snapshot = new ScoreSnapshot
             {
                 Id = "s-" + Guid.NewGuid().ToString("N").Substring(0, 8),
                 CourseId = courseId,
@@ -85,6 +99,19 @@ namespace GradeWise.Services
                 Earned = result.Earned,
                 GradedWeight = result.GradedWeight
             };
+
+            if (categories != null && scores != null)
+            {
+                var scoreList = scores.ToList();
+                var midterm = GradeCalculator.CalculatePeriod(categories, scoreList, GradePeriods.Midterm);
+                var finalTerm = GradeCalculator.CalculatePeriod(categories, scoreList, GradePeriods.FinalTerm);
+                snapshot.MidtermEarned = midterm.Earned;
+                snapshot.MidtermGradedWeight = midterm.GradedWeight;
+                snapshot.FinalTermEarned = finalTerm.Earned;
+                snapshot.FinalTermGradedWeight = finalTerm.GradedWeight;
+            }
+
+            return snapshot;
         }
 
         private static void Insert(ScoreSnapshot snapshot)
@@ -111,42 +138,107 @@ namespace GradeWise.Services
 
         // ---------- read ----------
 
-        /// <summary>The student's history in this course, oldest first.</summary>
-        public static List<HistoryPoint> GetHistory(string courseId, string studentId)
+        /// <summary>
+        /// The student's history in this course for one scope, oldest first.
+        /// Final Grade uses every snapshot. Midterm and Final Term use only snapshots that stored that period's
+        /// numbers, and keep a row only when that period's Earned Grade moved. hidden counts the older snapshots
+        /// that could not be used because they were saved before the periods were tracked separately.
+        /// </summary>
+        public static List<HistoryPoint> GetHistory(Course course, string studentId, string scope, out int hidden)
         {
-            var db = new MongoDbContext();
+            hidden = 0;
             var points = new List<HistoryPoint>();
-            double? previous = null;
+            if (course == null || string.IsNullOrEmpty(studentId)) return points;
 
+            scope = GradeScopes.Normalize(scope);
+            var period = GradeScopes.PeriodOf(scope);
+            var courseId = course.Id;
+
+            // category name -> period, to keep only the changes that belong to this scope
+            var periodOf = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var c in course.Categories ?? new List<GradeCategory>())
+            {
+                if (c.Name != null) periodOf[c.Name] = GradePeriods.Normalize(c.Period);
+            }
+
+            var db = new MongoDbContext();
             var snapshots = db.Snapshots
                 .Find(s => s.CourseId == courseId && s.StudentId == studentId)
                 .SortBy(s => s.TakenAt)
                 .ToList();
 
+            double? previous = null;
+
             foreach (var s in snapshots)
             {
-                var utc = ToUtc(s.TakenAt);
-                var hasGrades = s.GradedWeight > GradeCalculator.WeightTolerance;
+                double earned;
+                double gradedWeight;
 
+                if (period == null)
+                {
+                    earned = s.Earned;
+                    gradedWeight = s.GradedWeight;
+                }
+                else if (period == GradePeriods.Midterm)
+                {
+                    if (!s.MidtermEarned.HasValue) { hidden++; continue; }
+                    earned = s.MidtermEarned.Value;
+                    gradedWeight = s.MidtermGradedWeight ?? 0;
+                }
+                else
+                {
+                    if (!s.FinalTermEarned.HasValue) { hidden++; continue; }
+                    earned = s.FinalTermEarned.Value;
+                    gradedWeight = s.FinalTermGradedWeight ?? 0;
+                }
+
+                var hasGrades = gradedWeight > GradeCalculator.WeightTolerance;
+
+                if (period != null)
+                {
+                    // Nothing graded in this period yet: no history to show.
+                    if (!previous.HasValue && !hasGrades) continue;
+
+                    // Only this period's number counts, so skip saves that did not move it.
+                    if (previous.HasValue && Math.Abs(earned - previous.Value) <= Same) continue;
+                }
+
+                var utc = ToUtc(s.TakenAt);
                 var point = new HistoryPoint
                 {
                     TakenAt = utc,
                     Iso = utc.ToString("yyyy-MM-dd'T'HH:mm:ss'Z'", CultureInfo.InvariantCulture),
                     Label = utc.ToLocalTime().ToString("MM/dd/yyyy h:mm tt", CultureInfo.InvariantCulture),
-                    Earned = s.Earned,
+                    Earned = earned,
                     HasGrades = hasGrades,
-                    Equivalent = hasGrades ? GradeCalculator.EquivalentGrade(s.Earned) : null
+                    Equivalent = hasGrades ? GradeCalculator.EquivalentGrade(earned) : null
                 };
 
                 if (previous.HasValue)
                 {
-                    point.Change = s.Earned - previous.Value;
+                    point.Change = earned - previous.Value;
                 }
 
-                point.Summary = Describe(s, MaxNamed);
-                point.Details = Describe(s, int.MaxValue);
+                var shown = s;
+                if (period != null && s.Changes != null && s.Changes.Count > 0)
+                {
+                    shown = new ScoreSnapshot
+                    {
+                        Reason = s.Reason,
+                        Changes = s.Changes
+                            .Where(c =>
+                            {
+                                string p;
+                                return c.Category != null && periodOf.TryGetValue(c.Category, out p) && p == period;
+                            })
+                            .ToList()
+                    };
+                }
 
-                previous = s.Earned;
+                point.Summary = Describe(shown, MaxNamed);
+                point.Details = Describe(shown, int.MaxValue);
+
+                previous = earned;
                 points.Add(point);
             }
 

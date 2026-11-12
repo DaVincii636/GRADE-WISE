@@ -192,7 +192,9 @@ namespace GradeWise.Services
             model.Earned = result.Earned;
             model.EarnedGrade = result.EarnedOrNull;
             model.RemainingWeight = result.RemainingWeight;
-            model.History = HistoryService.GetHistory(course.Id, studentId);
+            int historyHidden;
+            model.History = HistoryService.GetHistory(course, studentId, scope, out historyHidden);
+            model.HistoryHidden = historyHidden;
 
             // One list of scores per enrolled student (empty when a student has no record yet), same as before.
             var everyone = course.StudentIds.Select(id => ScoresFrom(byStudent, id)).ToList();

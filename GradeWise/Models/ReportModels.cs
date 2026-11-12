@@ -38,6 +38,16 @@ namespace GradeWise.Models
 
         public double GradedWeight { get; set; }
 
+        /// <summary>Midterm-only Earned Grade (0-100) at that time. Null on snapshots saved before scopes existed.</summary>
+        public double? MidtermEarned { get; set; }
+
+        public double? MidtermGradedWeight { get; set; }
+
+        /// <summary>Final-Term-only Earned Grade (0-100) at that time. Null on snapshots saved before scopes existed.</summary>
+        public double? FinalTermEarned { get; set; }
+
+        public double? FinalTermGradedWeight { get; set; }
+
         /// <summary>Why it was taken, e.g. "Scores updated" or "Categories changed". Empty on old snapshots.</summary>
         public string Reason { get; set; }
 
@@ -126,6 +136,16 @@ namespace GradeWise.Models
 
     public class AnalyticsViewModel
     {
+        /// <summary>The scope being shown: "midterm", "final-term" or "final-grade".</summary>
+        public string Scope { get; set; } = GradeScopes.Midterm;
+
+        public string ScopeLabel { get; set; } = "Midterm";
+
+        /// <summary>The scope students currently see (the course's reflected scope).</summary>
+        public string CourseScope { get; set; } = GradeScopes.Midterm;
+
+        public string CourseScopeLabel { get; set; } = "Midterm";
+
         public string CourseId { get; set; }
         public string Code { get; set; }
         public string Name { get; set; }
@@ -150,9 +170,7 @@ namespace GradeWise.Models
         public List<DistributionStudent> NotGradedStudents { get; set; } = new List<DistributionStudent>();
         public List<CategoryStat> Categories { get; set; } = new List<CategoryStat>();
 
-        public bool WeightsOk
-        {
-            get { return Categories.Count > 0 && GradeCalculator.IsFullWeight(WeightTotal); }
-        }
+        /// <summary>Set by the service: true when the scope has categories and they total 100.</summary>
+        public bool WeightsOk { get; set; }
     }
 }

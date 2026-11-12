@@ -1,4 +1,5 @@
 @model GradeWise.Models.AnalyticsViewModel
+@using GradeWise.Models
 @using GradeWise.Services
 @{
     ViewBag.Title = Model.Code + " analytics";
@@ -6,17 +7,28 @@
 }
 
 <h1 class="gw-page-title">@Model.Code &middot; @Model.Name</h1>
-<p class="gw-page-sub">@Model.Term &middot; Class analytics</p>
+<p class="gw-page-sub">@Model.Term &middot; Class analytics &middot; <span class="gw-badge">@Model.ScopeLabel</span></p>
 
 <div class="gw-toolbar">
     @Html.ActionLink("Back to scores", "Course", "Faculty", new { id = Model.CourseId }, new { @class = "gw-btn gw-btn-outline" })
-    @Html.ActionLink("Export class record (CSV)", "ExportCsv", "Faculty", new { id = Model.CourseId }, new { @class = "gw-btn" })
+    @Html.ActionLink("Export class record (CSV)", "ExportCsv", "Faculty", new { id = Model.CourseId, scope = Model.Scope }, new { @class = "gw-btn" })
+</div>
+
+<div class="gw-scope">
+    <div class="gw-scope-toggle" role="group" aria-label="Grade scope">
+        @foreach (var key in GradeScopes.All)
+        {
+            var on = key == Model.Scope;
+            <a href="@Url.Action("Analytics", "Faculty", new { id = Model.CourseId, scope = key })" class="gw-btn gw-btn-small @(on ? "gw-scope-on" : "gw-btn-outline")" aria-current="@(on ? "true" : "false")">@GradeScopes.Label(key)</a>
+        }
+    </div>
+    <p class="gw-scope-note">Students see: @Model.CourseScopeLabel.</p>
 </div>
 
 @if (Model.Categories.Count > 0 && !Model.WeightsOk)
 {
     <div class="gw-alert gw-alert-warn" role="status">
-        The category weights add up to <strong>@GradeCalculator.Format(Model.WeightTotal)%</strong>, not 100%.
+        The @Model.ScopeLabel category weights add up to <strong>@GradeCalculator.Format(Model.WeightTotal)%</strong>, not 100%.
         The numbers below use the weights as they are.
         @Html.ActionLink("Fix the weights", "Categories", "Faculty", new { id = Model.CourseId }, null)
     </div>
@@ -29,21 +41,21 @@
     </div>
     <div class="gw-stat" data-tab="Average">
         <div class="gw-stat-value">@(Model.Summary.Average.HasValue ? GradeCalculator.Format(Model.Summary.Average) + "%" : GradeCalculator.Format(Model.Summary.Average))</div>
-        <div class="gw-stat-label">Class average (earned)</div>
+        <div class="gw-stat-label">Class average (@Model.ScopeLabel)</div>
     </div>
     <div class="gw-stat" data-tab="Highest">
         <div class="gw-stat-value">@(Model.Summary.Highest.HasValue ? GradeCalculator.Format(Model.Summary.Highest) + "%" : GradeCalculator.Format(Model.Summary.Highest))</div>
-        <div class="gw-stat-label">Highest</div>
+        <div class="gw-stat-label">Highest (@Model.ScopeLabel)</div>
     </div>
     <div class="gw-stat" data-tab="Lowest">
         <div class="gw-stat-value">@(Model.Summary.Lowest.HasValue ? GradeCalculator.Format(Model.Summary.Lowest) + "%" : GradeCalculator.Format(Model.Summary.Lowest))</div>
-        <div class="gw-stat-label">Lowest</div>
+        <div class="gw-stat-label">Lowest (@Model.ScopeLabel)</div>
     </div>
 </section>
 
 <section class="gw-panel">
     <div class="gw-panel-head">
-        <h2 class="gw-panel-title">Grade distribution</h2>
+        <h2 class="gw-panel-title">@Model.ScopeLabel grade distribution</h2>
     </div>
     @if (Model.StudentCount == 0)
     {
@@ -67,7 +79,7 @@
     {
         <div class="gw-panel-body">
             <p class="gw-hint-block gw-muted">
-                Number of students whose <strong>Earned Grade</strong> falls in each range. Earned Grade is the points collected out of 100,
+                Number of students whose <strong>@Model.ScopeLabel Earned Grade</strong> falls in each range. Earned Grade is the points collected out of 100,
                 and work that is not graded yet counts as 0.
                 A range includes its lower number but not its upper one, and Earned Grades are rounded to 2 decimals, as in the score table.
                 <strong>Click any bar</strong> to view the students and their Earned Grade in that range.
@@ -75,10 +87,10 @@
         </div>
         <div class="gw-table-wrap">
             <table class="gw-table gw-dist-table">
-                <caption class="gw-sr-only">Number of students per Earned Grade range</caption>
+                <caption class="gw-sr-only">Number of students per @Model.ScopeLabel Earned Grade range</caption>
                 <thead>
                     <tr>
-                        <th scope="col">Earned Grade</th>
+                        <th scope="col">@Model.ScopeLabel grade</th>
                         <th scope="col" class="gw-num">Students</th>
                         <th scope="col" class="gw-dist-col">Chart</th>
                     </tr>
@@ -145,7 +157,7 @@
             <div id="@modalId" class="gw-modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="@(modalId)-title" hidden>
                 <div class="gw-panel gw-card-raised gw-modal-card">
                     <div class="gw-panel-head">
-                        <h3 id="@(modalId)-title" class="gw-panel-title">Earned Grade: @bin.Label</h3>
+                        <h3 id="@(modalId)-title" class="gw-panel-title">@Model.ScopeLabel grade: @bin.Label</h3>
                     </div>
                     <div class="gw-modal-top">
                         <div class="gw-modal-meta">
@@ -169,7 +181,7 @@
                                 <thead>
                                     <tr>
                                         <th scope="col">Name</th>
-                                        <th scope="col" class="gw-num">Earned Grade</th>
+                                        <th scope="col" class="gw-num">@Model.ScopeLabel grade</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -217,7 +229,7 @@
                             <thead>
                                 <tr>
                                     <th scope="col">Name</th>
-                                    <th scope="col" class="gw-num">Earned Grade</th>
+                                    <th scope="col" class="gw-num">@Model.ScopeLabel grade</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -245,7 +257,7 @@
 
 <section class="gw-panel">
     <div class="gw-panel-head">
-        <h2 class="gw-panel-title">Category averages</h2>
+        <h2 class="gw-panel-title">@Model.ScopeLabel category averages</h2>
     </div>
     <div class="gw-table-wrap">
         <table class="gw-table">
@@ -262,7 +274,7 @@
                 {
                     <tr>
                         <td colspan="4" class="gw-empty">
-                            This course has no grading categories yet.
+                            This course has no @Model.ScopeLabel grading categories yet.
                             @Html.ActionLink("Set them up", "Categories", "Faculty", new { id = Model.CourseId }, null)
                         </td>
                     </tr>

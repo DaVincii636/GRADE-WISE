@@ -105,20 +105,20 @@ namespace GradeWise.Controllers
             return RedirectToAction("Course", new { id = id });
         }
 
-        // GET: /Faculty/Analytics/{id}
-        public ActionResult Analytics(string id)
+        // GET: /Faculty/Analytics/{id}?scope=midterm|final-term|final-grade  (no scope = the course's own scope)
+        public ActionResult Analytics(string id, string scope)
         {
-            var model = ReportService.GetAnalytics(id, CurrentFacultyId());
+            var model = ReportService.GetAnalytics(id, CurrentFacultyId(), scope);
             if (model == null) return HttpNotFound();
 
             return View(model);
         }
 
-        // GET: /Faculty/ExportCsv/{id}
-        public ActionResult ExportCsv(string id)
+        // GET: /Faculty/ExportCsv/{id}?scope=midterm|final-term|final-grade  (no scope = the course's own scope)
+        public ActionResult ExportCsv(string id, string scope)
         {
             string fileName;
-            var csv = ReportService.BuildClassCsv(id, CurrentFacultyId(), out fileName);
+            var csv = ReportService.BuildClassCsv(id, CurrentFacultyId(), scope, out fileName);
             if (csv == null) return HttpNotFound();
 
             // The UTF-8 marker at the start makes Excel read names with accents correctly.

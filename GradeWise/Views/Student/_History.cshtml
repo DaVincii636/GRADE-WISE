@@ -29,19 +29,32 @@
         + " " + GradeCalculator.Raw(L) + "," + GradeCalculator.Raw(H - B);
 
     var hiddenCount = Math.Max(0, points.Count - FirstShown);
+
+    // Names the scope in the heading and the grade column ("Midterm grade", "Final Term grade", "Final Grade").
+    var gradeHead = Model.Scope == GradeWise.Models.GradeScopes.FinalGrade ? "Final Grade" : Model.ScopeLabel + " grade";
 }
 
 <section class="gw-panel">
     <div class="gw-panel-head">
-        <h2 class="gw-panel-title">Progress history</h2>
+        <h2 class="gw-panel-title">Progress history (@Model.ScopeLabel)</h2>
     </div>
+
+    @if (Model.HistoryHidden > 0)
+    {
+        <div class="gw-panel-body gw-history-note">
+            <p class="gw-muted gw-small">
+                @Model.HistoryHidden earlier @(Model.HistoryHidden == 1 ? "entry was" : "entries were") saved before Midterm and Final Term were tracked separately;
+                @(Model.HistoryHidden == 1 ? "it appears" : "they appear") under Final Grade.
+            </p>
+        </div>
+    }
 
     @if (points.Count == 0)
     {
         <div class="gw-panel-body gw-empty-state">
             <img src="@Url.Content("~/Content/img/stickers/mascot-cat.svg")" alt="" class="gw-empty-mascot" width="72" height="72" />
             <p class="gw-empty-title">No history yet</p>
-            <p class="gw-muted">A snapshot of your Earned Grade is saved each time your instructor updates your scores.</p>
+            <p class="gw-muted">A snapshot of your @(Model.Scope == GradeWise.Models.GradeScopes.FinalGrade ? "Final Grade" : Model.ScopeLabel + " grade") is saved each time your instructor updates your scores.</p>
         </div>
     }
     else
@@ -50,7 +63,7 @@
         {
             <div class="gw-panel-body">
                 <svg class="gw-chart" viewBox="0 0 @W @H" role="img"
-                     aria-label="Line chart of your Earned Grade over time, from @GradeCalculator.Format(points[0].Earned) to @GradeCalculator.Format(points[points.Count - 1].Earned) out of 100. Passing is @(pass.ToString("0")).">
+                     aria-label="Line chart of your @gradeHead over time, from @GradeCalculator.Format(points[0].Earned) to @GradeCalculator.Format(points[points.Count - 1].Earned) out of 100. Passing is @(pass.ToString("0")).">
                     @foreach (var tick in new[] { 0, 50, 100 })
                     {
                         <line class="gw-chart-grid" x1="@GradeCalculator.Raw(L)" x2="@GradeCalculator.Raw(W - R)" y1="@GradeCalculator.Raw(py(tick))" y2="@GradeCalculator.Raw(py(tick))" />
@@ -66,7 +79,7 @@
                     @for (var i = 0; i < points.Count; i++)
                     {
                         <circle class="gw-chart-dot" cx="@GradeCalculator.Raw(px(i))" cy="@GradeCalculator.Raw(py(points[i].Earned))" r="4">
-                            <title>@points[i].Label: Earned Grade @GradeCalculator.Format(points[i].Earned)</title>
+                            <title>@points[i].Label: @gradeHead @GradeCalculator.Format(points[i].Earned)</title>
                         </circle>
                     }
                 </svg>
@@ -79,7 +92,7 @@
                     <tr>
                         <th>When</th>
                         <th>What changed</th>
-                        <th class="gw-num">Earned Grade</th>
+                        <th class="gw-num">@gradeHead</th>
                         <th class="gw-num">Equivalent</th>
                         <th class="gw-num">Change</th>
                     </tr>

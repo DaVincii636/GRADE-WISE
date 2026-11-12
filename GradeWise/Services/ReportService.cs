@@ -16,17 +16,26 @@ namespace GradeWise.Services
     {
         // ---------- analytics ----------
 
-        /// <summary>Distribution, class summary and per-category averages for one course. Null if it is not the faculty member's course.</summary>
-        public static AnalyticsViewModel GetAnalytics(string courseId, string facultyId)
+        /// <summary>
+        /// Distribution, class summary and per-category averages for one course and one scope
+        /// ("midterm", "final-term" or "final-grade"; null or anything else means the course's own scope).
+        /// Null if it is not the faculty member's course.
+        /// </summary>
+        public static AnalyticsViewModel GetAnalytics(string courseId, string facultyId, string scope = null)
         {
             var db = new MongoDbContext();
             var course = FindOwned(db, courseId, facultyId);
             if (course == null) return null;
 
+            var courseScope = GradeScopes.Normalize(course.ReflectedScope);
+            scope = string.IsNullOrEmpty(scope) ? courseScope : GradeScopes.Normalize(scope);
+
             var students = EnrolledStudents(db, course);
-            // Earned Grade (points collected out of 100, ungraded work counts as 0). Null = nothing graded yet.
+            var byStudent = ScoresByStudent(db, course);
+
+            // Earned Grade of the scope (points collected out of 100, ungraded work counts as 0). Null = nothing graded yet.
             var earned = students
-                .Select(s => GradeCalculator.Calculate(course.Categories, ScoresOf(db, course, s.Id)).EarnedOrNull)
+                .Select(s => GradeCalculator.CalculateScope(course.Categories, ScoresFrom(byStudent, s.Id), scope).EarnedOrNull)
                 .ToList();
 
             var summary = GradeCalculator.Summarize(earned);
@@ -71,6 +80,10 @@ namespace GradeWise.Services
             var notGradedCount = students.Count - summary.Graded;
             var model = new AnalyticsViewModel
             {
+                Scope = scope,
+                ScopeLabel = GradeScopes.Label(scope),
+                CourseScope = courseScope,
+                CourseScopeLabel = GradeScopes.Label(courseScope),
                 CourseId = course.Id,
                 Code = course.Code,
                 Name = course.Name,
@@ -78,16 +91,17 @@ namespace GradeWise.Services
                 StudentCount = students.Count,
                 NotGraded = notGradedCount,
                 NotGradedPercent = Math.Round(notGradedCount * 100.0 / totalStudents, 2),
-                WeightTotal = GradeCalculator.TotalWeight(course.Categories),
+                WeightTotal = GradeCalculator.ScopeTotal(course.Categories, scope),
+                WeightsOk = GradeCalculator.ScopeReady(course.Categories, scope),
                 Summary = summary,
                 Bins = bins,
                 NotGradedStudents = notGradedStudents
             };
 
-            foreach (var category in course.Categories)
+            foreach (var category in GradeCalculator.ScopeCategories(course.Categories, scope))
             {
                 var scores = students
-                    .Select(s => FindScore(ScoresOf(db, course, s.Id), category.Name))
+                    .Select(s => FindScore(ScoresFrom(byStudent, s.Id), category.Name))
                     .Where(v => v.HasValue)
                     .Select(v => v.Value)
                     .ToList();
@@ -96,7 +110,7 @@ namespace GradeWise.Services
                 {
                     Name = category.Name,
                     Period = GradePeriods.Normalize(category.Period),
-                    Weight = category.Weight,
+                    Weight = GradeCalculator.ScopeWeight(category, scope),
                     Graded = scores.Count,
                     Average = scores.Count > 0 ? (double?)scores.Average() : null
                 });
@@ -108,12 +122,14 @@ namespace GradeWise.Services
         // ---------- class record CSV ----------
 
         /// <summary>
-        /// The class record as CSV text: one row per student with each category score, then the Midterm and
-        /// Final Term Earned Grade and Equivalent, the Final Grade and its Equivalent, followed by class
-        /// average / highest / lowest rows. Every number is the zero-based Earned Grade, as on the Course page.
+        /// The class record as CSV text for one scope (null or anything else means the course's own scope).
+        /// Midterm or Final Term: the scope's categories, then that period's Earned Grade and Equivalent.
+        /// Final Grade: every category (headers name the period), the Midterm and Final Term Earned Grade and
+        /// Equivalent, the Final Grade and its Equivalent. Class average / highest / lowest rows follow.
+        /// Every number is the zero-based Earned Grade, as on the Course page.
         /// Returns null if it is not the faculty member's course. The caller adds the UTF-8 marker Excel needs.
         /// </summary>
-        public static string BuildClassCsv(string courseId, string facultyId, out string fileName)
+        public static string BuildClassCsv(string courseId, string facultyId, string scope, out string fileName)
         {
             fileName = null;
 
@@ -121,69 +137,87 @@ namespace GradeWise.Services
             var course = FindOwned(db, courseId, facultyId);
             if (course == null) return null;
 
-            fileName = SafeFileName(course.Code) + "-class-record-"
+            scope = string.IsNullOrEmpty(scope) ? GradeScopes.Normalize(course.ReflectedScope) : GradeScopes.Normalize(scope);
+            var wholeCourse = scope == GradeScopes.FinalGrade;
+            var scopeLabel = GradeScopes.Label(scope);
+
+            fileName = SafeFileName(course.Code) + "-" + scope + "-class-record-"
                 + DateTime.Now.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) + ".csv";
 
             var students = EnrolledStudents(db, course);
-            var width = 2 + course.Categories.Count + 6;
+            var byStudent = ScoresByStudent(db, course);
+            var cats = GradeCalculator.ScopeCategories(course.Categories, scope).ToList();
+            var gradeColumns = wholeCourse ? 3 : 1;
+            var width = 2 + cats.Count + gradeColumns * 2;
             var sb = new StringBuilder();
 
+            // Final Grade headers name each category's period, e.g. "Quiz (Midterm 15%)".
             var header = new List<string> { Text("Student No"), Text("Name") };
-            header.AddRange(course.Categories.Select(c => Text(c.Name + " (" + Whole(c.Weight) + "%)")));
-            header.Add(Text("Midterm Earned"));
-            header.Add(Text("Midterm Equivalent"));
-            header.Add(Text("Final Term Earned"));
-            header.Add(Text("Final Term Equivalent"));
-            header.Add(Text("Final Grade"));
-            header.Add(Text("Equivalent"));
+            header.AddRange(cats.Select(c => Text(wholeCourse
+                ? c.Name + " (" + GradePeriods.Normalize(c.Period) + " " + Whole(c.Weight) + "%)"
+                : c.Name + " (" + Whole(c.Weight) + "%)")));
+            if (wholeCourse)
+            {
+                header.Add(Text("Midterm Earned"));
+                header.Add(Text("Midterm Equivalent"));
+                header.Add(Text("Final Term Earned"));
+                header.Add(Text("Final Term Equivalent"));
+                header.Add(Text("Final Grade"));
+                header.Add(Text("Equivalent"));
+            }
+            else
+            {
+                header.Add(Text(scopeLabel + " Earned"));
+                header.Add(Text(scopeLabel + " Equivalent"));
+            }
             AppendRow(sb, header);
 
-            var midtermEarned = new List<double?>();
-            var finalTermEarned = new List<double?>();
-            var finalGrades = new List<double?>();
-            var categoryScores = course.Categories.Select(c => new List<double>()).ToList();
+            // one list of Earned Grades per grade column (Midterm, Final Term, Final Grade) or just the scope
+            var columns = Enumerable.Range(0, gradeColumns).Select(i => new List<double?>()).ToList();
+            var categoryScores = cats.Select(c => new List<double>()).ToList();
 
             foreach (var student in students)
             {
-                var scores = ScoresOf(db, course, student.Id);
-                var result = GradeCalculator.Calculate(course.Categories, scores);
-                var midterm = GradeCalculator.CalculatePeriod(course.Categories, scores, GradePeriods.Midterm);
-                var finalTerm = GradeCalculator.CalculatePeriod(course.Categories, scores, GradePeriods.FinalTerm);
-                midtermEarned.Add(midterm.EarnedOrNull);
-                finalTermEarned.Add(finalTerm.EarnedOrNull);
-                finalGrades.Add(result.EarnedOrNull);
-
+                var scores = ScoresFrom(byStudent, student.Id);
                 var cells = new List<string> { Text(student.StudentNo), Text(student.FullName) };
 
-                for (var i = 0; i < course.Categories.Count; i++)
+                for (var i = 0; i < cats.Count; i++)
                 {
-                    var value = FindScore(scores, course.Categories[i].Name);
+                    var value = FindScore(scores, cats[i].Name);
                     cells.Add(value.HasValue ? Whole(value.Value) : string.Empty);
                     if (value.HasValue) categoryScores[i].Add(value.Value);
                 }
 
-                cells.Add(Cell(midterm.EarnedOrNull));
-                cells.Add(Cell(GradeCalculator.EquivalentFromEarned(midterm)));
-                cells.Add(Cell(finalTerm.EarnedOrNull));
-                cells.Add(Cell(GradeCalculator.EquivalentFromEarned(finalTerm)));
-                cells.Add(Cell(result.EarnedOrNull));
-                cells.Add(Cell(GradeCalculator.EquivalentFromEarned(result)));
+                var results = wholeCourse
+                    ? new[]
+                    {
+                        GradeCalculator.CalculatePeriod(course.Categories, scores, GradePeriods.Midterm),
+                        GradeCalculator.CalculatePeriod(course.Categories, scores, GradePeriods.FinalTerm),
+                        GradeCalculator.Calculate(course.Categories, scores)
+                    }
+                    : new[] { GradeCalculator.CalculateScope(course.Categories, scores, scope) };
+
+                for (var i = 0; i < results.Length; i++)
+                {
+                    columns[i].Add(results[i].EarnedOrNull);
+                    cells.Add(Cell(results[i].EarnedOrNull));
+                    cells.Add(Cell(GradeCalculator.EquivalentFromEarned(results[i])));
+                }
+
                 AppendRow(sb, cells);
             }
 
-            var midtermSummary = GradeCalculator.Summarize(midtermEarned);
-            var finalTermSummary = GradeCalculator.Summarize(finalTermEarned);
-            var gradeSummary = GradeCalculator.Summarize(finalGrades);
-            if (gradeSummary.Graded > 0)
+            var summaries = columns.Select(c => GradeCalculator.Summarize(c)).ToList();
+            if (summaries[summaries.Count - 1].Graded > 0)
             {
                 AppendRow(sb, Enumerable.Repeat(string.Empty, width));
 
                 var categoryAverages = categoryScores.Select(l => l.Count > 0 ? Fixed(l.Average()) : string.Empty).ToList();
-                var noCategoryCells = Enumerable.Repeat(string.Empty, course.Categories.Count).ToList();
+                var noCategoryCells = Enumerable.Repeat(string.Empty, cats.Count).ToList();
 
-                AppendRow(sb, ClassRow("Class average", categoryAverages, midtermSummary.Average, finalTermSummary.Average, gradeSummary.Average));
-                AppendRow(sb, ClassRow("Highest", noCategoryCells, midtermSummary.Highest, finalTermSummary.Highest, gradeSummary.Highest));
-                AppendRow(sb, ClassRow("Lowest", noCategoryCells, midtermSummary.Lowest, finalTermSummary.Lowest, gradeSummary.Lowest));
+                AppendRow(sb, ClassRow("Class average", categoryAverages, summaries.Select(x => x.Average)));
+                AppendRow(sb, ClassRow("Highest", noCategoryCells, summaries.Select(x => x.Highest)));
+                AppendRow(sb, ClassRow("Lowest", noCategoryCells, summaries.Select(x => x.Lowest)));
             }
 
             return sb.ToString();
@@ -220,16 +254,15 @@ namespace GradeWise.Services
         }
 
         // One class row (average, highest or lowest). Each Equivalent is worked out from the Earned Grade next to it.
-        private static List<string> ClassRow(string label, IEnumerable<string> categoryCells, double? midterm, double? finalTerm, double? finalGrade)
+        private static List<string> ClassRow(string label, IEnumerable<string> categoryCells, IEnumerable<double?> gradeValues)
         {
             var cells = new List<string> { string.Empty, Text(label) };
             cells.AddRange(categoryCells);
-            cells.Add(Cell(midterm));
-            cells.Add(Cell(GradeCalculator.EquivalentGrade(midterm)));
-            cells.Add(Cell(finalTerm));
-            cells.Add(Cell(GradeCalculator.EquivalentGrade(finalTerm)));
-            cells.Add(Cell(finalGrade));
-            cells.Add(Cell(GradeCalculator.EquivalentGrade(finalGrade)));
+            foreach (var value in gradeValues)
+            {
+                cells.Add(Cell(value));
+                cells.Add(Cell(GradeCalculator.EquivalentGrade(value)));
+            }
             return cells;
         }
 
@@ -270,10 +303,26 @@ namespace GradeWise.Services
                 .ToList();
         }
 
-        private static List<ScoreEntry> ScoresOf(MongoDbContext db, Course course, string studentId)
+        // One query for every enrolled student's scores (instead of one round trip per student).
+        private static Dictionary<string, List<ScoreEntry>> ScoresByStudent(MongoDbContext db, Course course)
         {
-            var record = db.Grades.Find(g => g.CourseId == course.Id && g.StudentId == studentId).FirstOrDefault();
-            return record == null ? new List<ScoreEntry>() : record.Scores;
+            var courseId = course.Id;
+            var enrolled = course.StudentIds;
+            var map = new Dictionary<string, List<ScoreEntry>>();
+            foreach (var record in db.Grades.Find(g => g.CourseId == courseId && enrolled.Contains(g.StudentId)).ToList())
+            {
+                if (record.StudentId != null && !map.ContainsKey(record.StudentId))
+                {
+                    map[record.StudentId] = record.Scores ?? new List<ScoreEntry>();
+                }
+            }
+            return map;
+        }
+
+        private static List<ScoreEntry> ScoresFrom(Dictionary<string, List<ScoreEntry>> map, string studentId)
+        {
+            List<ScoreEntry> scores;
+            return studentId != null && map.TryGetValue(studentId, out scores) ? scores : new List<ScoreEntry>();
         }
 
         private static double? FindScore(IEnumerable<ScoreEntry> scores, string category)

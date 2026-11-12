@@ -88,6 +88,9 @@ namespace GradeWise.Models
 
         /// <summary>The student's own progress history in this course, oldest first.</summary>
         public List<HistoryPoint> History { get; set; } = new List<HistoryPoint>();
+
+        /// <summary>Older history entries that cannot be shown in this scope (saved before Midterm and Final Term were tracked separately).</summary>
+        public int HistoryHidden { get; set; }
     }
     /// <summary>One line of the grade table: the lowest average (percent) that earns this grade.</summary>
     public class GradeStep
