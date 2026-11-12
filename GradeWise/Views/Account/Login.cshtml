@@ -24,13 +24,29 @@
                 @using (Html.BeginForm("Login", "Account", FormMethod.Post))
                 {
                     @Html.AntiForgeryToken()
-                    <div class="gw-field">
+                    <div class="gw-field gw-login-field">
                         <label for="loginId">ID or email</label>
                         <input type="text" id="loginId" name="loginId" value="@loginId" autocomplete="username" autofocus />
                     </div>
-                    <div class="gw-field">
+                    <div class="gw-field gw-login-field">
                         <label for="password">Password</label>
-                        <input type="password" id="password" name="password" autocomplete="current-password" />
+                        <div class="gw-password-wrap">
+                            <input type="password" id="password" name="password" autocomplete="current-password" />
+                            @* type="button" so clicking it never submits the form. Hidden until the script below runs.
+                               The script shows the eye-off icon while the password is hidden and the eye icon while it is visible. *@
+                            <button type="button" id="password-toggle" class="gw-password-toggle"
+                                    aria-controls="password" aria-pressed="false" aria-label="Show password" title="Show password" hidden>
+                                <svg class="gw-eye" data-icon="visible" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="square" aria-hidden="true" focusable="false">
+                                    <path d="M2 12s3.6-6.5 10-6.5S22 12 22 12s-3.6 6.5-10 6.5S2 12 2 12z" />
+                                    <circle cx="12" cy="12" r="3" />
+                                </svg>
+                                <svg class="gw-eye-off" data-icon="hidden" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="square" aria-hidden="true" focusable="false">
+                                    <path d="M2 12s3.6-6.5 10-6.5S22 12 22 12s-3.6 6.5-10 6.5S2 12 2 12z" />
+                                    <circle cx="12" cy="12" r="3" />
+                                    <path d="M4 4l16 16" />
+                                </svg>
+                            </button>
+                        </div>
                     </div>
                     <button type="submit" class="gw-btn gw-btn-block">Sign in</button>
                 }
@@ -71,3 +87,115 @@
         </div>
     </div>
 </div>
+
+@section scripts {
+    <script>
+        // Back / Forward protection and double-submit protection.
+        // The form's security token belongs to whoever was signed in when this page was loaded.
+        // If the page comes back from the browser's history after a sign-in, that token is stale,
+        // so ask the server again instead of letting the old form be submitted.
+        (function () {
+            var form = document.querySelector(".gw-login-card form");
+            if (!form) { return; }
+            var submit = form.querySelector('button[type="submit"]');
+            var submitText = submit ? submit.textContent : "";
+
+            // The home page sends signed-in users to their dashboard and everyone else to a fresh sign-in page.
+            // A plain GET, so it can never resend a password or show a "resubmit form?" prompt.
+            var freshUrl = "@Url.Action("Index", "Home")";
+            var leaving = false;
+
+            function reloadFromServer() {
+                if (leaving) { return; }
+                leaving = true;
+                if (submit) { submit.disabled = true; }
+                window.location.replace(freshUrl); // replace: the stale page does not stay in history
+            }
+
+            function cameFromHistory() {
+                try {
+                    var nav = window.performance && performance.getEntriesByType
+                        ? performance.getEntriesByType("navigation")[0] : null;
+                    if (nav) { return nav.type === "back_forward"; }
+                    return !!(window.performance && performance.navigation && performance.navigation.type === 2);
+                } catch (e) {
+                    return false;
+                }
+            }
+
+            // Case 1: the browser reloaded this page from its cache because of Back / Forward.
+            if (cameFromHistory()) {
+                reloadFromServer();
+                return;
+            }
+
+            // Case 2: the browser restored the page exactly as it was (back-forward cache); scripts do not rerun.
+            window.addEventListener("pageshow", function (e) {
+                if (e.persisted) { reloadFromServer(); }
+            });
+
+            // Only send the form once. A second click or Enter press is ignored while the first is on its way.
+            var sent = false;
+            form.addEventListener("submit", function (e) {
+                if (sent || leaving) {
+                    e.preventDefault();
+                    return;
+                }
+                sent = true;
+                if (submit) {
+                    // Disable after this click is handled, so the first submission still goes through normally.
+                    setTimeout(function () {
+                        submit.disabled = true;
+                        submit.textContent = "Signing in...";
+                    }, 0);
+                    // Safety net: if the network stalls or the user stops the page, allow another try.
+                    setTimeout(function () {
+                        sent = false;
+                        submit.disabled = false;
+                        submit.textContent = submitText;
+                    }, 15000);
+                }
+            });
+        })();
+
+        // Show / hide the password. Only changes how the field is displayed; the value and its name are untouched.
+        (function () {
+            var input = document.getElementById("password");
+            var toggle = document.getElementById("password-toggle");
+            if (!input || !toggle) { return; }
+
+            var iconVisible = toggle.querySelector('[data-icon="visible"]'); // plain eye
+            var iconHidden = toggle.querySelector('[data-icon="hidden"]');   // eye with a diagonal line
+
+            // Match the button to the field's real state:
+            // hidden password -> eye-off icon, visible password -> plain eye icon.
+            function sync() {
+                var visible = input.type === "text";
+                iconVisible.style.display = visible ? "block" : "none";
+                iconHidden.style.display = visible ? "none" : "block";
+                var label = visible ? "Hide password" : "Show password";
+                toggle.setAttribute("aria-pressed", visible ? "true" : "false");
+                toggle.setAttribute("aria-label", label);
+                toggle.setAttribute("title", label);
+            }
+
+            // Always start hidden.
+            input.type = "password";
+            sync();
+            toggle.hidden = false;
+
+            // Keep the cursor in the password box when the icon is clicked with a mouse.
+            toggle.addEventListener("mousedown", function (e) { e.preventDefault(); });
+
+            toggle.addEventListener("click", function () {
+                input.type = input.type === "password" ? "text" : "password";
+                sync();
+            });
+
+            // Always submit as a password field, so the browser treats it as a password.
+            if (input.form) {
+                input.form.addEventListener("submit", function () { input.type = "password"; sync(); });
+            }
+        })();
+    </script>
+}
