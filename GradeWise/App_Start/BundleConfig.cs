@@ -26,6 +26,10 @@ namespace GradeWise
             bundles.Add(new ScriptBundle("~/bundles/gwmodal").Include(
                       "~/Scripts/gw-modal.js"));
 
+            // Student notification bell (loaded only for students).
+            bundles.Add(new ScriptBundle("~/bundles/gwnotifications").Include(
+                      "~/Scripts/gw-notifications.js"));
+
             bundles.Add(new StyleBundle("~/Content/css").Include(
                       "~/Content/bootstrap.css",
                       "~/Content/site.css"));

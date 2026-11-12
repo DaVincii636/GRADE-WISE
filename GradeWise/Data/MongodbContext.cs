@@ -26,5 +26,6 @@ namespace GradeWise.Data
         public IMongoCollection<GradeRecord> Grades => _database.GetCollection<GradeRecord>("Grades");
         public IMongoCollection<AcademicTerm> Terms => _database.GetCollection<AcademicTerm>("Terms");
         public IMongoCollection<ScoreSnapshot> Snapshots => _database.GetCollection<ScoreSnapshot>("Snapshots");
+        public IMongoCollection<Notification> Notifications => _database.GetCollection<Notification>("Notifications");
     }
 }

@@ -32,7 +32,7 @@
     <title>@ViewBag.Title - GradeWise</title>
     <link rel="stylesheet" href="~/Content/fonts.css" />
     @Styles.Render("~/Content/css")
-    <link rel="stylesheet" href="@Url.Content("~/Content/Site.css?v=8")" />
+    <link rel="stylesheet" href="@Url.Content("~/Content/Site.css?v=9")" />
     @Scripts.Render("~/bundles/modernizr")
 </head>
 <body>
@@ -47,6 +47,10 @@
                 <div class="gw-user">
                     <span class="gw-user-name">@userName</span>
                     <span class="gw-role">@role</span>
+                    @if (role == GradeWise.Models.Roles.Student)
+                    {
+                        @Html.Action("Bell", "Notifications")
+                    }
                     <a href="@Url.Action("Logout", "Account", new { area = "" })" class="gw-iconbtn gw-signout" aria-label="Sign out" title="Sign out">
                         <img src="~/Content/img/icons/sign-out.svg" alt="" width="24" height="24" />
                     </a>
@@ -66,6 +70,10 @@
     @Scripts.Render("~/bundles/jquery")
     @Scripts.Render("~/bundles/bootstrap")
     @Scripts.Render("~/bundles/gwmodal")
+    @if (role == GradeWise.Models.Roles.Student)
+    {
+        @Scripts.Render("~/bundles/gwnotifications")
+    }
     @RenderSection("scripts", required: false)
 </body>
 </html>

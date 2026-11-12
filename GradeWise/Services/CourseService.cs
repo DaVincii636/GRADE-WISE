@@ -219,6 +219,9 @@ namespace GradeWise.Services
             }
             if (problems > 0) return false;
 
+            // Which categories really changed, per student (used for the notification below).
+            var changedByStudent = new Dictionary<string, List<string>>();
+
             foreach (var change in pending)
             {
                 var record = change.Item1;
@@ -228,6 +231,17 @@ namespace GradeWise.Services
                 var entry = record.Scores.FirstOrDefault(s => string.Equals(s.Category, categoryName, StringComparison.OrdinalIgnoreCase));
                 if (entry != null)
                 {
+                    if (!SameScore(entry.Score, newScore))
+                    {
+                        List<string> names;
+                        if (!changedByStudent.TryGetValue(record.StudentId, out names))
+                        {
+                            names = new List<string>();
+                            changedByStudent[record.StudentId] = names;
+                        }
+                        names.Add(categoryName);
+                    }
+
                     entry.Score = newScore;
                 }
 
@@ -239,6 +253,12 @@ namespace GradeWise.Services
             foreach (var studentId in course.StudentIds)
             {
                 HistoryService.Record(course, studentId, now);
+            }
+
+            // One notification per student per save, and only for students whose scores really changed.
+            foreach (var changed in changedByStudent)
+            {
+                NotificationService.NotifyScoresChanged(course, changed.Key, changed.Value);
             }
 
             return true;
@@ -299,6 +319,8 @@ namespace GradeWise.Services
                 return 0;
             }
 
+            var enrolledIds = new List<string>();
+
             foreach (var id in (studentIds ?? Enumerable.Empty<string>()).Distinct())
             {
                 var student = db.Users.Find(u => u.Id == id).FirstOrDefault();
@@ -307,11 +329,17 @@ namespace GradeWise.Services
 
                 course.StudentIds.Add(id);
                 EnsureRecord(db, course, id);
+                enrolledIds.Add(id);
                 added++;
             }
 
             var update = Builders<Course>.Update.Set(c => c.StudentIds, course.StudentIds);
             db.Courses.UpdateOne(c => c.Id == course.Id, update);
+
+            foreach (var id in enrolledIds)
+            {
+                NotificationService.NotifyEnrolled(course, id);
+            }
 
             if (added == 0) error = "Choose at least one student to enroll.";
             return added;
@@ -330,6 +358,8 @@ namespace GradeWise.Services
 
             db.Grades.DeleteMany(g => g.CourseId == course.Id && g.StudentId == studentId);
             db.Snapshots.DeleteMany(h => h.CourseId == course.Id && h.StudentId == studentId);
+
+            NotificationService.NotifyRemoved(course, studentId);
 
             var student = db.Users.Find(u => u.Id == studentId).FirstOrDefault();
             return student == null ? studentId : student.FullName;
@@ -498,6 +528,9 @@ namespace GradeWise.Services
                 db.Grades.UpdateOne(g => g.Id == record.Id, gradeUpdate);
             }
 
+            // Compared before saving, so students are only told when something really changed.
+            var categoriesChanged = !SameCategories(course.Categories, newCategories);
+
             var courseUpdate = Builders<Course>.Update.Set(c => c.Categories, newCategories);
             db.Courses.UpdateOne(c => c.Id == course.Id, courseUpdate);
 
@@ -507,10 +540,39 @@ namespace GradeWise.Services
                 HistoryService.Record(course, studentId, now);
             }
 
+            if (categoriesChanged)
+            {
+                foreach (var studentId in course.StudentIds)
+                {
+                    NotificationService.NotifyCategoriesChanged(course, studentId);
+                }
+            }
+
             return true;
         }
 
         // ---------- helpers ----------
+
+        /// <summary>True when two scores are the same (both empty, or equal to two decimals).</summary>
+        private static bool SameScore(double? a, double? b)
+        {
+            if (!a.HasValue && !b.HasValue) return true;
+            if (!a.HasValue || !b.HasValue) return false;
+            return Math.Abs(a.Value - b.Value) < 0.005;
+        }
+
+        private static bool SameCategories(IList<GradeCategory> before, IList<GradeCategory> after)
+        {
+            if (before.Count != after.Count) return false;
+
+            for (var i = 0; i < before.Count; i++)
+            {
+                if (before[i].Name != after[i].Name) return false;
+                if (before[i].Period != after[i].Period) return false;
+                if (Math.Abs(before[i].Weight - after[i].Weight) >= 0.005) return false;
+            }
+            return true;
+        }
 
         private static Course FindOwned(MongoDbContext db, string courseId, string facultyId)
         {

@@ -45,6 +45,24 @@ namespace GradeWise.Data
                 // Seed Snapshots from SampleData
                 db.Snapshots.InsertMany(SampleData.Snapshots);
             }
+
+            EnsureIndexes(db);
+        }
+
+        // Notifications are listed per student, newest first, so index them that way.
+        private static void EnsureIndexes(MongoDbContext db)
+        {
+            try
+            {
+                var keys = Builders<Notification>.IndexKeys
+                    .Ascending(n => n.StudentId)
+                    .Descending(n => n.CreatedAtUtc);
+                db.Notifications.Indexes.CreateOne(new CreateIndexModel<Notification>(keys));
+            }
+            catch (System.Exception)
+            {
+                // The index only makes the bell faster. The app still works without it.
+            }
         }
     }
 }

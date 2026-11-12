@@ -39,11 +39,6 @@ namespace GradeWise.Services
 
             var course = mine.FirstOrDefault(c => c.Id == requestedCourseId) ?? mine[0];
 
-            foreach (var c in mine)
-            {
-                model.Notifications.AddRange(NotificationsFor(db, c, studentId));
-            }
-
             FillCourse(db, model, course, studentId);
 
             return model;
@@ -246,41 +241,6 @@ namespace GradeWise.Services
                     WeightedPoints = own.HasValue ? (double?)(effective * own.Value / 100.0) : null,
                     ClassAverage = classScores.Count >= MinClassSize ? (double?)classScores.Average() : null
                 });
-            }
-        }
-
-        private static IEnumerable<string> NotificationsFor(MongoDbContext db, Course course, string studentId)
-        {
-            var label = course.Code + ": ";
-
-            if (course.Categories.Count == 0)
-            {
-                yield return label + "your instructor has not set the grading categories yet.";
-                yield break;
-            }
-
-            var scores = ScoresOf(db, course, studentId);
-            var result = GradeCalculator.Calculate(course.Categories, scores);
-
-            var waiting = course.Categories
-                .Where(c => !FindScore(scores, c.Name).HasValue)
-                .Select(c => c.Name)
-                .ToList();
-
-            if (waiting.Count == 0)
-            {
-                yield return label + "all your categories are graded. Final average " + GradeCalculator.Format(result.Average) + ".";
-            }
-            else
-            {
-                yield return label + (waiting.Count == 1 ? "1 category is" : waiting.Count + " categories are")
-                    + " still waiting for a score: " + string.Join(", ", waiting) + ".";
-            }
-
-            if (!GradeCalculator.IsFullWeight(result.TotalWeight))
-            {
-                yield return label + "the grading weights add up to " + GradeCalculator.Format(result.TotalWeight)
-                    + "%, not 100%, so your numbers may change once your instructor fixes them.";
             }
         }
 

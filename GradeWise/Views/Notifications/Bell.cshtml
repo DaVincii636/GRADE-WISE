@@ -1,0 +1,83 @@
+@model GradeWise.Models.NotificationBellViewModel
+@{
+    var inv = System.Globalization.CultureInfo.InvariantCulture;
+    var unread = Model.Unread;
+    var hasItems = Model.Items.Count > 0;
+
+    Func<string, string> iconFor = kind =>
+    {
+        switch (kind)
+        {
+            case "categories": return "list.svg";
+            case "enrolled": return "add.svg";
+            case "removed": return "close.svg";
+            default: return "check.svg";
+        }
+    };
+}
+
+<div class="gw-notif" id="gw-notif"
+     data-unread="@unread"
+     data-url-read="@Url.Action("Read", "Notifications")"
+     data-url-unread="@Url.Action("Unread", "Notifications")"
+     data-url-readall="@Url.Action("ReadAll", "Notifications")"
+     data-url-delete="@Url.Action("Delete", "Notifications")"
+     data-url-deleteall="@Url.Action("DeleteAll", "Notifications")"
+     data-url-course="@Url.Action("Index", "Student", new { id = "__ID__" })">
+
+    <form id="gw-notif-token" class="gw-notif-token" action="#" method="post">@Html.AntiForgeryToken()</form>
+
+    <button type="button" class="gw-iconbtn gw-notif-btn" id="gw-notif-btn"
+            aria-haspopup="true" aria-expanded="false" aria-controls="gw-notif-panel"
+            aria-label="Notifications" title="Notifications">
+        <img src="~/Content/img/icons/bell.svg" alt="" width="24" height="24" />
+        <span class="gw-notif-badge" id="gw-notif-badge" @(unread > 0 ? null : "hidden")>@(unread > 9 ? "9+" : unread.ToString())</span>
+    </button>
+
+    <div class="gw-notif-panel" id="gw-notif-panel" role="region" aria-label="Notifications" hidden>
+        <div class="gw-notif-head">
+            <h2 class="gw-notif-title">Notifications</h2>
+            <button type="button" class="gw-notif-textbtn" id="gw-notif-delete-all" @(hasItems ? null : "hidden")>Delete all</button>
+        </div>
+
+        <div class="gw-notif-unreadrow" id="gw-notif-unreadrow" @(unread > 0 ? null : "hidden")>
+            <span>You have <strong id="gw-notif-count">@unread</strong> unread <span id="gw-notif-word">@(unread == 1 ? "notification" : "notifications")</span>.</span>
+            <button type="button" class="gw-notif-textbtn" id="gw-notif-mark-all">Mark all as read</button>
+        </div>
+
+        <ul class="gw-notif-list" id="gw-notif-list">
+            @foreach (var n in Model.Items)
+            {
+                var itemClass = n.IsRead ? "gw-notif-item" : "gw-notif-item is-unread";
+                <li class="@itemClass"
+                    data-id="@n.Id" data-kind="@n.Kind" data-course="@n.CourseId"
+                    data-created="@DateTime.SpecifyKind(n.CreatedAtUtc, DateTimeKind.Utc).ToString("yyyy-MM-dd'T'HH:mm:ss.fff'Z'", inv)">
+                    <span class="gw-notif-icon" aria-hidden="true">
+                        <img src="~/Content/img/icons/@iconFor(n.Kind)" alt="" width="18" height="18" />
+                    </span>
+                    <button type="button" class="gw-notif-main">
+                        <span class="gw-notif-line">
+                            <span class="gw-notif-item-title">@n.Title</span>
+                            <span class="gw-notif-time">@n.CreatedAtUtc.ToString("MM/dd/yyyy", inv)</span>
+                        </span>
+                        <span class="gw-notif-msg">@n.Message</span>
+                    </button>
+                    <span class="gw-notif-dot" aria-hidden="true"></span>
+                    <button type="button" class="gw-notif-more" aria-haspopup="menu" aria-expanded="false" aria-label="More options for @n.Title">
+                        <span class="gw-dots" aria-hidden="true"><i></i><i></i><i></i></span>
+                    </button>
+                </li>
+            }
+        </ul>
+
+        <p class="gw-notif-empty" id="gw-notif-empty" @(hasItems ? "hidden" : null)>You have no notifications.</p>
+    </div>
+
+    <div class="gw-notif-menu" id="gw-notif-menu" role="menu" hidden>
+        <button type="button" role="menuitem" class="gw-notif-menuitem" data-act="toggle">Mark as read</button>
+        <a role="menuitem" class="gw-notif-menuitem" data-act="view" href="#">View course</a>
+        <button type="button" role="menuitem" class="gw-notif-menuitem gw-notif-menuitem-danger" data-act="delete">Delete</button>
+    </div>
+
+    <span class="gw-sr-only" id="gw-notif-live" aria-live="polite"></span>
+</div>

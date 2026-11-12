@@ -77,8 +77,6 @@ namespace GradeWise.Models
         /// <summary>Smallest group that may be averaged and shown.</summary>
         public int MinClassSize { get; set; }
 
-        public List<string> Notifications { get; set; } = new List<string>();
-
         /// <summary>The student's own progress history in this course, oldest first.</summary>
         public List<HistoryPoint> History { get; set; } = new List<HistoryPoint>();
     }

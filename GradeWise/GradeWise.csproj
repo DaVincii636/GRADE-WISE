@@ -219,6 +219,7 @@
     <Compile Include="Controllers\AdminController.cs" />
     <Compile Include="Controllers\FacultyController.cs" />
     <Compile Include="Controllers\StudentController.cs" />
+    <Compile Include="Controllers\NotificationsController.cs" />
     <Compile Include="Data\MongodbSeeder.cs" />
     <Compile Include="Data\MongodbContext.cs" />
     <Compile Include="Data\SampleData.cs" />
@@ -231,6 +232,7 @@
     <Compile Include="Models\FacultyViewModels.cs" />
     <Compile Include="Models\GradePeriods.cs" />
     <Compile Include="Models\GradeRecord.cs" />
+    <Compile Include="Models\Notification.cs" />
     <Compile Include="Models\ReportModels.cs" />
     <Compile Include="Models\StudentViewModels.cs" />
     <Compile Include="Models\User.cs" />
@@ -238,6 +240,7 @@
     <Compile Include="Services\CourseService.cs" />
     <Compile Include="Services\GradeCalculator.cs" />
     <Compile Include="Services\HistoryService.cs" />
+    <Compile Include="Services\NotificationService.cs" />
     <Compile Include="Services\ReportService.cs" />
     <Compile Include="Services\StudentService.cs" />
   </ItemGroup>
@@ -287,6 +290,8 @@
     <Content Include="favicon.ico" />
     <Content Include="Global.asax" />
     <Content Include="Content\Site.css" />
+    <Content Include="Scripts\gw-modal.js" />
+    <Content Include="Scripts\gw-notifications.js" />
     <Content Include="Scripts\whatif.js" />
     <Content Include="Scripts\bootstrap.bundle.js" />
     <Content Include="Scripts\bootstrap.bundle.min.js" />
@@ -330,6 +335,7 @@
     <Content Include="Views\Faculty\CreateCourse.cshtml" />
     <Content Include="Views\Faculty\Enroll.cshtml" />
     <Content Include="Views\Faculty\Index.cshtml" />
+    <Content Include="Views\Notifications\Bell.cshtml" />
     <Content Include="Views\Student\Index.cshtml" />
     <Content Include="Views\Student\Summary.cshtml" />
     <Content Include="Views\Student\_History.cshtml" />
