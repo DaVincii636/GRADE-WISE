@@ -28,15 +28,15 @@
         <div class="gw-stat-label">Students</div>
     </div>
     <div class="gw-stat" data-tab="Average">
-        <div class="gw-stat-value">@GradeCalculator.Format(Model.Summary.Average)</div>
+        <div class="gw-stat-value">@(Model.Summary.Average.HasValue ? GradeCalculator.Format(Model.Summary.Average) + "%" : GradeCalculator.Format(Model.Summary.Average))</div>
         <div class="gw-stat-label">Class average</div>
     </div>
     <div class="gw-stat" data-tab="Highest">
-        <div class="gw-stat-value">@GradeCalculator.Format(Model.Summary.Highest)</div>
+        <div class="gw-stat-value">@(Model.Summary.Highest.HasValue ? GradeCalculator.Format(Model.Summary.Highest) + "%" : GradeCalculator.Format(Model.Summary.Highest))</div>
         <div class="gw-stat-label">Highest</div>
     </div>
     <div class="gw-stat" data-tab="Lowest">
-        <div class="gw-stat-value">@GradeCalculator.Format(Model.Summary.Lowest)</div>
+        <div class="gw-stat-value">@(Model.Summary.Lowest.HasValue ? GradeCalculator.Format(Model.Summary.Lowest) + "%" : GradeCalculator.Format(Model.Summary.Lowest))</div>
         <div class="gw-stat-label">Lowest</div>
     </div>
 </section>
@@ -84,14 +84,22 @@
                 <tbody>
                     @foreach (var bin in Model.Bins)
                     {
-                        <tr>
+                        var studentWord = Model.StudentCount == 1 ? "student" : "students";
+                        var tooltip = bin.Label + ": " + bin.PercentText + " (" + bin.Count + " of " + Model.StudentCount + " " + studentWord + ")";
+                        <tr title="@tooltip">
                             <th scope="row">@bin.Label</th>
                             <td class="gw-num">@bin.Count</td>
-                            <td class="gw-dist-col" aria-hidden="true">
-                                <div class="gw-bar-track">
+                            <td class="gw-dist-col">
+                                <div class="gw-bar-track" data-tooltip="@tooltip" aria-label="@tooltip">
                                     @if (bin.Count > 0)
                                     {
-                                        <div class="gw-bar" style="width:@(bin.BarPercent)%"></div>
+                                        <div class="gw-bar" style="width:@(GradeCalculator.Raw(bin.Percent))%">
+                                            <span class="gw-bar-label">@bin.PercentText</span>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <span class="gw-bar-label gw-bar-label-zero">@bin.PercentText</span>
                                     }
                                 </div>
                             </td>
@@ -99,10 +107,18 @@
                     }
                     @if (Model.NotGraded > 0)
                     {
-                        <tr class="gw-dist-none">
+                        var notGradedWord = Model.StudentCount == 1 ? "student" : "students";
+                        var notGradedTip = "Not graded yet: " + Model.NotGradedPercentText + " (" + Model.NotGraded + " of " + Model.StudentCount + " " + notGradedWord + ")";
+                        <tr class="gw-dist-none" title="@notGradedTip">
                             <th scope="row">Not graded yet</th>
                             <td class="gw-num">@Model.NotGraded</td>
-                            <td class="gw-dist-col"></td>
+                            <td class="gw-dist-col">
+                                <div class="gw-bar-track" data-tooltip="@notGradedTip" aria-label="@notGradedTip">
+                                    <div class="gw-bar" style="width:@(GradeCalculator.Raw(Model.NotGradedPercent))%">
+                                        <span class="gw-bar-label">@Model.NotGradedPercentText</span>
+                                    </div>
+                                </div>
+                            </td>
                         </tr>
                     }
                 </tbody>
@@ -110,7 +126,7 @@
                     <tr>
                         <th scope="row">Total</th>
                         <th class="gw-num">@Model.StudentCount</th>
-                        <th></th>
+                        <th class="gw-dist-total">100%</th>
                     </tr>
                 </tfoot>
             </table>
@@ -144,11 +160,13 @@
                 }
                 @foreach (var c in Model.Categories)
                 {
-                    <tr>
+                    var gradedPct = Model.StudentCount > 0 ? Math.Round(c.Graded * 100.0 / Model.StudentCount, 2) : 0;
+                    var gradedPctText = gradedPct.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture) + "%";
+                    <tr title="@c.Name: @gradedPctText graded (@c.Graded of @Model.StudentCount)">
                         <td>@c.Name</td>
                         <td class="gw-num">@GradeCalculator.Format(c.Weight)%</td>
-                        <td class="gw-num">@c.Graded of @Model.StudentCount</td>
-                        <td class="gw-num">@GradeCalculator.Format(c.Average)</td>
+                        <td class="gw-num">@c.Graded of @Model.StudentCount <span class="gw-muted">(@gradedPctText)</span></td>
+                        <td class="gw-num">@(c.Average.HasValue ? GradeCalculator.Format(c.Average) + "%" : GradeCalculator.Format(c.Average))</td>
                     </tr>
                 }
             </tbody>

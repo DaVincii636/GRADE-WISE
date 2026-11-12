@@ -1239,17 +1239,77 @@ input[type="range"] {
 }
 
 .gw-bar-track {
+    position: relative;
+    display: flex;
+    align-items: center;
     background: var(--gw-head);
     border: var(--gw-outline);
     border-radius: 0;
-    height: 18px;
-    overflow: hidden;
+    height: 24px;
+    transition: box-shadow 0.08s ease;
 }
 
 .gw-bar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    min-width: 2.5em;
     background: var(--gw-lime);
     border-right: var(--gw-outline);
-    height: 100%;
+    box-sizing: border-box;
+    max-width: 100%;
+    transition: width 0.2s ease;
+}
+
+.gw-bar-label {
+    color: var(--gw-ink);
+    font-size: 0.78rem;
+    font-weight: 700;
+    line-height: 1;
+    white-space: nowrap;
+    pointer-events: none;
+}
+
+.gw-bar-label-zero {
+    padding: 0 8px;
+    color: var(--gw-muted);
+}
+
+.gw-dist-total {
+    font-weight: 700;
+}
+
+.gw-dist-table tbody tr:hover .gw-bar-track {
+    box-shadow: 2px 2px 0 var(--gw-ink);
+}
+
+.gw-bar-track[data-tooltip]::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: calc(100% + 6px);
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 4px 10px;
+    background: var(--gw-ink);
+    color: var(--gw-paper);
+    border: var(--gw-outline);
+    box-shadow: 3px 3px 0 var(--gw-lime);
+    font-size: 0.8rem;
+    font-weight: 700;
+    line-height: 1.3;
+    white-space: nowrap;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    z-index: 10;
+    transition: opacity 0.1s ease;
+}
+
+.gw-bar-track[data-tooltip]:hover::after,
+.gw-dist-table tbody tr:hover .gw-bar-track[data-tooltip]::after {
+    opacity: 1;
+    visibility: visible;
 }
 
 .gw-chart {

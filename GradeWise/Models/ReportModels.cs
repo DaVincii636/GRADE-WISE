@@ -52,8 +52,16 @@ namespace GradeWise.Models
         /// <summary>How many students have an average in this range.</summary>
         public int Count { get; set; }
 
-        /// <summary>Bar length, 0 to 100, relative to the biggest range.</summary>
+        /// <summary>Percentage of enrolled students in this range (0 to 100), rounded to 2 decimals.</summary>
+        public double Percent { get; set; }
+
+        /// <summary>Bar length, 0 to 100, matching the percentage of students.</summary>
         public int BarPercent { get; set; }
+
+        public string PercentText
+        {
+            get { return Percent.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture) + "%"; }
+        }
     }
 
     /// <summary>Class-wide numbers for one grading category.</summary>
@@ -79,6 +87,14 @@ namespace GradeWise.Models
 
         /// <summary>Students with no score at all yet. They are not in any range.</summary>
         public int NotGraded { get; set; }
+
+        /// <summary>Percentage of enrolled students with no score yet (0 to 100), rounded to 2 decimals.</summary>
+        public double NotGradedPercent { get; set; }
+
+        public string NotGradedPercentText
+        {
+            get { return NotGradedPercent.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture) + "%"; }
+        }
 
         public double WeightTotal { get; set; }
         public ClassSummary Summary { get; set; }

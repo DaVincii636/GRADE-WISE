@@ -31,12 +31,14 @@ namespace GradeWise.Services
             var summary = GradeCalculator.Summarize(averages);
             var bins = GradeCalculator.Distribution(averages);
 
-            var biggest = Math.Max(1, bins.Max(b => b.Count));
+            var totalStudents = Math.Max(1, students.Count);
             foreach (var bin in bins)
             {
-                bin.BarPercent = (int)Math.Round(bin.Count * 100.0 / biggest);
+                bin.Percent = Math.Round(bin.Count * 100.0 / totalStudents, 2);
+                bin.BarPercent = (int)Math.Round(bin.Percent);
             }
 
+            var notGradedCount = students.Count - summary.Graded;
             var model = new AnalyticsViewModel
             {
                 CourseId = course.Id,
@@ -44,7 +46,8 @@ namespace GradeWise.Services
                 Name = course.Name,
                 Term = course.Term,
                 StudentCount = students.Count,
-                NotGraded = students.Count - summary.Graded,
+                NotGraded = notGradedCount,
+                NotGradedPercent = Math.Round(notGradedCount * 100.0 / totalStudents, 2),
                 WeightTotal = GradeCalculator.TotalWeight(course.Categories),
                 Summary = summary,
                 Bins = bins
