@@ -22,6 +22,10 @@ namespace GradeWise
             bundles.Add(new Bundle("~/bundles/bootstrap").Include(
                       "~/Scripts/bootstrap.js"));
 
+            // Shared modal dialogs (GW.confirm, GW.alert, GW.modal, data-confirm).
+            bundles.Add(new ScriptBundle("~/bundles/gwmodal").Include(
+                      "~/Scripts/gw-modal.js"));
+
             bundles.Add(new StyleBundle("~/Content/css").Include(
                       "~/Content/bootstrap.css",
                       "~/Content/site.css"));

@@ -2740,3 +2740,26 @@ body.gw-modal-open {
         width: 100%;
     }
 }
+
+/* ---------- Phase 2: shared modal component (GW.confirm / GW.alert) ---------- */
+.gw-modal-card--sm {
+    max-width: 420px;
+}
+
+.gw-modal-body p {
+    margin: 0;
+}
+
+/* the dialog from gw-modal.js always sits above any markup-defined modal that opened it */
+.gw-modal-backdrop--top {
+    z-index: 1060;
+}
+
+.gw-modal-foot {
+    gap: 10px;
+}
+
+/* danger tone: pale orange footer, so a destructive question looks different at a glance */
+.gw-modal-foot--danger {
+    background: #fdeadd;
+}

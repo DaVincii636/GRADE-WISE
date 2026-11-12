@@ -230,14 +230,30 @@ namespace GradeWise.Services
         }
 
         // Lowest average (percent) for each equivalent grade, highest first. Anything below the last
-        // line is 5.00 (failed). This is the common 1.00 to 5.00 scale used in Philippine universities;
-        // change the numbers here if the school uses a different table.
+        // line (65) is 5.00 (failed). Lower bounds only, no rounding: 96.99 is 1.25 and 64.99 is 5.00.
+        // Change the numbers here if the registrar uses a different table; the What-If page reads this
+        // table from the server, so nothing else needs editing.
+        //
+        // Boundary checks (average -> equivalent):
+        //   100 -> 1.00   97 -> 1.00   96.99 -> 1.25   93 -> 1.25   92.99 -> 1.50   89 -> 1.50
+        //   88.99 -> 1.75   85 -> 1.75   84.99 -> 2.00   81 -> 2.00   80.99 -> 2.25   77 -> 2.25
+        //   76.99 -> 2.50   73 -> 2.50   72.99 -> 2.75   69 -> 2.75   68.99 -> 3.00   65 -> 3.00
+        //   64.99 -> 5.00   0 -> 5.00
         private static readonly double[][] GradeScale =
         {
-            new[] { 97.0, 1.00 }, new[] { 94.0, 1.25 }, new[] { 91.0, 1.50 },
-            new[] { 88.0, 1.75 }, new[] { 85.0, 2.00 }, new[] { 82.0, 2.25 },
-            new[] { 79.0, 2.50 }, new[] { 76.0, 2.75 }, new[] { 75.0, 3.00 }
+            new[] { 97.0, 1.00 }, new[] { 93.0, 1.25 }, new[] { 89.0, 1.50 },
+            new[] { 85.0, 1.75 }, new[] { 81.0, 2.00 }, new[] { 77.0, 2.25 },
+            new[] { 73.0, 2.50 }, new[] { 69.0, 2.75 }, new[] { 65.0, 3.00 }
         };
+
+        /// <summary>Lowest average (percent) that passes.</summary>
+        public const double PassingAverage = 65.0;
+
+        /// <summary>True when the average is at least the passing average. No average means not passing.</summary>
+        public static bool IsPassing(double? average)
+        {
+            return average.HasValue && Math.Round(average.Value, 6) >= PassingAverage;
+        }
 
         public const double FailingGrade = 5.00;
 
