@@ -3234,3 +3234,40 @@ body.gw-modal-open {
 .gw-history-more [hidden] {
     display: none !important;
 }
+
+/* ---------- Plan 2, Phase 2 ---------- */
+.gw-scope {
+    margin: 0 0 16px;
+}
+
+.gw-scope-form {
+    margin: 0;
+}
+
+.gw-scope-toggle {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.gw-scope-note {
+    margin: 6px 0 0;
+    color: var(--gw-muted);
+    font-size: 0.9rem;
+}
+
+.gw-field-static {
+    padding: 10px 14px;
+    background: var(--gw-paper);
+    color: var(--gw-ink);
+}
+
+.gw-editcourse-form {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+.gw-editcourse-form .gw-modal-foot {
+    gap: 10px;
+}

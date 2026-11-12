@@ -29,8 +29,9 @@ namespace GradeWise.Services
             var courses = db.Courses.Find(c => c.FacultyId == facultyId).SortBy(c => c.Code).ToList();
             foreach (var course in courses)
             {
+                var scope = GradeScopes.Normalize(course.ReflectedScope);
                 var rows = BuildRows(db, course, null);
-                var summary = GradeCalculator.Summarize(rows.Select(r => r.Result.EarnedOrNull));
+                var summary = GradeCalculator.Summarize(rows.Select(r => r.ScopeResult.EarnedOrNull));
                 var missing = rows.Sum(r => r.Inputs.Count(string.IsNullOrEmpty));
 
                 model.Courses.Add(new CourseListItem
@@ -44,6 +45,7 @@ namespace GradeWise.Services
                     CategoryCount = course.Categories.Count,
                     WeightTotal = GradeCalculator.TotalWeight(course.Categories),
                     ClassAverage = summary.Average,
+                    ScopeLabel = GradeScopes.Label(scope),
                     MissingScores = missing
                 });
             }
@@ -81,43 +83,14 @@ namespace GradeWise.Services
         /// <summary>Creates a course owned by the faculty member. Returns the new id, or null when there are errors.</summary>
         public static string CreateCourse(string facultyId, string code, string name, string section, string term, out List<string> errors)
         {
-            errors = new List<string>();
             code = (code ?? string.Empty).Trim();
             name = (name ?? string.Empty).Trim();
             section = (section ?? string.Empty).Trim();
             term = (term ?? string.Empty).Trim();
 
-            if (code.Length == 0) errors.Add("Course code is required.");
-            else if (code.Length > MaxCodeLength) errors.Add("Course code must be " + MaxCodeLength + " characters or fewer.");
-
-            if (name.Length == 0) errors.Add("Course name is required.");
-            else if (name.Length > MaxNameLength) errors.Add("Course name must be " + MaxNameLength + " characters or fewer.");
-
-            if (section.Length > 0 &&
-                !GetAvailableSections().Any(x => string.Equals(x, section, StringComparison.OrdinalIgnoreCase)))
-            {
-                errors.Add("Choose a section from the list.");
-            }
-
             var db = new MongoDbContext();
-            var chosenTerm = db.Terms.Find(t => t.Name.ToLower() == term.ToLower()).FirstOrDefault();
-            if (chosenTerm == null)
-            {
-                errors.Add("Choose a term from the list.");
-            }
-
-            if (errors.Count == 0)
-            {
-                var existingCourse = db.Courses.Find(c =>
-                    c.FacultyId == facultyId &&
-                    c.Code.ToLower() == code.ToLower() &&
-                    c.Term.ToLower() == chosenTerm.Name.ToLower()).FirstOrDefault();
-
-                if (existingCourse != null)
-                {
-                    errors.Add("You already have a course with that code in this term.");
-                }
-            }
+            AcademicTerm chosenTerm;
+            errors = ValidateCourseFields(db, facultyId, null, code, name, section, true, term, out chosenTerm);
 
             if (errors.Count > 0) return null;
 
@@ -135,6 +108,105 @@ namespace GradeWise.Services
             return course.Id;
         }
 
+        /// <summary>
+        /// The rules shared by Create and Edit. excludeCourseId is the course being edited (null when creating),
+        /// so saving a course without changing its code is not a duplicate of itself.
+        /// </summary>
+        private static List<string> ValidateCourseFields(MongoDbContext db, string facultyId, string excludeCourseId,
+            string code, string name, string section, bool checkSection, string term, out AcademicTerm chosenTerm)
+        {
+            var errors = new List<string>();
+
+            if (code.Length == 0) errors.Add("Course code is required.");
+            else if (code.Length > MaxCodeLength) errors.Add("Course code must be " + MaxCodeLength + " characters or fewer.");
+
+            if (name.Length == 0) errors.Add("Course name is required.");
+            else if (name.Length > MaxNameLength) errors.Add("Course name must be " + MaxNameLength + " characters or fewer.");
+
+            if (checkSection && section.Length > 0 &&
+                !GetAvailableSections().Any(x => string.Equals(x, section, StringComparison.OrdinalIgnoreCase)))
+            {
+                errors.Add("Choose a section from the list.");
+            }
+
+            var termKey = term.ToLower();
+            chosenTerm = db.Terms.Find(t => t.Name.ToLower() == termKey).FirstOrDefault();
+            if (chosenTerm == null)
+            {
+                errors.Add("Choose a term from the list.");
+            }
+
+            if (errors.Count == 0)
+            {
+                var codeKey = code.ToLower();
+                var termName = chosenTerm.Name.ToLower();
+                var exclude = excludeCourseId ?? string.Empty;   // course ids are never empty, so "" excludes nothing
+
+                var existingCourse = db.Courses.Find(c =>
+                    c.FacultyId == facultyId &&
+                    c.Id != exclude &&
+                    c.Code.ToLower() == codeKey &&
+                    c.Term.ToLower() == termName).FirstOrDefault();
+
+                if (existingCourse != null)
+                {
+                    errors.Add("You already have a course with that code in this term.");
+                }
+            }
+
+            return errors;
+        }
+
+        /// <summary>Changes the code, name, section and term of a course the faculty member owns.</summary>
+        public static bool UpdateCourse(string courseId, string facultyId, string code, string name, string section, string term, out List<string> errors)
+        {
+            var db = new MongoDbContext();
+            var course = FindOwned(db, courseId, facultyId);
+            if (course == null)
+            {
+                errors = new List<string> { "That course was not found." };
+                return false;
+            }
+
+            code = (code ?? string.Empty).Trim();
+            name = (name ?? string.Empty).Trim();
+            term = (term ?? string.Empty).Trim();
+
+            // No section field posted (the window showed it as read-only text): keep the stored value.
+            // A section is checked against the list only when it was changed.
+            var stored = course.Section ?? string.Empty;
+            section = section == null ? stored : section.Trim();
+            var sectionChanged = !string.Equals(section, stored, StringComparison.OrdinalIgnoreCase);
+            if (!sectionChanged) section = stored;
+
+            AcademicTerm chosenTerm;
+            errors = ValidateCourseFields(db, facultyId, course.Id, code, name, section, sectionChanged, term, out chosenTerm);
+            if (errors.Count > 0) return false;
+
+            // Categories, enrolled students, scores and history are keyed by course id, so they are untouched.
+            var courseKey = course.Id;
+            var update = Builders<Course>.Update
+                .Set(c => c.Code, code)
+                .Set(c => c.Name, name)
+                .Set(c => c.Section, section)
+                .Set(c => c.Term, chosenTerm.Name);
+            db.Courses.UpdateOne(c => c.Id == courseKey && c.FacultyId == facultyId, update);
+            return true;
+        }
+
+        /// <summary>Sets which numbers the course reflects. Returns false when the course is not the faculty member's.</summary>
+        public static bool SetReflectedScope(string courseId, string facultyId, string scope)
+        {
+            if (string.IsNullOrEmpty(courseId) || string.IsNullOrEmpty(facultyId)) return false;
+
+            var db = new MongoDbContext();
+            var saved = GradeScopes.Normalize(scope);
+            var result = db.Courses.UpdateOne(
+                c => c.Id == courseId && c.FacultyId == facultyId,
+                Builders<Course>.Update.Set(c => c.ReflectedScope, saved));
+            return result.MatchedCount > 0;
+        }
+
         // ---------- course detail and score entry ----------
 
         /// <summary>Tab names the Course page accepts. Anything else (or nothing) opens the Midterm tab.</summary>
@@ -150,8 +222,27 @@ namespace GradeWise.Services
             if (course == null) return null;
 
             var rows = BuildRows(db, course, raw);
+            var scope = GradeScopes.Normalize(course.ReflectedScope);
+            var summary = GradeCalculator.Summarize(rows.Select(r => r.ScopeResult.EarnedOrNull));
+
+            var terms = db.Terms.Find(_ => true).ToList();
+            var edit = new CreateCourseViewModel
+            {
+                Code = course.Code,
+                Name = course.Name,
+                Section = course.Section,
+                Term = course.Term,
+                SectionNames = GetAvailableSections(),
+                TermNames = terms.Select(t => t.Name).ToList()
+            };
+
             return new CourseDetailViewModel
             {
+                Scope = scope,
+                ScopeLabel = GradeScopes.Label(scope),
+                ScopeReady = GradeCalculator.ScopeReady(course.Categories, scope),
+                Equivalent = GradeCalculator.EquivalentGrade(summary.Average),
+                EditCourse = edit,
                 CourseId = course.Id,
                 Code = course.Code,
                 Name = course.Name,
@@ -159,11 +250,12 @@ namespace GradeWise.Services
                 Section = course.Section,
                 Categories = course.Categories.Select(c => new GradeCategory { Name = c.Name, Weight = c.Weight, Period = GradePeriods.Normalize(c.Period) }).ToList(),
                 WeightTotal = GradeCalculator.TotalWeight(course.Categories),
-                ActiveTab = NormalizeTab(tab),
+                // No tab asked for: open on the scope the course reflects.
+                ActiveTab = string.IsNullOrEmpty(tab) ? scope : NormalizeTab(tab),
                 MidtermTotal = GradeCalculator.PeriodTotal(course.Categories, GradePeriods.Midterm),
                 FinalTotal = GradeCalculator.PeriodTotal(course.Categories, GradePeriods.FinalTerm),
                 Rows = rows,
-                Summary = GradeCalculator.Summarize(rows.Select(r => r.Result.EarnedOrNull))
+                Summary = summary
             };
         }
 
@@ -635,10 +727,25 @@ namespace GradeWise.Services
                 .SortBy(u => u.FullName)
                 .ToList();
 
+            // One query for every enrolled student's scores (instead of one per student).
+            var courseId = course.Id;
+            var enrolled = course.StudentIds;
+            var records = db.Grades.Find(g => g.CourseId == courseId && enrolled.Contains(g.StudentId)).ToList();
+            var byStudent = new Dictionary<string, List<ScoreEntry>>();
+            foreach (var r in records)
+            {
+                if (r.StudentId != null && !byStudent.ContainsKey(r.StudentId))
+                {
+                    byStudent[r.StudentId] = r.Scores ?? new List<ScoreEntry>();
+                }
+            }
+
+            var scope = GradeScopes.Normalize(course.ReflectedScope);
+
             foreach (var student in students)
             {
-                var record = db.Grades.Find(g => g.CourseId == course.Id && g.StudentId == student.Id).FirstOrDefault();
-                var scores = record == null ? new List<ScoreEntry>() : record.Scores;
+                List<ScoreEntry> scores;
+                if (!byStudent.TryGetValue(student.Id, out scores)) scores = new List<ScoreEntry>();
 
                 var row = new ScoreRow
                 {
@@ -647,7 +754,8 @@ namespace GradeWise.Services
                     FullName = student.FullName,
                     Result = GradeCalculator.Calculate(course.Categories, scores),
                     MidtermResult = GradeCalculator.CalculatePeriod(course.Categories, scores, GradePeriods.Midterm),
-                    FinalResult = GradeCalculator.CalculatePeriod(course.Categories, scores, GradePeriods.FinalTerm)
+                    FinalResult = GradeCalculator.CalculatePeriod(course.Categories, scores, GradePeriods.FinalTerm),
+                    ScopeResult = GradeCalculator.CalculateScope(course.Categories, scores, scope)
                 };
 
                 foreach (var category in course.Categories)

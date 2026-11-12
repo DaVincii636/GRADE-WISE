@@ -79,7 +79,7 @@
                                 {
                                     <span class="gw-status gw-status-warn">No weights set</span>
                                 }
-                                &middot; class average @GradeCalculator.Format(c.ClassAverage)
+                                &middot; class average @GradeCalculator.Format(c.ClassAverage) (@c.ScopeLabel)
                             </span>
                         </span>
                         <a href="@Url.Action("Course", "Faculty", new { id = c.Id })" class="gw-collection-go" aria-label="Open @c.Code">

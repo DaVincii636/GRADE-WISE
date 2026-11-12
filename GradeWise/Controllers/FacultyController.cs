@@ -66,6 +66,45 @@ namespace GradeWise.Controllers
             return View(model);
         }
 
+        // POST: /Faculty/SetScope/{id}
+        // Faculty choose which numbers the course reflects. Students see the same numbers.
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public ActionResult SetScope(string id, string scope)
+        {
+            var facultyId = CurrentFacultyId();
+            if (CourseService.GetDetail(id, facultyId, null) == null) return HttpNotFound();
+
+            if (!CourseService.SetReflectedScope(id, facultyId, scope)) return HttpNotFound();
+
+            TempData["Message"] = "Now showing " + GradeScopes.Label(scope) + " numbers.";
+            return RedirectToAction("Course", new { id = id });   // no tab: opens on the new scope
+        }
+
+        // POST: /Faculty/EditCourse/{id}
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public ActionResult EditCourse(string id, string code, string name, string section, string term)
+        {
+            var facultyId = CurrentFacultyId();
+            if (CourseService.GetDetail(id, facultyId, null) == null) return HttpNotFound();
+
+            List<string> errors;
+            if (!CourseService.UpdateCourse(id, facultyId, code, name, section, term, out errors))
+            {
+                // Go back to the course; the window opens again by itself with the problems and what was typed.
+                TempData["EditCourseErrors"] = errors;
+                TempData["EditCourseCode"] = code ?? string.Empty;
+                TempData["EditCourseName"] = name ?? string.Empty;
+                TempData["EditCourseSection"] = section;
+                TempData["EditCourseTerm"] = term ?? string.Empty;
+                return RedirectToAction("Course", new { id = id });
+            }
+
+            TempData["Message"] = "Course updated.";
+            return RedirectToAction("Course", new { id = id });
+        }
+
         // GET: /Faculty/Analytics/{id}
         public ActionResult Analytics(string id)
         {

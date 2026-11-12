@@ -34,6 +34,12 @@ namespace GradeWise.Models
         /// <summary>Id of the faculty user who owns the course.</summary>
         public string FacultyId { get; set; }
 
+        /// <summary>
+        /// Which numbers the course reflects: "midterm" (default), "final-term" or "final-grade".
+        /// Documents saved before this field existed load as midterm. Read it with GradeScopes.Normalize.
+        /// </summary>
+        public string ReflectedScope { get; set; } = GradeScopes.Midterm;
+
         public List<GradeCategory> Categories { get; set; } = new List<GradeCategory>();
 
         /// <summary>Ids of enrolled student users.</summary>

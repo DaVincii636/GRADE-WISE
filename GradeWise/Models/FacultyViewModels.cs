@@ -15,7 +15,11 @@ namespace GradeWise.Models
         public int StudentCount { get; set; }
         public int CategoryCount { get; set; }
         public double WeightTotal { get; set; }
+        /// <summary>Class average for the course's reflected scope.</summary>
         public double? ClassAverage { get; set; }
+
+        /// <summary>Label of that scope, e.g. "Midterm".</summary>
+        public string ScopeLabel { get; set; }
 
         /// <summary>Student-category cells that still have no score.</summary>
         public int MissingScores { get; set; }
@@ -49,6 +53,9 @@ namespace GradeWise.Models
 
         /// <summary>Final Term only (raw weights, out of 100).</summary>
         public GradeResult FinalResult { get; set; }
+
+        /// <summary>Result for the course's reflected scope (what the boxes and the class numbers use).</summary>
+        public GradeResult ScopeResult { get; set; }
     }
 
     public class CourseDetailViewModel
@@ -90,6 +97,20 @@ namespace GradeWise.Models
                     && GradeCalculator.IsFullWeight(FinalTotal);
             }
         }
+
+        /// <summary>The course's reflected scope key: "midterm", "final-term" or "final-grade".</summary>
+        public string Scope { get; set; } = GradeScopes.Midterm;
+
+        public string ScopeLabel { get; set; }
+
+        /// <summary>The scope has categories and they total 100 (Final Grade: both periods).</summary>
+        public bool ScopeReady { get; set; }
+
+        /// <summary>Equivalent grade of the class average for the scope.</summary>
+        public double? Equivalent { get; set; }
+
+        /// <summary>Current values and choices for the Edit course window.</summary>
+        public CreateCourseViewModel EditCourse { get; set; } = new CreateCourseViewModel();
 
         public List<ScoreRow> Rows { get; set; } = new List<ScoreRow>();
         public ClassSummary Summary { get; set; }

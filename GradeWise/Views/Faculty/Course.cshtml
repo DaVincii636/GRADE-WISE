@@ -6,6 +6,15 @@
 
     var message = TempData["Message"] as string;
     var error = TempData["Error"] as string;
+
+    // The Edit course window: current values, or what was typed when the last save failed.
+    var editErrors = TempData["EditCourseErrors"] as List<string> ?? new List<string>();
+    var edit = Model.EditCourse;
+    var editCode = TempData["EditCourseCode"] as string ?? edit.Code;
+    var editName = TempData["EditCourseName"] as string ?? edit.Name;
+    var editSection = TempData["EditCourseSection"] as string ?? edit.Section;
+    var editTerm = TempData["EditCourseTerm"] as string ?? edit.Term;
+    var dash = "\u2014";
 }
 
 <h1 class="gw-page-title">@Model.Code &middot; @Model.Name</h1>
@@ -65,22 +74,55 @@ else if (!Model.PeriodsOk)
     </div>
 }
 
+<div class="gw-scope">
+    @using (Html.BeginForm("SetScope", "Faculty", new { id = Model.CourseId }, FormMethod.Post, new { @class = "gw-scope-form" }))
+    {
+        @Html.AntiForgeryToken()
+        <div class="gw-scope-toggle" role="group" aria-label="Grade scope">
+            @foreach (var key in GradeScopes.All)
+            {
+                var on = key == Model.Scope;
+                <button type="submit" name="scope" value="@key" class="gw-btn gw-btn-small @(on ? "gw-scope-on" : "gw-btn-outline")" aria-pressed="@(on ? "true" : "false")">@GradeScopes.Label(key)</button>
+            }
+        </div>
+        <p class="gw-scope-note">Students see the same numbers.</p>
+    }
+</div>
+
+@if (!Model.ScopeReady)
+{
+    <div class="gw-alert gw-alert-warn" role="status">
+        @if (Model.Scope == GradeScopes.FinalGrade)
+        {
+            <text>Final Grade numbers show dashes until both Midterm and Final Term have categories and each totals 100%.</text>
+        }
+        else
+        {
+            <text>@Model.ScopeLabel numbers show dashes until its categories are set and total 100%.</text>
+        }
+    </div>
+}
+
 <section class="gw-stats" aria-label="Class summary">
     <div class="gw-stat" data-tab="Students">
         <div class="gw-stat-value">@Model.Rows.Count</div>
         <div class="gw-stat-label">Students</div>
     </div>
     <div class="gw-stat" data-tab="Average">
-        <div class="gw-stat-value">@GradeCalculator.Format(Model.Summary.Average)</div>
-        <div class="gw-stat-label">Class average (earned)</div>
+        <div class="gw-stat-value">@(Model.ScopeReady ? GradeCalculator.Format(Model.Summary.Average) : dash)</div>
+        <div class="gw-stat-label">Class average (@Model.ScopeLabel)</div>
     </div>
     <div class="gw-stat" data-tab="Highest">
-        <div class="gw-stat-value">@GradeCalculator.Format(Model.Summary.Highest)</div>
-        <div class="gw-stat-label">Highest</div>
+        <div class="gw-stat-value">@(Model.ScopeReady ? GradeCalculator.Format(Model.Summary.Highest) : dash)</div>
+        <div class="gw-stat-label">Highest (@Model.ScopeLabel)</div>
     </div>
     <div class="gw-stat" data-tab="Lowest">
-        <div class="gw-stat-value">@GradeCalculator.Format(Model.Summary.Lowest)</div>
-        <div class="gw-stat-label">Lowest</div>
+        <div class="gw-stat-value">@(Model.ScopeReady ? GradeCalculator.Format(Model.Summary.Lowest) : dash)</div>
+        <div class="gw-stat-label">Lowest (@Model.ScopeLabel)</div>
+    </div>
+    <div class="gw-stat" data-tab="Equivalent">
+        <div class="gw-stat-value">@(Model.ScopeReady ? GradeCalculator.Format(Model.Equivalent) : dash)</div>
+        <div class="gw-stat-label">Class equivalent (@Model.ScopeLabel)</div>
     </div>
 </section>
 
@@ -101,10 +143,14 @@ else if (!Model.PeriodsOk)
         <img src="@Url.Content("~/Content/img/icons/calendar.svg")" alt="" width="24" height="24" />
         <span>Analytics</span>
     </a>
-    <a href="@Url.Action("ExportCsv", "Faculty", new { id = Model.CourseId })" class="gw-iconbtn gw-iconbtn-text" title="Export CSV">
+    <a href="@Url.Action("ExportCsv", "Faculty", new { id = Model.CourseId, scope = Model.Scope })" class="gw-iconbtn gw-iconbtn-text" title="Export CSV">
         <img src="@Url.Content("~/Content/img/icons/download.svg")" alt="" width="24" height="24" />
         <span>Export CSV</span>
     </a>
+    <button type="button" class="gw-iconbtn gw-iconbtn-text" data-modal-open="gw-editcourse-modal" aria-haspopup="dialog" title="Edit course">
+        <img src="@Url.Content("~/Content/img/icons/edit.svg")" alt="" width="24" height="24" />
+        <span>Edit course</span>
+    </button>
 </div>
 
 <section class="gw-panel">
@@ -263,6 +309,84 @@ else if (!Model.PeriodsOk)
         }
     }
 </section>
+
+<div id="gw-editcourse-modal" class="gw-modal-backdrop" hidden @(editErrors.Count > 0 ? "data-open-on-load" : null)>
+    <div class="gw-panel gw-card-raised gw-modal-card" role="dialog" aria-modal="true" aria-labelledby="gw-editcourse-title">
+        <div class="gw-panel-head">
+            <h2 id="gw-editcourse-title" class="gw-panel-title">Edit course</h2>
+        </div>
+        <div class="gw-modal-top">
+            <div class="gw-modal-meta">
+                <span class="gw-muted">Change the code, name, section or term. Categories, students and scores stay as they are.</span>
+            </div>
+            <button type="button" class="gw-iconbtn gw-modal-close" data-modal-close aria-label="Close" title="Close">
+                <img src="@Url.Content("~/Content/img/icons/close.svg")" alt="" width="20" height="20" />
+            </button>
+        </div>
+
+        @using (Html.BeginForm("EditCourse", "Faculty", new { id = Model.CourseId }, FormMethod.Post, new { @class = "gw-editcourse-form" }))
+        {
+            @Html.AntiForgeryToken()
+            <div class="gw-panel-body gw-editinfo-body">
+                @if (editErrors.Count > 0)
+                {
+                    <div class="gw-alert" role="alert">
+                        <strong>The course was not changed.</strong>
+                        <ul class="gw-error-list">
+                            @foreach (var e in editErrors)
+                            {
+                                <li>@e</li>
+                            }
+                        </ul>
+                    </div>
+                }
+
+                <div class="gw-field">
+                    <label for="gw-ec-code">Course code</label>
+                    <input type="text" id="gw-ec-code" name="code" value="@editCode" maxlength="20" required data-autofocus />
+                </div>
+                <div class="gw-field">
+                    <label for="gw-ec-name">Course name</label>
+                    <input type="text" id="gw-ec-name" name="name" value="@editName" maxlength="100" required />
+                </div>
+                @if (edit.SectionNames.Count > 0)
+                {
+                    <div class="gw-field">
+                        <label for="gw-ec-section">Section</label>
+                        <select id="gw-ec-section" name="section">
+                            <option value="">No section</option>
+                            @foreach (var s in edit.SectionNames)
+                            {
+                                <option value="@s" selected="@(s == editSection)">@s</option>
+                            }
+                        </select>
+                    </div>
+                }
+                else
+                {
+                    <div class="gw-field">
+                        <label>Section</label>
+                        <div class="gw-field-static">@(string.IsNullOrWhiteSpace(edit.Section) ? "No section" : edit.Section)</div>
+                    </div>
+                }
+                <div class="gw-field">
+                    <label for="gw-ec-term">Term</label>
+                    <select id="gw-ec-term" name="term" required>
+                        @foreach (var t in edit.TermNames)
+                        {
+                            <option value="@t" selected="@(t == editTerm)">@t</option>
+                        }
+                    </select>
+                </div>
+            </div>
+
+            <div class="gw-modal-foot">
+                <button type="submit" class="gw-btn">Save changes</button>
+                <button type="button" class="gw-btn gw-btn-outline" data-modal-close>Cancel</button>
+            </div>
+        }
+    </div>
+</div>
 
 @section scripts {
     <script>

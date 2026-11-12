@@ -20,4 +20,51 @@ namespace GradeWise.Models
             return period == FinalTerm ? FinalTerm : Midterm;
         }
     }
+
+    /// <summary>
+    /// The "grade scope" of a course: which numbers students and faculty see.
+    /// The keys match the tab keys of the faculty Course page. Anything else means Midterm.
+    /// </summary>
+    public static class GradeScopes
+    {
+        public const string Midterm = "midterm";
+        public const string FinalTerm = "final-term";
+        public const string FinalGrade = "final-grade";
+
+        public static readonly string[] All = { Midterm, FinalTerm, FinalGrade };
+
+        /// <summary>The key when it is valid, otherwise Midterm (so old and bad values are safe).</summary>
+        public static string Normalize(string scope)
+        {
+            return scope == FinalTerm || scope == FinalGrade ? scope : Midterm;
+        }
+
+        public static string Label(string scope)
+        {
+            switch (Normalize(scope))
+            {
+                case FinalTerm: return "Final Term";
+                case FinalGrade: return "Final Grade";
+                default: return "Midterm";
+            }
+        }
+
+        /// <summary>The grading period behind a scope, or null for Final Grade (both periods).</summary>
+        public static string PeriodOf(string scope)
+        {
+            switch (Normalize(scope))
+            {
+                case FinalTerm: return GradePeriods.FinalTerm;
+                case FinalGrade: return null;
+                default: return GradePeriods.Midterm;
+            }
+        }
+
+        /// <summary>True when the category counts in this scope (every category counts in Final Grade).</summary>
+        public static bool Includes(string scope, GradeCategory category)
+        {
+            var period = PeriodOf(scope);
+            return period == null || GradePeriods.Normalize(category.Period) == period;
+        }
+    }
 }

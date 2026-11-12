@@ -157,6 +157,52 @@ namespace GradeWise.Services
                 .Sum(c => c.Weight);
         }
 
+        // ---------- grade scope (Midterm / Final Term / Final Grade) ----------
+
+        /// <summary>Result for a scope: one period with raw weights, or the whole course with effective weights.</summary>
+        public static GradeResult CalculateScope(IEnumerable<GradeCategory> categories, IEnumerable<ScoreEntry> scores, string scope)
+        {
+            var period = GradeScopes.PeriodOf(scope);
+            return period == null
+                ? Calculate(categories, scores)
+                : CalculatePeriod(categories, scores, period);
+        }
+
+        /// <summary>The weight a category counts for in a scope (raw inside a period, effective for Final Grade).</summary>
+        public static double ScopeWeight(GradeCategory category, string scope)
+        {
+            return GradeScopes.PeriodOf(scope) == null ? EffectiveWeight(category) : category.Weight;
+        }
+
+        /// <summary>The categories that belong to a scope.</summary>
+        public static IEnumerable<GradeCategory> ScopeCategories(IEnumerable<GradeCategory> categories, string scope)
+        {
+            return (categories ?? Enumerable.Empty<GradeCategory>()).Where(c => GradeScopes.Includes(scope, c));
+        }
+
+        /// <summary>Weight total of a scope (100 once it is set up).</summary>
+        public static double ScopeTotal(IEnumerable<GradeCategory> categories, string scope)
+        {
+            return ScopeCategories(categories, scope).Sum(c => ScopeWeight(c, scope));
+        }
+
+        /// <summary>
+        /// True when the scope has categories and they total 100. For Final Grade both periods
+        /// must be set and each must total 100.
+        /// </summary>
+        public static bool ScopeReady(IEnumerable<GradeCategory> categories, string scope)
+        {
+            var list = (categories ?? Enumerable.Empty<GradeCategory>()).ToList();
+
+            if (GradeScopes.PeriodOf(scope) == null)
+            {
+                return GradePeriods.All.All(p =>
+                    list.Any(c => GradePeriods.Normalize(c.Period) == p) && IsFullWeight(PeriodTotal(list, p)));
+            }
+
+            return ScopeCategories(list, scope).Any() && IsFullWeight(ScopeTotal(list, scope));
+        }
+
         /// <summary>Equivalent grade of the points earned (zero-based). Null when nothing is graded, so reports show a dash.</summary>
         public static double? EquivalentFromEarned(GradeResult result)
         {
