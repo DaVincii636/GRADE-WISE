@@ -2864,3 +2864,16 @@ body.gw-modal-open {
         padding: 8px 10px;
     }
 }
+
+/* ---------- Phase 4: Course page tabs (uses the Phase 3b .gw-tabs classes) ---------- */
+.gw-tabs-wrap {
+    padding-bottom: 0;
+}
+
+    .gw-tabs-wrap .gw-tabs {
+        margin-bottom: 0;
+    }
+
+.gw-note-first {
+    margin-top: 0;
+}

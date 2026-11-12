@@ -41,7 +41,14 @@ namespace GradeWise.Models
         /// <summary>True for each box whose text is not a valid score.</summary>
         public List<bool> Invalid { get; set; } = new List<bool>();
 
+        /// <summary>Whole-course result (effective weights, out of 100).</summary>
         public GradeResult Result { get; set; }
+
+        /// <summary>Midterm only (raw weights, out of 100).</summary>
+        public GradeResult MidtermResult { get; set; }
+
+        /// <summary>Final Term only (raw weights, out of 100).</summary>
+        public GradeResult FinalResult { get; set; }
     }
 
     public class CourseDetailViewModel
@@ -53,6 +60,37 @@ namespace GradeWise.Models
         public string Section { get; set; }
         public List<GradeCategory> Categories { get; set; } = new List<GradeCategory>();
         public double WeightTotal { get; set; }
+
+        /// <summary>Selected tab: "midterm" (default), "final-term" or "final-grade".</summary>
+        public string ActiveTab { get; set; } = "midterm";
+
+        /// <summary>Raw weight total of the Midterm categories (should be 100).</summary>
+        public double MidtermTotal { get; set; }
+
+        /// <summary>Raw weight total of the Final Term categories (should be 100).</summary>
+        public double FinalTotal { get; set; }
+
+        public bool MidtermSet
+        {
+            get { return Categories.Exists(c => GradePeriods.Normalize(c.Period) == GradePeriods.Midterm); }
+        }
+
+        public bool FinalSet
+        {
+            get { return Categories.Exists(c => GradePeriods.Normalize(c.Period) == GradePeriods.FinalTerm); }
+        }
+
+        /// <summary>Both periods have categories and each totals 100.</summary>
+        public bool PeriodsOk
+        {
+            get
+            {
+                return MidtermSet && FinalSet
+                    && GradeCalculator.IsFullWeight(MidtermTotal)
+                    && GradeCalculator.IsFullWeight(FinalTotal);
+            }
+        }
+
         public List<ScoreRow> Rows { get; set; } = new List<ScoreRow>();
         public ClassSummary Summary { get; set; }
         public List<string> Errors { get; set; } = new List<string>();

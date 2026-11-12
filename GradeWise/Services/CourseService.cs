@@ -137,7 +137,13 @@ namespace GradeWise.Services
 
         // ---------- course detail and score entry ----------
 
-        public static CourseDetailViewModel GetDetail(string courseId, string facultyId, Func<string, string> raw)
+        /// <summary>Tab names the Course page accepts. Anything else (or nothing) opens the Midterm tab.</summary>
+        public static string NormalizeTab(string tab)
+        {
+            return tab == "final-term" || tab == "final-grade" ? tab : "midterm";
+        }
+
+        public static CourseDetailViewModel GetDetail(string courseId, string facultyId, Func<string, string> raw, string tab = null)
         {
             var db = new MongoDbContext();
             var course = FindOwned(db, courseId, facultyId);
@@ -153,6 +159,9 @@ namespace GradeWise.Services
                 Section = course.Section,
                 Categories = course.Categories.Select(c => new GradeCategory { Name = c.Name, Weight = c.Weight, Period = GradePeriods.Normalize(c.Period) }).ToList(),
                 WeightTotal = GradeCalculator.TotalWeight(course.Categories),
+                ActiveTab = NormalizeTab(tab),
+                MidtermTotal = GradeCalculator.PeriodTotal(course.Categories, GradePeriods.Midterm),
+                FinalTotal = GradeCalculator.PeriodTotal(course.Categories, GradePeriods.FinalTerm),
                 Rows = rows,
                 Summary = GradeCalculator.Summarize(rows.Select(r => r.Result.Average))
             };
@@ -560,7 +569,9 @@ namespace GradeWise.Services
                     StudentId = student.Id,
                     StudentNo = student.StudentNo,
                     FullName = student.FullName,
-                    Result = GradeCalculator.Calculate(course.Categories, scores)
+                    Result = GradeCalculator.Calculate(course.Categories, scores),
+                    MidtermResult = GradeCalculator.CalculatePeriod(course.Categories, scores, GradePeriods.Midterm),
+                    FinalResult = GradeCalculator.CalculatePeriod(course.Categories, scores, GradePeriods.FinalTerm)
                 };
 
                 foreach (var category in course.Categories)

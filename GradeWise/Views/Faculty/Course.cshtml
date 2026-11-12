@@ -1,4 +1,5 @@
 @model GradeWise.Models.CourseDetailViewModel
+@using GradeWise.Models
 @using GradeWise.Services
 @{
     ViewBag.Title = Model.Code + " scores";
@@ -38,12 +39,29 @@
         before entering scores.
     </div>
 }
-else if (!Model.WeightsOk)
+else if (!Model.PeriodsOk)
 {
     <div class="gw-alert gw-alert-warn" role="status">
-        The category weights add up to <strong>@GradeCalculator.Format(Model.WeightTotal)%</strong>, not 100%.
-        Averages below use the weights as they are.
-        @Html.ActionLink("Fix the weights", "Categories", "Faculty", new { id = Model.CourseId }, null)
+        <ul class="gw-error-list">
+            @if (!Model.MidtermSet)
+            {
+                <li>Midterm categories are not set yet.</li>
+            }
+            else if (!GradeWise.Services.GradeCalculator.IsFullWeight(Model.MidtermTotal))
+            {
+                <li>Midterm weights add up to <strong>@GradeCalculator.Format(Model.MidtermTotal)%</strong>, not 100%.</li>
+            }
+            @if (!Model.FinalSet)
+            {
+                <li>Final Term categories are not set yet.</li>
+            }
+            else if (!GradeWise.Services.GradeCalculator.IsFullWeight(Model.FinalTotal))
+            {
+                <li>Final Term weights add up to <strong>@GradeCalculator.Format(Model.FinalTotal)%</strong>, not 100%.</li>
+            }
+        </ul>
+        Final Grade is incomplete.
+        @Html.ActionLink("Set the categories", "Categories", "Faculty", new { id = Model.CourseId }, null)
     </div>
 }
 
@@ -107,59 +125,171 @@ else if (!Model.WeightsOk)
     }
     else
     {
-        using (Html.BeginForm("SaveScores", "Faculty", new { id = Model.CourseId }, FormMethod.Post))
+        using (Html.BeginForm("SaveScores", "Faculty", new { id = Model.CourseId }, FormMethod.Post, new { id = "score-form" }))
         {
             @Html.AntiForgeryToken()
-            <div class="gw-table-wrap">
-                <table class="gw-table gw-score-table">
-                    <thead>
-                        <tr>
-                            <th class="gw-sticky-col">Student</th>
-                            @foreach (var c in Model.Categories)
-                            {
-                                <th class="gw-num">@c.Name<br /><span class="gw-th-sub">@c.Period @GradeCalculator.Format(c.Weight)%</span></th>
-                            }
-                            <th class="gw-num">Average<br /><span class="gw-th-sub">of graded work</span></th>
-                            <th class="gw-num">Earned<br /><span class="gw-th-sub">of @GradeCalculator.Format(Model.WeightTotal)</span></th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var row in Model.Rows)
-                        {
-                            <tr>
-                                <td class="gw-sticky-col">
-                                    @row.FullName
-                                    <div class="gw-muted gw-small">@row.StudentNo</div>
-                                </td>
-                                @for (var i = 0; i < Model.Categories.Count; i++)
-                                {
-                                    var category = Model.Categories[i];
-                                    <td class="gw-num">
-                                        <input type="number" min="0" max="100" step="any" inputmode="decimal"
-                                               class="gw-score-input @(row.Invalid[i] ? "gw-input-bad" : "")"
-                                               name="@CourseService.ScoreFieldName(row.StudentId, category.Name)"
-                                               value="@row.Inputs[i]"
-                                               placeholder="&mdash;"
-                                               aria-label="@category.Name score for @row.FullName" />
-                                    </td>
-                                }
-                                <td class="gw-num"><strong>@GradeCalculator.Format(row.Result.Average)</strong></td>
-                                <td class="gw-num">@GradeCalculator.Format(row.Result.HasGrades ? (double?)row.Result.Earned : null)</td>
-                            </tr>
-                        }
-                    </tbody>
-                </table>
-            </div>
-            <div class="gw-panel-body">
-                <div class="gw-form-buttons">
-                    <button type="submit" class="gw-btn">Save scores</button>
+            <input type="hidden" name="tab" id="active-tab" value="@Model.ActiveTab" />
+
+            var tabs = new[]
+            {
+                new { Key = "midterm", Label = "Midterm" },
+                new { Key = "final-term", Label = "Final Term" },
+                new { Key = "final-grade", Label = "Final Grade" }
+            };
+
+            <div class="gw-panel-body gw-tabs-wrap">
+                <div class="gw-tabs" role="tablist" aria-label="Score tables">
+                    @foreach (var t in tabs)
+                    {
+                        var on = t.Key == Model.ActiveTab;
+                        <button type="button" class="gw-tab" role="tab" id="tab-@t.Key" aria-controls="panel-@t.Key"
+                                aria-selected="@(on ? "true" : "false")" tabindex="@(on ? 0 : -1)" data-tab="@t.Key">@t.Label</button>
+                    }
                 </div>
-                <p class="gw-note">
+            </div>
+
+            foreach (var period in GradePeriods.All)
+            {
+                var key = period == GradePeriods.Midterm ? "midterm" : "final-term";
+                var isFinal = period == GradePeriods.FinalTerm;
+
+                <div class="gw-tabpanel" role="tabpanel" id="panel-@key" aria-labelledby="tab-@key" hidden="@(key == Model.ActiveTab ? null : "hidden")">
+                    @if (!(isFinal ? Model.FinalSet : Model.MidtermSet))
+                    {
+                        <div class="gw-panel-body gw-empty-block">
+                            No @period categories yet.
+                            @Html.ActionLink("Set the categories", "Categories", "Faculty", new { id = Model.CourseId }, null)
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="gw-table-wrap">
+                            <table class="gw-table gw-score-table">
+                                <thead>
+                                    <tr>
+                                        <th class="gw-sticky-col">Student</th>
+                                        @foreach (var c in Model.Categories)
+                                        {
+                                            if (GradePeriods.Normalize(c.Period) != period) { continue; }
+                                            <th class="gw-num">@c.Name<br /><span class="gw-th-sub">@GradeCalculator.Format(c.Weight)%</span></th>
+                                        }
+                                        <th class="gw-num">Earned Grade<br /><span class="gw-th-sub">of 100</span></th>
+                                        <th class="gw-num">Equivalent</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var row in Model.Rows)
+                                    {
+                                        var result = isFinal ? row.FinalResult : row.MidtermResult;
+                                        <tr>
+                                            <td class="gw-sticky-col">
+                                                @row.FullName
+                                                <div class="gw-muted gw-small">@row.StudentNo</div>
+                                            </td>
+                                            @for (var i = 0; i < Model.Categories.Count; i++)
+                                            {
+                                                var category = Model.Categories[i];
+                                                if (GradePeriods.Normalize(category.Period) != period) { continue; }
+                                                <td class="gw-num">
+                                                    <input type="number" min="0" max="100" step="any" inputmode="decimal"
+                                                           class="gw-score-input @(row.Invalid[i] ? "gw-input-bad" : "")"
+                                                           name="@CourseService.ScoreFieldName(row.StudentId, category.Name)"
+                                                           value="@row.Inputs[i]"
+                                                           placeholder="&mdash;"
+                                                           aria-label="@category.Name score for @row.FullName" />
+                                                </td>
+                                            }
+                                            <td class="gw-num"><strong>@GradeCalculator.Format(result.EarnedOrNull)</strong></td>
+                                            <td class="gw-num">@GradeCalculator.Format(GradeCalculator.EquivalentFromEarned(result))</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="gw-panel-body">
+                            <div class="gw-form-buttons">
+                                <button type="submit" class="gw-btn">Save scores</button>
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+
+            <div class="gw-tabpanel" role="tabpanel" id="panel-final-grade" aria-labelledby="tab-final-grade" hidden="@("final-grade" == Model.ActiveTab ? null : "hidden")">
+                <div class="gw-table-wrap">
+                    <table class="gw-table gw-score-table">
+                        <thead>
+                            <tr>
+                                <th class="gw-sticky-col">Student</th>
+                                <th class="gw-num">Midterm Grade</th>
+                                <th class="gw-num">Midterm Eq.</th>
+                                <th class="gw-num">Final Term Grade</th>
+                                <th class="gw-num">Final Term Eq.</th>
+                                <th class="gw-num">Final Grade</th>
+                                <th class="gw-num">Equivalent</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var row in Model.Rows)
+                            {
+                                <tr>
+                                    <td class="gw-sticky-col">
+                                        @row.FullName
+                                        <div class="gw-muted gw-small">@row.StudentNo</div>
+                                    </td>
+                                    <td class="gw-num">@GradeCalculator.Format(row.MidtermResult.EarnedOrNull)</td>
+                                    <td class="gw-num">@GradeCalculator.Format(GradeCalculator.EquivalentFromEarned(row.MidtermResult))</td>
+                                    <td class="gw-num">@GradeCalculator.Format(row.FinalResult.EarnedOrNull)</td>
+                                    <td class="gw-num">@GradeCalculator.Format(GradeCalculator.EquivalentFromEarned(row.FinalResult))</td>
+                                    <td class="gw-num"><strong>@GradeCalculator.Format(row.Result.EarnedOrNull)</strong></td>
+                                    <td class="gw-num"><strong>@GradeCalculator.Format(GradeCalculator.EquivalentFromEarned(row.Result))</strong></td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+                <div class="gw-panel-body">
+                    <p class="gw-note gw-note-first">This table is read only. Enter scores in the Midterm and Final Term tabs.</p>
+                </div>
+            </div>
+
+            <div class="gw-panel-body">
+                <p class="gw-note gw-note-first">
                     Scores are percentages from 0 to 100. Leave a box empty if the work is not graded yet.
-                    <strong>Average</strong> is the weighted average of the graded categories only;
-                    <strong>Earned</strong> is the points collected so far toward the course total.
+                    <strong>Earned Grade</strong> is the points collected out of 100, and work that is not graded yet counts as 0.
+                    <strong>Final Grade</strong> is the average of the Midterm and the Final Term.
                 </p>
             </div>
         }
     }
 </section>
+
+@section scripts {
+    <script>
+        (function () {
+            var tabs = [].slice.call(document.querySelectorAll('[role="tab"][data-tab]'));
+            var hidden = document.getElementById("active-tab");
+            if (!tabs.length) { return; }
+
+            function selectTab(tab, focus) {
+                tabs.forEach(function (t) {
+                    var on = t === tab;
+                    t.setAttribute("aria-selected", on ? "true" : "false");
+                    t.tabIndex = on ? 0 : -1;
+                    document.getElementById(t.getAttribute("aria-controls")).hidden = !on;
+                });
+                if (hidden) { hidden.value = tab.getAttribute("data-tab"); }
+                if (focus) { tab.focus(); }
+            }
+
+            tabs.forEach(function (tab) {
+                tab.addEventListener("click", function () { selectTab(tab, false); });
+                tab.addEventListener("keydown", function (e) {
+                    if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") { return; }
+                    var next = tabs[(tabs.indexOf(tab) + (e.key === "ArrowRight" ? 1 : tabs.length - 1)) % tabs.length];
+                    selectTab(next, true);
+                });
+            });
+        })();
+    </script>
+}

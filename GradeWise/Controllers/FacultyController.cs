@@ -58,9 +58,9 @@ namespace GradeWise.Controllers
         // ---------- One course: score entry ----------
 
         // GET: /Faculty/Course/{id}
-        public ActionResult Course(string id)
+        public ActionResult Course(string id, string tab)
         {
-            var model = CourseService.GetDetail(id, CurrentFacultyId(), null);
+            var model = CourseService.GetDetail(id, CurrentFacultyId(), null, tab);
             if (model == null) return HttpNotFound();
 
             return View(model);
@@ -99,14 +99,14 @@ namespace GradeWise.Controllers
             if (!CourseService.SaveScores(id, facultyId, key => Request.Form[key], out errors))
             {
                 // Show the page again with what was typed and the problems, nothing was saved.
-                var model = CourseService.GetDetail(id, facultyId, key => Request.Form[key]);
+                var model = CourseService.GetDetail(id, facultyId, key => Request.Form[key], Request.Form["tab"]);
                 if (model == null) return HttpNotFound();
                 model.Errors = errors;
                 return View("Course", model);
             }
 
             TempData["Message"] = "Scores saved.";
-            return RedirectToAction("Course", new { id = id });
+            return RedirectToAction("Course", new { id = id, tab = CourseService.NormalizeTab(Request.Form["tab"]) });
         }
 
         // ---------- Enrollment ----------
