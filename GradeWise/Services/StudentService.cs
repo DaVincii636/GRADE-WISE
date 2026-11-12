@@ -94,17 +94,19 @@ namespace GradeWise.Services
 
                 if (own.HasValue)
                 {
+                    var effective = GradeCalculator.EffectiveWeight(category);
                     model.Graded.Add(new BreakdownRow
                     {
                         Category = category.Name,
-                        Weight = category.Weight,
+                        Period = GradePeriods.Normalize(category.Period),
+                        Weight = effective,
                         Score = own,
-                        WeightedPoints = category.Weight * own.Value / 100.0
+                        WeightedPoints = effective * own.Value / 100.0
                     });
                 }
                 else
                 {
-                    model.Ungraded.Add(new GradeCategory { Name = category.Name, Weight = category.Weight });
+                    model.Ungraded.Add(new GradeCategory { Name = category.Name, Period = GradePeriods.Normalize(category.Period), Weight = GradeCalculator.EffectiveWeight(category) });
                 }
             }
 
@@ -192,12 +194,14 @@ namespace GradeWise.Services
                     .Select(v => v.Value)
                     .ToList();
 
+                var effective = GradeCalculator.EffectiveWeight(category);
                 model.Rows.Add(new BreakdownRow
                 {
                     Category = category.Name,
-                    Weight = category.Weight,
+                    Period = GradePeriods.Normalize(category.Period),
+                    Weight = effective,
                     Score = own,
-                    WeightedPoints = own.HasValue ? (double?)(category.Weight * own.Value / 100.0) : null,
+                    WeightedPoints = own.HasValue ? (double?)(effective * own.Value / 100.0) : null,
                     ClassAverage = classScores.Count >= MinClassSize ? (double?)classScores.Average() : null
                 });
             }

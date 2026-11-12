@@ -94,6 +94,7 @@ namespace GradeWise.Services
                 model.Categories.Add(new CategoryStat
                 {
                     Name = category.Name,
+                    Period = GradePeriods.Normalize(category.Period),
                     Weight = category.Weight,
                     Graded = scores.Count,
                     Average = scores.Count > 0 ? (double?)scores.Average() : null

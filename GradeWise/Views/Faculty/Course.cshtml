@@ -117,7 +117,7 @@ else if (!Model.WeightsOk)
                             <th class="gw-sticky-col">Student</th>
                             @foreach (var c in Model.Categories)
                             {
-                                <th class="gw-num">@c.Name<br /><span class="gw-th-sub">@GradeCalculator.Format(c.Weight)%</span></th>
+                                <th class="gw-num">@c.Name<br /><span class="gw-th-sub">@c.Period @GradeCalculator.Format(c.Weight)%</span></th>
                             }
                             <th class="gw-num">Average<br /><span class="gw-th-sub">of graded work</span></th>
                             <th class="gw-num">Earned<br /><span class="gw-th-sub">of @GradeCalculator.Format(Model.WeightTotal)</span></th>

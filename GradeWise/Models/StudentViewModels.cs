@@ -14,6 +14,11 @@ namespace GradeWise.Models
     public class BreakdownRow
     {
         public string Category { get; set; }
+
+        /// <summary>"Midterm" or "Final Term".</summary>
+        public string Period { get; set; }
+
+        /// <summary>Effective weight: the category's weight inside its period x the period's share (so the course totals 100).</summary>
         public double Weight { get; set; }
 
         /// <summary>The student's own score, or null while it is not graded.</summary>

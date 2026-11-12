@@ -174,12 +174,13 @@ namespace GradeWise.Controllers
 
             var originals = form.GetValues("originals") ?? new string[0];
             var names = form.GetValues("names") ?? new string[0];
+            var periods = form.GetValues("periods") ?? new string[0];
             var weights = form.GetValues("weights") ?? new string[0];
 
             List<string> errors;
-            if (!CourseService.SaveCategories(id, facultyId, originals, names, weights, out errors))
+            if (!CourseService.SaveCategories(id, facultyId, originals, names, periods, weights, out errors))
             {
-                var model = CourseService.EchoCategories(id, facultyId, originals, names, weights, errors);
+                var model = CourseService.EchoCategories(id, facultyId, originals, names, periods, weights, errors);
                 if (model == null) return HttpNotFound();
                 return View(model);
             }

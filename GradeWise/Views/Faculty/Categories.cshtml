@@ -1,4 +1,5 @@
 @model GradeWise.Models.CategoriesViewModel
+@using GradeWise.Models
 @{
     ViewBag.Title = Model.Code + " categories";
 
@@ -44,8 +45,9 @@
     </div>
     <div class="gw-panel-body">
         <p class="gw-field-hint gw-hint-block">
-            Each weight is a percent of the final grade, for example Quizzes 20, Projects 30, Midterm 20, Final 30.
-            The weights should add up to 100. Renaming a category keeps its scores; removing one deletes them.
+            Put every category in the Midterm or the Final Term. Inside each term the weights add up to exactly 100,
+            and the final grade is half Midterm and half Final Term. Each name must be unique in the course, for example
+            Midterm Quizzes and Final Quizzes. Renaming or moving a category keeps its scores; removing one deletes them.
         </p>
 
         @using (Html.BeginForm("Categories", "Faculty", new { id = Model.CourseId }, FormMethod.Post, new { id = "cat-form" }))
@@ -55,6 +57,7 @@
                 <thead>
                     <tr>
                         <th>Category</th>
+                        <th>Period</th>
                         <th>Weight (%)</th>
                         <th><span class="gw-sr-only">Remove</span></th>
                     </tr>
@@ -67,6 +70,14 @@
                                 <input type="hidden" name="originals" value="@r.Original" />
                                 <input type="text" name="names" value="@r.Name" maxlength="40" aria-label="Category name" />
                             </td>
+                            <td>
+                                <select name="periods" aria-label="Period">
+                                    @foreach (var p in GradePeriods.All)
+                                    {
+                                        <option value="@p" selected="@(p == r.Period)">@p</option>
+                                    }
+                                </select>
+                            </td>
                             <td><input type="number" name="weights" value="@r.Weight" min="0.01" max="100" step="any" inputmode="decimal" aria-label="Weight in percent" /></td>
                             <td><button type="button" class="gw-btn gw-btn-small gw-btn-outline" data-remove="1">Remove</button></td>
                         </tr>
@@ -78,22 +89,30 @@
                                 <input type="hidden" name="originals" value="" />
                                 <input type="text" name="names" value="" maxlength="40" aria-label="Category name" />
                             </td>
+                            <td>
+                                <select name="periods" aria-label="Period">
+                                    @foreach (var p in GradePeriods.All)
+                                    {
+                                        <option value="@p">@p</option>
+                                    }
+                                </select>
+                            </td>
                             <td><input type="number" name="weights" value="" min="0.01" max="100" step="any" inputmode="decimal" aria-label="Weight in percent" /></td>
                             <td><button type="button" class="gw-btn gw-btn-small gw-btn-outline" data-remove="1">Remove</button></td>
                         </tr>
                     }
                 </tbody>
-                <tfoot>
-                    <tr>
-                        <th>Total</th>
-                        <th><span id="cat-total" class="gw-total-number">0</span>%</th>
-                        <th></th>
-                    </tr>
-                </tfoot>
             </table>
 
-            <div id="cat-warn" class="gw-alert gw-alert-warn" role="status" hidden>
-                The weights do not add up to 100%. You can still save, but averages are only meaningful when the total is 100%.
+            <div class="gw-period-totals" aria-live="polite">
+                @foreach (var p in GradePeriods.All)
+                {
+                    <div class="gw-period-total" data-period="@p">
+                        <span class="gw-period-name">@p</span>
+                        <span><strong class="gw-total-number" data-total>0</strong> / 100</span>
+                        <span class="gw-muted" data-left>(100 left)</span>
+                    </div>
+                }
             </div>
 
             <div class="gw-form-buttons">
@@ -107,27 +126,68 @@
 @section scripts {
     <script>
         (function () {
+            var PERIODS = ["Midterm", "Final Term"];
             var body = document.getElementById("cat-body");
-            var totalEl = document.getElementById("cat-total");
-            var warnEl = document.getElementById("cat-warn");
+            var form = document.getElementById("cat-form");
+            var confirmed = false;
+
+            function round2(n) { return Math.round(n * 100) / 100; }
+
+            function liveRows() {
+                // removed rows are hidden (and emptied), so they never count
+                return [].slice.call(body.querySelectorAll("tr")).filter(function (tr) { return !tr.hidden; });
+            }
+
+            function periodOf(tr) { return tr.querySelector("select[name=periods]").value; }
+            function weightOf(tr) { return tr.querySelector("input[name=weights]"); }
+
+            function totalFor(period, skipRow) {
+                var total = 0;
+                liveRows().forEach(function (tr) {
+                    if (tr === skipRow || periodOf(tr) !== period) { return; }
+                    var v = parseFloat(weightOf(tr).value);
+                    if (!isNaN(v)) { total += v; }
+                });
+                return round2(total);
+            }
+
+            // A period can never go over 100: cut the typed value down to what is left.
+            function clampRow(tr) {
+                var input = weightOf(tr);
+                var v = parseFloat(input.value);
+                if (isNaN(v)) { return; }
+                var max = round2(100 - totalFor(periodOf(tr), tr));
+                if (max <= 0) { input.value = ""; }
+                else if (v > max) { input.value = max; }
+            }
 
             function refresh() {
-                var total = 0;
-                var inputs = body.querySelectorAll("input[name=weights]");
-                for (var i = 0; i < inputs.length; i++) {
-                    var v = parseFloat(inputs[i].value);
-                    if (!isNaN(v)) { total += v; }
+                PERIODS.forEach(function (p) {
+                    var box = document.querySelector('.gw-period-total[data-period="' + p + '"]');
+                    var total = totalFor(p, null);
+                    var left = round2(100 - total);
+                    box.querySelector("[data-total]").textContent = total;
+                    box.querySelector("[data-left]").textContent = "(" + (left > 0 ? left + " left" : "full") + ")";
+                });
+            }
+
+            function nextPeriod() {
+                for (var i = 0; i < PERIODS.length; i++) {
+                    if (totalFor(PERIODS[i], null) < 100) { return PERIODS[i]; }
                 }
-                total = Math.round(total * 100) / 100;
-                totalEl.textContent = total;
-                warnEl.hidden = Math.abs(total - 100) < 0.005;
+                return PERIODS[0];
             }
 
             document.getElementById("cat-add").addEventListener("click", function () {
+                var period = nextPeriod();
                 var tr = document.createElement("tr");
+                var options = PERIODS.map(function (p) {
+                    return '<option value="' + p + '"' + (p === period ? " selected" : "") + ">" + p + "</option>";
+                }).join("");
                 tr.innerHTML =
                     '<td><input type="hidden" name="originals" value="" />' +
                     '<input type="text" name="names" maxlength="40" aria-label="Category name" /></td>' +
+                    '<td><select name="periods" aria-label="Period">' + options + "</select></td>" +
                     '<td><input type="number" name="weights" min="0.01" max="100" step="any" inputmode="decimal" aria-label="Weight in percent" /></td>' +
                     '<td><button type="button" class="gw-btn gw-btn-small gw-btn-outline" data-remove="1">Remove</button></td>';
                 body.appendChild(tr);
@@ -141,7 +201,7 @@
                 var tr = btn.closest("tr");
                 var original = tr.querySelector("input[name=originals]").value;
                 var name = tr.querySelector("input[name=names]");
-                var weight = tr.querySelector("input[name=weights]");
+                var weight = weightOf(tr);
                 if (original && name.value) { tr.setAttribute("data-removed", name.value); }
                 name.value = "";
                 weight.value = "";
@@ -149,22 +209,40 @@
                 refresh();
             });
 
-            body.addEventListener("input", refresh);
+            body.addEventListener("input", function (e) {
+                if (e.target.name === "weights") { clampRow(e.target.closest("tr")); }
+                refresh();
+            });
+
+            body.addEventListener("change", function (e) {
+                if (e.target.name === "periods") { clampRow(e.target.closest("tr")); }
+                refresh();
+            });
 
             // Warn before saving if a category that has scores is being removed.
-            document.getElementById("cat-form").addEventListener("submit", function (e) {
+            form.addEventListener("submit", function (e) {
+                if (confirmed) { return; }
+
                 var removed = [];
-                var rows = body.querySelectorAll("tr");
-                for (var i = 0; i < rows.length; i++) {
-                    var original = rows[i].querySelector("input[name=originals]").value;
-                    var name = rows[i].querySelector("input[name=names]").value.trim();
-                    var weight = rows[i].querySelector("input[name=weights]").value.trim();
+                body.querySelectorAll("tr").forEach(function (tr) {
+                    var original = tr.querySelector("input[name=originals]").value;
+                    var name = tr.querySelector("input[name=names]").value.trim();
+                    var weight = weightOf(tr).value.trim();
                     if (original && !name && !weight) { removed.push(original); }
-                }
-                if (removed.length > 0 &&
-                    !window.confirm("Removing " + removed.join(", ") + " deletes the scores already entered for it. Continue?")) {
-                    e.preventDefault();
-                }
+                });
+                if (removed.length === 0) { return; }
+
+                e.preventDefault();
+                GW.confirm({
+                    title: "Delete category scores?",
+                    message: "Removing " + removed.join(", ") + " deletes the scores already entered for it.",
+                    okText: "Delete",
+                    tone: "danger"
+                }).then(function (ok) {
+                    if (!ok) { return; }
+                    confirmed = true;
+                    HTMLFormElement.prototype.submit.call(form);
+                });
             });
 
             refresh();

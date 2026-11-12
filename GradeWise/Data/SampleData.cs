@@ -85,10 +85,12 @@ namespace GradeWise.Data
                 FacultyId = "u-faculty",
                 Categories = new List<GradeCategory>
                 {
-                    new GradeCategory { Name = "Quizzes", Weight = 20 },
-                    new GradeCategory { Name = "Projects", Weight = 30 },
-                    new GradeCategory { Name = "Midterm", Weight = 20 },
-                    new GradeCategory { Name = "Final", Weight = 30 }
+                    new GradeCategory { Name = "Midterm Quizzes", Period = GradePeriods.Midterm, Weight = 30 },
+                    new GradeCategory { Name = "Midterm Project", Period = GradePeriods.Midterm, Weight = 30 },
+                    new GradeCategory { Name = "Midterm Exam", Period = GradePeriods.Midterm, Weight = 40 },
+                    new GradeCategory { Name = "Final Quizzes", Period = GradePeriods.FinalTerm, Weight = 30 },
+                    new GradeCategory { Name = "Final Project", Period = GradePeriods.FinalTerm, Weight = 30 },
+                    new GradeCategory { Name = "Final Exam", Period = GradePeriods.FinalTerm, Weight = 40 }
                 },
                 StudentIds = new List<string> { "u-student1", "u-student2", "u-student3" }
             }
@@ -101,10 +103,12 @@ namespace GradeWise.Data
                 Id = "g-1", CourseId = "c-it101", StudentId = "u-student1",
                 Scores = new List<ScoreEntry>
                 {
-                    new ScoreEntry { Category = "Quizzes", Score = 85 },
-                    new ScoreEntry { Category = "Projects", Score = 90 },
-                    new ScoreEntry { Category = "Midterm", Score = 78 },
-                    new ScoreEntry { Category = "Final", Score = null }
+                    new ScoreEntry { Category = "Midterm Quizzes", Score = 85 },
+                    new ScoreEntry { Category = "Midterm Project", Score = 90 },
+                    new ScoreEntry { Category = "Midterm Exam", Score = 78 },
+                    new ScoreEntry { Category = "Final Quizzes", Score = null },
+                    new ScoreEntry { Category = "Final Project", Score = null },
+                    new ScoreEntry { Category = "Final Exam", Score = null }
                 }
             },
             new GradeRecord
@@ -112,10 +116,12 @@ namespace GradeWise.Data
                 Id = "g-2", CourseId = "c-it101", StudentId = "u-student2",
                 Scores = new List<ScoreEntry>
                 {
-                    new ScoreEntry { Category = "Quizzes", Score = 72 },
-                    new ScoreEntry { Category = "Projects", Score = 80 },
-                    new ScoreEntry { Category = "Midterm", Score = 65 },
-                    new ScoreEntry { Category = "Final", Score = null }
+                    new ScoreEntry { Category = "Midterm Quizzes", Score = 72 },
+                    new ScoreEntry { Category = "Midterm Project", Score = 80 },
+                    new ScoreEntry { Category = "Midterm Exam", Score = 65 },
+                    new ScoreEntry { Category = "Final Quizzes", Score = null },
+                    new ScoreEntry { Category = "Final Project", Score = null },
+                    new ScoreEntry { Category = "Final Exam", Score = null }
                 }
             },
             new GradeRecord
@@ -123,10 +129,12 @@ namespace GradeWise.Data
                 Id = "g-3", CourseId = "c-it101", StudentId = "u-student3",
                 Scores = new List<ScoreEntry>
                 {
-                    new ScoreEntry { Category = "Quizzes", Score = 95 },
-                    new ScoreEntry { Category = "Projects", Score = null },
-                    new ScoreEntry { Category = "Midterm", Score = null },
-                    new ScoreEntry { Category = "Final", Score = null }
+                    new ScoreEntry { Category = "Midterm Quizzes", Score = 95 },
+                    new ScoreEntry { Category = "Midterm Project", Score = null },
+                    new ScoreEntry { Category = "Midterm Exam", Score = null },
+                    new ScoreEntry { Category = "Final Quizzes", Score = null },
+                    new ScoreEntry { Category = "Final Project", Score = null },
+                    new ScoreEntry { Category = "Final Exam", Score = null }
                 }
             }
         };

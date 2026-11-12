@@ -9,7 +9,10 @@ namespace GradeWise.Services
     /// <summary>Result of the weighted-grade formula for one student in one course.</summary>
     public class GradeResult
     {
-        /// <summary>Points earned so far = sum of (weight x score / 100) over the graded categories.</summary>
+        /// <summary>
+        /// Points earned so far = sum of (weight x score / 100) over the graded categories. Ungraded work counts as 0,
+        /// so for a whole course (effective weights) this is out of 100, and for one period (CalculatePeriod) too.
+        /// </summary>
         public double Earned { get; set; }
 
         /// <summary>Total weight of the categories that already have a score.</summary>
@@ -27,6 +30,12 @@ namespace GradeWise.Services
         public bool HasGrades
         {
             get { return GradedWeight > 0; }
+        }
+
+        /// <summary>Earned points, or null when nothing is graded yet (so reports show a dash, not 0 or 5.00).</summary>
+        public double? EarnedOrNull
+        {
+            get { return HasGrades ? (double?)Earned : null; }
         }
 
         /// <summary>
@@ -89,26 +98,69 @@ namespace GradeWise.Services
         /// <summary>Tolerance when checking that the weights add up to 100.</summary>
         public const double WeightTolerance = 0.005;
 
+        /// <summary>
+        /// The weight a category counts for in the whole course: its weight inside its period x the period's share.
+        /// With both periods at 100 and a share of 0.5, the course total is still 100, so the rest of the app is unchanged.
+        /// </summary>
+        public static double EffectiveWeight(GradeCategory category)
+        {
+            return category.Weight * GradePeriods.Share;
+        }
+
+        /// <summary>Whole-course result. Uses effective weights, so Earned is out of 100.</summary>
         public static GradeResult Calculate(IEnumerable<GradeCategory> categories, IEnumerable<ScoreEntry> scores)
+        {
+            return Accumulate(categories, scores, EffectiveWeight);
+        }
+
+        /// <summary>
+        /// Result for one period only ("Midterm" or "Final Term"), using the raw weights, which total 100 per period.
+        /// Earned is then 0-100 for that period.
+        /// </summary>
+        public static GradeResult CalculatePeriod(IEnumerable<GradeCategory> categories, IEnumerable<ScoreEntry> scores, string period)
+        {
+            var wanted = GradePeriods.Normalize(period);
+            var inPeriod = (categories ?? Enumerable.Empty<GradeCategory>())
+                .Where(c => GradePeriods.Normalize(c.Period) == wanted);
+            return Accumulate(inPeriod, scores, c => c.Weight);
+        }
+
+        private static GradeResult Accumulate(IEnumerable<GradeCategory> categories, IEnumerable<ScoreEntry> scores, Func<GradeCategory, double> weightOf)
         {
             var result = new GradeResult();
             var scoreList = scores == null ? new List<ScoreEntry>() : scores.ToList();
 
             foreach (var category in categories ?? Enumerable.Empty<GradeCategory>())
             {
-                result.TotalWeight += category.Weight;
+                var weight = weightOf(category);
+                result.TotalWeight += weight;
 
                 var entry = scoreList.FirstOrDefault(s =>
                     string.Equals(s.Category, category.Name, StringComparison.OrdinalIgnoreCase));
 
                 if (entry != null && entry.Score.HasValue)
                 {
-                    result.GradedWeight += category.Weight;
-                    result.Earned += category.Weight * entry.Score.Value / 100.0;
+                    result.GradedWeight += weight;
+                    result.Earned += weight * entry.Score.Value / 100.0;
                 }
             }
 
             return result;
+        }
+
+        /// <summary>Raw weight total of one period (should be 100 once the period is set up).</summary>
+        public static double PeriodTotal(IEnumerable<GradeCategory> categories, string period)
+        {
+            var wanted = GradePeriods.Normalize(period);
+            return (categories ?? Enumerable.Empty<GradeCategory>())
+                .Where(c => GradePeriods.Normalize(c.Period) == wanted)
+                .Sum(c => c.Weight);
+        }
+
+        /// <summary>Equivalent grade of the points earned (zero-based). Null when nothing is graded, so reports show a dash.</summary>
+        public static double? EquivalentFromEarned(GradeResult result)
+        {
+            return result != null && result.HasGrades ? EquivalentGrade(result.Earned) : null;
         }
 
         /// <summary>Summarises the students' averages. Students with no scores yet (null) are skipped.</summary>
@@ -219,9 +271,10 @@ namespace GradeWise.Services
             return bins;
         }
 
+        /// <summary>Total effective weight of the course (both periods together). It is 100 when each period totals 100.</summary>
         public static double TotalWeight(IEnumerable<GradeCategory> categories)
         {
-            return (categories ?? Enumerable.Empty<GradeCategory>()).Sum(c => c.Weight);
+            return (categories ?? Enumerable.Empty<GradeCategory>()).Sum(c => EffectiveWeight(c));
         }
 
         public static bool IsFullWeight(double totalWeight)

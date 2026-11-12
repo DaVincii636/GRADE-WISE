@@ -108,6 +108,7 @@ else if (!Model.WeightsOk)
             <thead>
                 <tr>
                     <th>Category</th>
+                    <th>Period</th>
                     <th class="gw-num">Weight</th>
                     <th class="gw-num">Your score</th>
                     <th class="gw-num">Weighted points</th>
@@ -118,13 +119,14 @@ else if (!Model.WeightsOk)
                 @if (Model.Rows.Count == 0)
                 {
                     <tr>
-                        <td colspan="5" class="gw-empty">Your scores appear here once your instructor enters them.</td>
+                        <td colspan="6" class="gw-empty">Your scores appear here once your instructor enters them.</td>
                     </tr>
                 }
                 @foreach (var r in Model.Rows)
                 {
                     <tr>
                         <td>@r.Category</td>
+                        <td>@r.Period</td>
                         <td class="gw-num">@GradeCalculator.Format(r.Weight)%</td>
                         <td class="gw-num">
                             @if (r.Score.HasValue)
@@ -155,6 +157,7 @@ else if (!Model.WeightsOk)
                 <tfoot>
                     <tr>
                         <th>Total</th>
+                        <th></th>
                         <th class="gw-num">@GradeCalculator.Format(Model.WeightTotal)%</th>
                         <th></th>
                         <th class="gw-num">@GradeCalculator.Format(Model.Earned)</th>

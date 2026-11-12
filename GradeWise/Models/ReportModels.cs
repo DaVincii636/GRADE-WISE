@@ -78,6 +78,11 @@ namespace GradeWise.Models
     public class CategoryStat
     {
         public string Name { get; set; }
+
+        /// <summary>"Midterm" or "Final Term".</summary>
+        public string Period { get; set; }
+
+        /// <summary>Raw weight inside its period (the period totals 100).</summary>
         public double Weight { get; set; }
 
         /// <summary>How many students have a score in this category.</summary>

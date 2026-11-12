@@ -7,8 +7,14 @@ namespace GradeWise.Models
     {
         public string Name { get; set; }
 
-        /// <summary>Percent of the final grade (0-100). A course's weights should total 100.</summary>
+        /// <summary>
+        /// Percent of its period (0-100). The weights inside one period should total 100.
+        /// The category counts for Weight x GradePeriods.Share of the final grade.
+        /// </summary>
         public double Weight { get; set; }
+
+        /// <summary>"Midterm" or "Final Term". Documents saved before periods existed have no value and load as Midterm.</summary>
+        public string Period { get; set; } = GradePeriods.Midterm;
     }
 
     /// <summary>A course.</summary>

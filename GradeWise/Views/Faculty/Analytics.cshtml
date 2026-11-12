@@ -271,7 +271,7 @@
                     var gradedPct = Model.StudentCount > 0 ? Math.Round(c.Graded * 100.0 / Model.StudentCount, 2) : 0;
                     var gradedPctText = gradedPct.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture) + "%";
                     <tr title="@c.Name: @gradedPctText graded (@c.Graded of @Model.StudentCount)">
-                        <td>@c.Name</td>
+                        <td>@c.Name <span class="gw-th-sub">(@c.Period)</span></td>
                         <td class="gw-num">@GradeCalculator.Format(c.Weight)%</td>
                         <td class="gw-num">@c.Graded of @Model.StudentCount <span class="gw-muted">(@gradedPctText)</span></td>
                         <td class="gw-num">@(c.Average.HasValue ? GradeCalculator.Format(c.Average) + "%" : GradeCalculator.Format(c.Average))</td>

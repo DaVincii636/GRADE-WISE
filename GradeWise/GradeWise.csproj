@@ -229,6 +229,7 @@
     <Compile Include="Models\AcademicTerm.cs" />
     <Compile Include="Models\Course.cs" />
     <Compile Include="Models\FacultyViewModels.cs" />
+    <Compile Include="Models\GradePeriods.cs" />
     <Compile Include="Models\GradeRecord.cs" />
     <Compile Include="Models\ReportModels.cs" />
     <Compile Include="Models\StudentViewModels.cs" />

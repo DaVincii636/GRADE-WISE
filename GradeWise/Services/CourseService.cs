@@ -151,7 +151,7 @@ namespace GradeWise.Services
                 Name = course.Name,
                 Term = course.Term,
                 Section = course.Section,
-                Categories = course.Categories.Select(c => new GradeCategory { Name = c.Name, Weight = c.Weight }).ToList(),
+                Categories = course.Categories.Select(c => new GradeCategory { Name = c.Name, Weight = c.Weight, Period = GradePeriods.Normalize(c.Period) }).ToList(),
                 WeightTotal = GradeCalculator.TotalWeight(course.Categories),
                 Rows = rows,
                 Summary = GradeCalculator.Summarize(rows.Select(r => r.Result.Average))
@@ -341,13 +341,14 @@ namespace GradeWise.Services
                 {
                     Original = c.Name,
                     Name = c.Name,
+                    Period = GradePeriods.Normalize(c.Period),
                     Weight = c.Weight.ToString("0.##", CultureInfo.InvariantCulture)
                 });
             }
             return model;
         }
 
-        public static CategoriesViewModel EchoCategories(string courseId, string facultyId, IList<string> originals, IList<string> names, IList<string> weights, List<string> errors)
+        public static CategoriesViewModel EchoCategories(string courseId, string facultyId, IList<string> originals, IList<string> names, IList<string> periods, IList<string> weights, List<string> errors)
         {
             var db = new MongoDbContext();
             var course = FindOwned(db, courseId, facultyId);
@@ -360,6 +361,7 @@ namespace GradeWise.Services
                 {
                     Original = At(originals, i),
                     Name = At(names, i),
+                    Period = GradePeriods.Normalize(At(periods, i)),
                     Weight = At(weights, i)
                 });
             }
@@ -367,7 +369,7 @@ namespace GradeWise.Services
             return model;
         }
 
-        public static bool SaveCategories(string courseId, string facultyId, IList<string> originals, IList<string> names, IList<string> weights, out List<string> errors)
+        public static bool SaveCategories(string courseId, string facultyId, IList<string> originals, IList<string> names, IList<string> periods, IList<string> weights, out List<string> errors)
         {
             errors = new List<string>();
 
@@ -380,6 +382,7 @@ namespace GradeWise.Services
                 var name = (At(names, i) ?? string.Empty).Trim();
                 var weightText = (At(weights, i) ?? string.Empty).Trim();
                 var original = (At(originals, i) ?? string.Empty).Trim();
+                var period = GradePeriods.Normalize((At(periods, i) ?? string.Empty).Trim());
 
                 if (name.Length == 0 && weightText.Length == 0) continue;
 
@@ -398,7 +401,7 @@ namespace GradeWise.Services
                 }
                 else if (!seenNames.Add(name))
                 {
-                    errors.Add(row + " is used twice. Each category needs its own name.");
+                    errors.Add(row + " is used twice. Each category name must be unique in the course (for example Midterm Quizzes and Final Quizzes).");
                     rowOk = false;
                 }
 
@@ -413,7 +416,7 @@ namespace GradeWise.Services
                 if (rowOk)
                 {
                     parsed.Add(new CategoryRow { Original = original, Name = name });
-                    newCategories.Add(new GradeCategory { Name = name, Weight = Math.Round(weight, 2) });
+                    newCategories.Add(new GradeCategory { Name = name, Period = period, Weight = Math.Round(weight, 2) });
                 }
             }
 
@@ -422,7 +425,32 @@ namespace GradeWise.Services
                 errors.Add("Add at least one grading category.");
             }
 
+            // Each period that has categories must total exactly 100. A period with no categories is allowed.
+            if (errors.Count == 0)
+            {
+                foreach (var period in GradePeriods.All)
+                {
+                    var inPeriod = newCategories.Where(c => c.Period == period).ToList();
+                    if (inPeriod.Count == 0) continue;
+
+                    var total = Math.Round(inPeriod.Sum(c => c.Weight), 2);
+                    if (Math.Abs(total - 100) >= GradeCalculator.WeightTolerance)
+                    {
+                        errors.Add(period + " weights must add up to exactly 100% (currently " +
+                            total.ToString("0.##", CultureInfo.InvariantCulture) + "%).");
+                    }
+                }
+            }
+
             if (errors.Count > 0) return false;
+
+            // Store Midterm first, then Final Term, keeping the typed order inside each group.
+            // parsed and newCategories are reordered together: the rename mapping below matches them by index.
+            var order = Enumerable.Range(0, newCategories.Count)
+                .OrderBy(i => newCategories[i].Period == GradePeriods.FinalTerm ? 1 : 0)
+                .ToList();
+            newCategories = order.Select(i => newCategories[i]).ToList();
+            parsed = order.Select(i => parsed[i]).ToList();
 
             var db = new MongoDbContext();
             var course = FindOwned(db, courseId, facultyId);

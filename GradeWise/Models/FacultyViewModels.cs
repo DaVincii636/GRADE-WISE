@@ -80,6 +80,7 @@ namespace GradeWise.Models
     {
         public string Original { get; set; }
         public string Name { get; set; }
+        public string Period { get; set; } = GradePeriods.Midterm;
         public string Weight { get; set; }
     }
 

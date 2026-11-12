@@ -2763,3 +2763,40 @@ body.gw-modal-open {
 .gw-modal-foot--danger {
     background: #fdeadd;
 }
+
+/* ---------- Phase 3: categories page (period select and live period totals) ---------- */
+.gw-cat-table select {
+    width: 100%;
+    padding: 8px 10px;
+    border: var(--gw-outline);
+    border-radius: 0;
+    background-color: var(--gw-paper);
+    color: var(--gw-ink);
+    font-family: inherit;
+}
+
+    .gw-cat-table select:focus {
+        outline: 3px solid var(--gw-ink);
+        outline-offset: 0;
+        box-shadow: 0 0 0 6px var(--gw-lime);
+    }
+
+.gw-period-totals {
+    display: grid;
+    gap: 8px;
+    margin: 4px 0 16px;
+    padding-top: 10px;
+    border-top: 4px double var(--gw-ink);
+}
+
+.gw-period-total {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 4px 12px;
+}
+
+.gw-period-name {
+    min-width: 6.5em;
+    font-weight: 700;
+}
