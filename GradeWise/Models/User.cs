@@ -60,4 +60,14 @@ namespace GradeWise.Models
         /// </summary>
         public int PasswordIterations { get; set; }
     }
+
+    /// <summary>What the profile modal shows about the signed-in account.</summary>
+    public class ProfileInfo
+    {
+        public string FullName { get; set; }
+
+        public string StudentNo { get; set; }
+
+        public string Email { get; set; }
+    }
 }

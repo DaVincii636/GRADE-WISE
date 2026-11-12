@@ -108,6 +108,51 @@ namespace GradeWise.Controllers
             return RedirectToAction("Login", "Account");
         }
 
+        // POST: /Account/ChangeName
+        // The signed-in person's own display name. No password is asked (the name is low risk);
+        // the ID number is the sign-in name and cannot be changed here.
+        [Authorize]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public ActionResult ChangeName(string newName)
+        {
+            var db = new MongoDbContext();
+            var me = FindCurrentUser(db);
+            if (me == null || !me.IsActive) return RedirectToAction("Logout");
+
+            var typed = (newName ?? string.Empty).Trim();
+            var errors = new List<string>();
+
+            if (typed.Length == 0)
+            {
+                errors.Add("Enter your name.");
+            }
+            else if (typed.Any(char.IsControl))
+            {
+                errors.Add("Your name cannot contain control characters.");
+            }
+
+            // Collapse repeated spaces ("Ana   Cruz" becomes "Ana Cruz") before measuring and comparing.
+            var saved = System.Text.RegularExpressions.Regex.Replace(typed, " {2,}", " ");
+
+            if (errors.Count == 0)
+            {
+                if (saved.Length > 100) errors.Add("Your name must be 100 characters or fewer.");
+                else if (string.Equals(saved, me.FullName, StringComparison.Ordinal)) errors.Add("That is already your name.");
+            }
+
+            if (errors.Count > 0)
+            {
+                TempData["EditInfoName"] = newName ?? string.Empty;
+                return EditInfoFailed("name", errors, me);
+            }
+
+            db.Users.UpdateOne(u => u.Id == me.Id, Builders<User>.Update.Set(u => u.FullName, saved));
+
+            TempData["Message"] = "Name updated.";
+            return RedirectToDashboard(me.Role);
+        }
+
         // POST: /Account/ChangeEmail
         // The student's own email only. The signed-in account is found from the sign-in cookie,
         // never from the form, so nobody can change somebody else's details.

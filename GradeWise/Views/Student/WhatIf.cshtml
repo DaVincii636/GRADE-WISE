@@ -258,7 +258,7 @@ else
 }
 
 @section scripts {
-    <script src="@Url.Content("~/Scripts/whatif.js")"></script>
+    <script src="@Url.Content("~/Scripts/whatif.js")?v=@System.IO.File.GetLastWriteTimeUtc(Server.MapPath("~/Scripts/whatif.js")).Ticks"></script>
     <script>
         // Switch course as soon as another one is picked. The address is built from the page's own route,
         // so the course you are leaving can never be sent along with the new one.

@@ -19,12 +19,15 @@ namespace GradeWise.Services
         /// <summary>
         /// Dashboard for one student.
         /// </summary>
-        public static StudentDashboardViewModel GetDashboard(string studentId, string requestedCourseId)
+        public static StudentDashboardViewModel GetDashboard(string studentId, string requestedCourseId, User student = null)
         {
             var model = new StudentDashboardViewModel { MinClassSize = MinClassSize };
             var db = new MongoDbContext();
 
-            var me = db.Users.Find(u => u.Id == studentId).FirstOrDefault();
+            // The controller usually has the account already; only look it up when it was not passed in.
+            var me = student != null && student.Id == studentId
+                ? student
+                : db.Users.Find(u => u.Id == studentId).FirstOrDefault();
             model.StudentName = me == null ? null : me.FullName;
             model.StudentNo = me == null ? null : me.StudentNo;
 
@@ -151,7 +154,20 @@ namespace GradeWise.Services
 
         private static void FillCourse(MongoDbContext db, StudentDashboardViewModel model, Course course, string studentId)
         {
-            var mine = ScoresOf(db, course, studentId);
+            // One query for every enrolled student's scores (instead of one round trip per student).
+            var courseId = course.Id;
+            var enrolled = course.StudentIds;
+            var records = db.Grades.Find(g => g.CourseId == courseId && enrolled.Contains(g.StudentId)).ToList();
+            var byStudent = new Dictionary<string, List<ScoreEntry>>();
+            foreach (var record in records)
+            {
+                if (record.StudentId != null && !byStudent.ContainsKey(record.StudentId))
+                {
+                    byStudent[record.StudentId] = record.Scores ?? new List<ScoreEntry>();
+                }
+            }
+
+            var mine = ScoresFrom(byStudent, studentId);
             var result = GradeCalculator.Calculate(course.Categories, mine);
 
             model.HasCourse = true;
@@ -169,7 +185,8 @@ namespace GradeWise.Services
             model.RemainingWeight = result.RemainingWeight;
             model.History = HistoryService.GetHistory(course.Id, studentId);
 
-            var everyone = course.StudentIds.Select(id => ScoresOf(db, course, id)).ToList();
+            // One list of scores per enrolled student (empty when a student has no record yet), same as before.
+            var everyone = course.StudentIds.Select(id => ScoresFrom(byStudent, id)).ToList();
 
             // The class benchmark is the average of every student's Earned Grade (null = nothing graded yet).
             var earned = everyone.Select(s => GradeCalculator.Calculate(course.Categories, s).EarnedOrNull).ToList();
@@ -198,6 +215,12 @@ namespace GradeWise.Services
                     ClassAverage = classScores.Count >= MinClassSize ? (double?)classScores.Average() : null
                 });
             }
+        }
+
+        private static List<ScoreEntry> ScoresFrom(Dictionary<string, List<ScoreEntry>> byStudent, string studentId)
+        {
+            List<ScoreEntry> scores;
+            return studentId != null && byStudent.TryGetValue(studentId, out scores) ? scores : new List<ScoreEntry>();
         }
 
         private static List<ScoreEntry> ScoresOf(MongoDbContext db, Course course, string studentId)

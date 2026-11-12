@@ -5,18 +5,25 @@
     string role = null;
     string userName = null;
     string userEmail = null;
+    string userNo = null;
     if (User.Identity.IsAuthenticated)
     {
         try
         {
-            var db = new MongoDbContext();
-            var identityName = User.Identity.Name;
-            var me = db.Users.Find(u => u.StudentNo == identityName || u.Email == identityName).FirstOrDefault();
+            // Global.asax already found the account for this request; only look it up again if it did not.
+            var me = Context.Items["gw.user"] as GradeWise.Models.User;
+            if (me == null)
+            {
+                var db = new MongoDbContext();
+                var identityName = User.Identity.Name;
+                me = db.Users.Find(u => u.StudentNo == identityName || u.Email == identityName).FirstOrDefault();
+            }
             if (me != null)
             {
                 role = me.Role;
                 userName = me.FullName;
                 userEmail = me.Email;
+                userNo = me.StudentNo;
             }
         }
         catch (Exception)
@@ -24,6 +31,7 @@
             role = null;
             userName = null;
             userEmail = null;
+            userNo = null;
         }
     }
 }
@@ -35,7 +43,7 @@
     <title>@ViewBag.Title - GradeWise</title>
     <link rel="stylesheet" href="~/Content/fonts.css" />
     @Styles.Render("~/Content/css")
-    <link rel="stylesheet" href="@Url.Content("~/Content/Site.css?v=12")" />
+    <link rel="stylesheet" href="@Url.Content("~/Content/Site.css?v=13")" />
     @Scripts.Render("~/bundles/modernizr")
 </head>
 <body>
@@ -53,8 +61,8 @@
                     @if (role == GradeWise.Models.Roles.Student)
                     {
                         @Html.Action("Bell", "Notifications")
-                        <button type="button" class="gw-iconbtn gw-edit-btn" data-modal-open="gw-editinfo-modal" aria-haspopup="dialog" aria-label="Edit information" title="Edit information">
-                            <img src="~/Content/img/icons/edit.svg" alt="" width="24" height="24" />
+                        <button type="button" class="gw-iconbtn gw-edit-btn" data-modal-open="gw-editinfo-modal" aria-haspopup="dialog" aria-label="My profile" title="My profile">
+                            <img src="~/Content/img/icons/user.svg" alt="" width="24" height="24" />
                         </button>
                     }
                     <a href="@Url.Action("Logout", "Account", new { area = "" })" class="gw-iconbtn gw-signout" aria-label="Sign out" title="Sign out">
@@ -75,7 +83,7 @@
 
     @if (role == GradeWise.Models.Roles.Student)
     {
-        @Html.Partial("_EditInfoModal", userEmail ?? string.Empty)
+        @Html.Partial("_EditInfoModal", new GradeWise.Models.ProfileInfo { FullName = userName, StudentNo = userNo, Email = userEmail })
     }
 
     @Scripts.Render("~/bundles/jquery")

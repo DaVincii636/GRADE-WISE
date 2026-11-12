@@ -1,4 +1,5 @@
-﻿using System.Configuration;
+﻿using System;
+using System.Configuration;
 using MongoDB.Driver;
 using GradeWise.Models;
 
@@ -6,18 +7,17 @@ namespace GradeWise.Data
 {
     public class MongoDbContext
     {
+        // One MongoClient (and one connection pool) for the whole app. The driver is built to be shared
+        // and is thread-safe, so every "new MongoDbContext()" just reuses it. Do not dispose it.
+        private static readonly Lazy<IMongoDatabase> SharedDatabase = new Lazy<IMongoDatabase>(() =>
+            new MongoClient(ConfigurationManager.ConnectionStrings["MongoConnection"].ConnectionString)
+                .GetDatabase("GradeWiseDb"));
+
         private readonly IMongoDatabase _database;
 
         public MongoDbContext()
         {
-            // Pulls the connection string we just added to Web.config
-            var connectionString = ConfigurationManager.ConnectionStrings["MongoConnection"].ConnectionString;
-
-            // Connects to MongoDB Atlas
-            var client = new MongoClient(connectionString);
-
-            // Names your database on Atlas (you can change "GradeWiseDb" to whatever you prefer)
-            _database = client.GetDatabase("GradeWiseDb");
+            _database = SharedDatabase.Value;
         }
 
         // Exposing your collections so your controllers/services can query them

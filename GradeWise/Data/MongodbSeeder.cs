@@ -49,9 +49,36 @@ namespace GradeWise.Data
             EnsureIndexes(db);
         }
 
-        // Notifications are listed per student, newest first, so index them that way.
+        // Indexes only make reads faster. CreateOne does nothing when the same index already exists,
+        // and each one is wrapped on its own so a permission problem on Atlas can never stop the app starting.
         private static void EnsureIndexes(MongoDbContext db)
         {
+            // Grades are read per course and per student.
+            try
+            {
+                var keys = Builders<GradeRecord>.IndexKeys
+                    .Ascending(g => g.CourseId)
+                    .Ascending(g => g.StudentId);
+                db.Grades.Indexes.CreateOne(new CreateIndexModel<GradeRecord>(keys));
+            }
+            catch (System.Exception)
+            {
+            }
+
+            // Progress history is read per course and student, in time order.
+            try
+            {
+                var keys = Builders<ScoreSnapshot>.IndexKeys
+                    .Ascending(s => s.CourseId)
+                    .Ascending(s => s.StudentId)
+                    .Ascending(s => s.TakenAt);
+                db.Snapshots.Indexes.CreateOne(new CreateIndexModel<ScoreSnapshot>(keys));
+            }
+            catch (System.Exception)
+            {
+            }
+
+            // Notifications are listed per student, newest first, so index them that way.
             try
             {
                 var keys = Builders<Notification>.IndexKeys
@@ -61,7 +88,6 @@ namespace GradeWise.Data
             }
             catch (System.Exception)
             {
-                // The index only makes the bell faster. The app still works without it.
             }
         }
     }

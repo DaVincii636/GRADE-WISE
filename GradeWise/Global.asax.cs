@@ -30,6 +30,17 @@ namespace GradeWise
 
         protected void Application_PostAuthenticateRequest(object sender, EventArgs e)
         {
+            // Styles, scripts, bundles and the icon do not need to know who is signed in,
+            // so do not spend a database round trip on them.
+            var path = Request.AppRelativeCurrentExecutionFilePath ?? string.Empty;
+            if (path.StartsWith("~/Content", StringComparison.OrdinalIgnoreCase) ||
+                path.StartsWith("~/Scripts", StringComparison.OrdinalIgnoreCase) ||
+                path.StartsWith("~/bundles", StringComparison.OrdinalIgnoreCase) ||
+                path.StartsWith("~/favicon", StringComparison.OrdinalIgnoreCase))
+            {
+                return;
+            }
+
             var cookie = Request.Cookies[FormsAuthentication.FormsCookieName];
             if (cookie == null || string.IsNullOrEmpty(cookie.Value))
             {
@@ -68,6 +79,9 @@ namespace GradeWise
                 Context.User = new GenericPrincipal(new GenericIdentity(string.Empty), new string[0]);
                 return;
             }
+
+            // Keep the account for the rest of this request, so the layout and controllers do not look it up again.
+            Context.Items["gw.user"] = user;
 
             Context.User = new GenericPrincipal(new FormsIdentity(ticket), new[] { user.Role });
         }

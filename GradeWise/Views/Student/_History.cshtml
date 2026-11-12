@@ -8,7 +8,7 @@
     // Oldest first, as the service returns them. The chart plots Earned Grade (points out of 100).
     var points = Model.History;
 
-    // The table starts with this many rows; "See more" reveals more, ten at a time.
+    // The table starts with this many rows; "Show more" reveals more, ten at a time; "Show less" goes back.
     const int FirstShown = 5;
     const int MoreStep = 10;
 
@@ -113,7 +113,8 @@
         if (hiddenCount > 0)
         {
             <div class="gw-panel-body gw-history-more">
-                <button type="button" class="gw-btn gw-btn-small gw-btn-outline" id="gw-history-more" data-step="@MoreStep">See more (@hiddenCount)</button>
+                <button type="button" class="gw-btn gw-btn-small gw-btn-outline" id="gw-history-more" data-step="@MoreStep">Show more (@hiddenCount)</button>
+                <button type="button" class="gw-btn gw-btn-small gw-btn-outline" id="gw-history-less" data-first="@FirstShown" hidden>Show less</button>
             </div>
         }
     }
@@ -136,22 +137,46 @@
                 " " + hours + ":" + pad(d.getMinutes()) + " " + suffix;
         }
 
-        // "See more" shows ten more rows each click and disappears when none are left.
-        var button = document.getElementById("gw-history-more");
-        if (!button) return;
-        var step = parseInt(button.getAttribute("data-step"), 10) || 10;
+        // "Show more" reveals up to ten more rows. "Show less" goes back to the first five.
+        var more = document.getElementById("gw-history-more");
+        var less = document.getElementById("gw-history-less");
+        var table = document.getElementById("gw-history-table");
+        if (!more || !less || !table) return;
+        var step = parseInt(more.getAttribute("data-step"), 10) || 10;
+        var first = parseInt(less.getAttribute("data-first"), 10) || 5;
 
-        button.addEventListener("click", function () {
-            var hidden = document.querySelectorAll("#gw-history-table tr.gw-history-row[hidden]");
-            var show = Math.min(step, hidden.length);
-            for (var i = 0; i < show; i++) hidden[i].removeAttribute("hidden");
+        function rows() { return table.querySelectorAll("tr.gw-history-row"); }
 
-            var left = hidden.length - show;
-            if (left <= 0) {
-                button.parentNode.removeChild(button);
-            } else {
-                button.textContent = "See more (" + left + ")";
+        function refresh() {
+            var all = rows();
+            var hiddenCount = 0;
+            for (var i = 0; i < all.length; i++) {
+                if (all[i].hasAttribute("hidden")) hiddenCount++;
             }
+            more.textContent = "Show more (" + hiddenCount + ")";
+            more.hidden = hiddenCount === 0;
+            less.hidden = all.length - hiddenCount <= first;
+        }
+
+        more.addEventListener("click", function () {
+            var all = rows();
+            var left = step;
+            for (var i = 0; i < all.length && left > 0; i++) {
+                if (all[i].hasAttribute("hidden")) {
+                    all[i].removeAttribute("hidden");
+                    left--;
+                }
+            }
+            refresh();
+            if (more.hidden) less.focus();
+        });
+
+        less.addEventListener("click", function () {
+            var all = rows();
+            for (var i = first; i < all.length; i++) all[i].setAttribute("hidden", "");
+            refresh();
+            (table.tHead || table).scrollIntoView({ block: "nearest" });
+            more.focus();
         });
     })();
 </script>

@@ -3212,3 +3212,25 @@ body.gw-modal-open {
 .gw-calc-table tfoot .gw-calc-note {
     font-weight: 400;
 }
+
+/* ---------- Plan 2, Phase 1 ---------- */
+.gw-modal-meta-stack {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+}
+
+.gw-profile-name {
+    font-size: 1.15rem;
+    overflow-wrap: anywhere;
+}
+
+.gw-history-more {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+.gw-history-more [hidden] {
+    display: none !important;
+}

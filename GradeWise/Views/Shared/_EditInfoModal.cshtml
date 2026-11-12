@@ -1,26 +1,33 @@
-@model string
+@model GradeWise.Models.ProfileInfo
 @{
-    // The student's own sign-in details. Opened by the pencil button in the top bar (see _Layout).
+    // The student's own profile. Opened by the profile button in the top bar (see _Layout).
     // After a failed save the controller redirects here with the problems in TempData, and the
     // modal opens again by itself so the student can read them.
     var errors = TempData["EditInfoErrors"] as List<string> ?? new List<string>();
     var which = TempData["EditInfoForm"] as string;
     var typedEmail = TempData["EditInfoEmail"] as string ?? string.Empty;
+    var typedName = TempData["EditInfoName"] as string;
+    var nameValue = typedName ?? Model.FullName;
 
+    var nameErrors = which == "name" ? errors : new List<string>();
     var emailErrors = which == "email" ? errors : new List<string>();
     var passwordErrors = which == "password" ? errors : new List<string>();
-    var reopen = emailErrors.Count > 0 || passwordErrors.Count > 0;
+    var reopen = nameErrors.Count > 0 || emailErrors.Count > 0 || passwordErrors.Count > 0;
+    var focusEmail = emailErrors.Count > 0;
     var focusPassword = passwordErrors.Count > 0;
+    var focusName = !focusEmail && !focusPassword;
 }
 
 <div id="gw-editinfo-modal" class="gw-modal-backdrop" hidden @(reopen ? "data-open-on-load" : null)>
     <div class="gw-panel gw-card-raised gw-modal-card" role="dialog" aria-modal="true" aria-labelledby="gw-editinfo-title">
         <div class="gw-panel-head">
-            <h2 id="gw-editinfo-title" class="gw-panel-title">Edit information</h2>
+            <h2 id="gw-editinfo-title" class="gw-panel-title">My profile</h2>
         </div>
         <div class="gw-modal-top">
-            <div class="gw-modal-meta">
-                <span class="gw-muted">Change the email or password you use to sign in.</span>
+            <div class="gw-modal-meta gw-modal-meta-stack">
+                <strong class="gw-profile-name">@Model.FullName</strong>
+                <span>ID number: @Model.StudentNo</span>
+                <span class="gw-muted">Change your name, email, or password.</span>
             </div>
             <button type="button" class="gw-iconbtn gw-modal-close" data-modal-close aria-label="Close" title="Close">
                 <img src="@Url.Content("~/Content/img/icons/close.svg")" alt="" width="20" height="20" />
@@ -28,9 +35,38 @@
         </div>
 
         <div class="gw-panel-body gw-editinfo-body">
+            <section class="gw-editinfo-section" aria-labelledby="gw-ei-name-h">
+                <h3 id="gw-ei-name-h" class="gw-editinfo-heading">Change name</h3>
+
+                @if (nameErrors.Count > 0)
+                {
+                    <div class="gw-alert" role="alert">
+                        <strong>Your name was not changed.</strong>
+                        <ul class="gw-error-list">
+                            @foreach (var e in nameErrors)
+                            {
+                                <li>@e</li>
+                            }
+                        </ul>
+                    </div>
+                }
+
+                @using (Html.BeginForm("ChangeName", "Account", FormMethod.Post))
+                {
+                    @Html.AntiForgeryToken()
+                    <div class="gw-field">
+                        <label for="gw-ei-newname">Name</label>
+                        <input type="text" id="gw-ei-newname" name="newName" value="@nameValue" maxlength="100" required autocomplete="name" @(focusName ? "data-autofocus" : null) />
+                    </div>
+                    <div class="gw-form-buttons">
+                        <button type="submit" class="gw-btn">Update name</button>
+                    </div>
+                }
+            </section>
+
             <section class="gw-editinfo-section" aria-labelledby="gw-ei-email-h">
                 <h3 id="gw-ei-email-h" class="gw-editinfo-heading">Change email</h3>
-                <p class="gw-muted gw-editinfo-current">Current email: <strong>@Model</strong></p>
+                <p class="gw-muted gw-editinfo-current">Current email: <strong>@Model.Email</strong></p>
 
                 @if (emailErrors.Count > 0)
                 {
@@ -50,7 +86,7 @@
                     @Html.AntiForgeryToken()
                     <div class="gw-field">
                         <label for="gw-ei-newemail">New email</label>
-                        <input type="email" id="gw-ei-newemail" name="newEmail" value="@typedEmail" maxlength="254" required autocomplete="email" @(focusPassword ? null : "data-autofocus") />
+                        <input type="email" id="gw-ei-newemail" name="newEmail" value="@typedEmail" maxlength="254" required autocomplete="email" @(focusEmail ? "data-autofocus" : null) />
                     </div>
                     <div class="gw-field">
                         <label for="gw-ei-emailpw">Current password</label>

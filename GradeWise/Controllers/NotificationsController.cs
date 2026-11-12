@@ -106,6 +106,10 @@ namespace GradeWise.Controllers
 
         private User CurrentStudentUser()
         {
+            // Global.asax already found the signed-in account for this request.
+            var cached = HttpContext.Items["gw.user"] as User;
+            if (cached != null) return cached;
+
             var db = new MongoDbContext();
             var identityName = User.Identity.Name.ToLower();
             return db.Users.Find(u => u.StudentNo.ToLower() == identityName || u.Email.ToLower() == identityName).FirstOrDefault();

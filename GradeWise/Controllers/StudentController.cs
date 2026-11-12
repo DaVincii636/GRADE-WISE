@@ -20,7 +20,7 @@ namespace GradeWise.Controllers
             var me = CurrentStudentUser();
             if (me == null) return new HttpUnauthorizedResult();
 
-            return View(StudentService.GetDashboard(me.Id, id));
+            return View(StudentService.GetDashboard(me.Id, id, me));
         }
 
         // GET: /Student/Summary  or  /Student/Summary/{courseId}  (printable page)
@@ -29,7 +29,7 @@ namespace GradeWise.Controllers
             var me = CurrentStudentUser();
             if (me == null) return new HttpUnauthorizedResult();
 
-            return View(StudentService.GetDashboard(me.Id, id));
+            return View(StudentService.GetDashboard(me.Id, id, me));
         }
 
         // GET: /Student/WhatIf  or  /Student/WhatIf/{courseId}
@@ -45,6 +45,10 @@ namespace GradeWise.Controllers
 
         private User CurrentStudentUser()
         {
+            // Global.asax already found the signed-in account for this request.
+            var cached = HttpContext.Items["gw.user"] as User;
+            if (cached != null) return cached;
+
             try
             {
                 var db = new MongoDbContext();
