@@ -3291,3 +3291,74 @@ body.gw-modal-open {
 .gw-history-note p {
     margin: 0;
 }
+
+/* ---------- Plan 2, Phase 4 (follow-up): expandable "and N more", clean print sheet ---------- */
+.gw-what-toggle {
+    display: inline;
+    padding: 0;
+    background: none;
+    border: 0;
+    color: var(--gw-ink);
+    font: inherit;
+    font-weight: 700;
+    text-decoration: underline;
+    text-decoration-thickness: 1.5px;
+    text-underline-offset: 3px;
+    cursor: pointer;
+}
+
+.gw-what-toggle:hover {
+    text-decoration-color: var(--gw-lime);
+    text-decoration-thickness: 3px;
+}
+
+@media print {
+
+    /* the printed copy shows the full list of changes and has no buttons */
+    .gw-what-short,
+    .gw-what-more,
+    .gw-what-less {
+        display: none !important;
+    }
+
+    .gw-what-full[hidden] {
+        display: inline !important;
+    }
+
+    /* The tab that sticks out above a panel is cut in half when a page break lands on it.
+       On paper the panel title is a plain heading inside the box, so nothing can be cut off. */
+    .gw-summary-sheet .gw-panel {
+        break-inside: auto;
+        page-break-inside: auto;
+        margin: 14px 0;
+        border: 1.5px solid #000;
+    }
+
+    .gw-summary-sheet .gw-panel-head {
+        position: static;
+        margin: 0;
+        padding: 8px 14px 4px;
+        break-after: avoid;
+        page-break-after: avoid;
+    }
+
+    .gw-summary-sheet .gw-panel-title {
+        padding: 0;
+        border: 0;
+        background: transparent;
+        font-size: 12pt;
+    }
+
+    /* long tables flow onto the next page row by row, with the header row repeated */
+    .gw-summary-sheet .gw-table thead {
+        display: table-header-group;
+    }
+
+    .gw-summary-sheet .gw-table tr,
+    .gw-summary-sheet .gw-chart,
+    .gw-summary-sheet .gw-history-note,
+    .gw-summary-sheet .gw-stats {
+        break-inside: avoid;
+        page-break-inside: avoid;
+    }
+}

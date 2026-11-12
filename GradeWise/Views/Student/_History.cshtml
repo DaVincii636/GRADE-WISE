@@ -102,9 +102,24 @@
                     {
                         var h = points[i];
                         var rowNumber = points.Count - 1 - i;   // 0 is the newest row
+
+                        // "A, B, C and 2 more" becomes "A, B, C" + a button; the button swaps in the full list (h.Details).
+                        var more = System.Text.RegularExpressions.Regex.Match(h.Summary ?? "", @"^(.*) and (\d+) more$");
+                        var canExpand = more.Success && !string.IsNullOrEmpty(h.Details) && h.Details != h.Summary;
                         <tr class="gw-history-row" hidden="@(rowNumber >= FirstShown)">
                             <td><time class="gw-history-time" datetime="@h.Iso">@h.Label</time></td>
-                            <td class="gw-history-what" title="@h.Details">@h.Summary</td>
+                            <td class="gw-history-what" title="@h.Details">
+                                @if (canExpand)
+                                {
+                                    <span class="gw-what-short">@more.Groups[1].Value</span>
+                                    <button type="button" class="gw-what-toggle gw-what-more" aria-expanded="false">and @more.Groups[2].Value more</button>
+                                    <span class="gw-what-full" hidden>@h.Details <button type="button" class="gw-what-toggle gw-what-less" aria-expanded="true">show less</button></span>
+                                }
+                                else
+                                {
+                                    @h.Summary
+                                }
+                            </td>
                             <td class="gw-num">@GradeCalculator.Format(h.Earned)</td>
                             <td class="gw-num">@GradeCalculator.Format(h.Equivalent)</td>
                             <td class="gw-num">
@@ -149,6 +164,25 @@
             times[t].textContent = pad(d.getMonth() + 1) + "/" + pad(d.getDate()) + "/" + d.getFullYear() +
                 " " + hours + ":" + pad(d.getMinutes()) + " " + suffix;
         }
+
+        // "and N more" in the What changed column: show the full list, "show less" folds it back.
+        document.addEventListener("click", function (e) {
+            var btn = e.target && e.target.closest ? e.target.closest(".gw-what-toggle") : null;
+            if (!btn) return;
+            var cell = btn.closest(".gw-history-what");
+            if (!cell) return;
+            var expand = btn.classList.contains("gw-what-more");
+            var shortText = cell.querySelector(".gw-what-short");
+            var moreBtn = cell.querySelector(".gw-what-more");
+            var full = cell.querySelector(".gw-what-full");
+            var lessBtn = cell.querySelector(".gw-what-less");
+            if (!shortText || !moreBtn || !full || !lessBtn) return;
+            shortText.hidden = expand;
+            moreBtn.hidden = expand;
+            full.hidden = !expand;
+            moreBtn.setAttribute("aria-expanded", expand ? "true" : "false");
+            (expand ? lessBtn : moreBtn).focus();
+        });
 
         // "Show more" reveals up to ten more rows. "Show less" goes back to the first five.
         var more = document.getElementById("gw-history-more");
