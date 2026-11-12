@@ -1,7 +1,9 @@
 @model GradeWise.Models.StudentDashboardViewModel
+@using GradeWise.Models
 @using GradeWise.Services
 @{
     ViewBag.Title = "Grade summary";
+    var showPeriod = Model.Scope == GradeScopes.FinalGrade;
 }
 
 <div class="gw-toolbar gw-no-print">
@@ -37,6 +39,8 @@ else
                     <dd>@Model.Code &middot; @Model.Name</dd>
                     <dt>Term</dt>
                     <dd>@Model.Term</dd>
+                    <dt>Showing</dt>
+                    <dd>@Model.ScopeLabel</dd>
                 </dl>
             </div>
         </section>
@@ -44,13 +48,13 @@ else
         @if (!Model.HasCategories)
         {
             <div class="gw-alert gw-alert-warn" role="status">
-                The grading categories for this course have not been set yet, so there is nothing to summarize.
+                The @Model.ScopeLabel grading categories for this course have not been set yet, so there is nothing to summarize.
             </div>
         }
         else if (!Model.WeightsOk)
         {
             <div class="gw-alert gw-alert-warn" role="status">
-                The grading weights for this course add up to <strong>@GradeCalculator.Format(Model.WeightTotal)%</strong>, not 100%.
+                The @Model.ScopeLabel grading weights for this course add up to <strong>@GradeCalculator.Format(Model.WeightTotal)%</strong>, not 100%.
                 These numbers may change once the instructor fixes them.
             </div>
         }
@@ -58,15 +62,15 @@ else
         <section class="gw-stats" aria-label="Summary">
             <div class="gw-stat" data-tab="Average">
                 <div class="gw-stat-value">@(Model.Average.HasValue ? GradeCalculator.Format(Model.Average) + "%" : "\u2014")</div>
-                <div class="gw-stat-label">Current average <span class="gw-th-sub">(graded work so far)</span></div>
+                <div class="gw-stat-label">Current average <span class="gw-th-sub">(@Model.ScopeLabel, graded work so far)</span></div>
             </div>
             <div class="gw-stat" data-tab="Equivalent">
                 <div class="gw-stat-value">@GradeCalculator.Format(Model.Equivalent)</div>
-                <div class="gw-stat-label">Equivalent grade <span class="gw-th-sub">(based on points earned so far)</span></div>
+                <div class="gw-stat-label">Equivalent grade <span class="gw-th-sub">(@Model.ScopeLabel, based on points earned so far)</span></div>
             </div>
             <div class="gw-stat" data-tab="Remaining">
                 <div class="gw-stat-value">@(Model.HasCategories ? GradeCalculator.Format(Model.RemainingWeight) + "%" : "\u2014")</div>
-                <div class="gw-stat-label">Remaining weight <span class="gw-th-sub">(not graded yet)</span></div>
+                <div class="gw-stat-label">Remaining weight <span class="gw-th-sub">(@Model.ScopeLabel, not graded yet)</span></div>
             </div>
         </section>
 
@@ -79,7 +83,10 @@ else
                     <thead>
                         <tr>
                             <th>Category</th>
-                            <th>Period</th>
+                            @if (showPeriod)
+                            {
+                                <th>Period</th>
+                            }
                             <th class="gw-num">Weight</th>
                             <th class="gw-num">Your score</th>
                             <th class="gw-num">Weighted points</th>
@@ -89,14 +96,17 @@ else
                         @if (Model.Rows.Count == 0)
                         {
                             <tr>
-                                <td colspan="5" class="gw-empty">No scores have been entered yet.</td>
+                                <td colspan="@(showPeriod ? 5 : 4)" class="gw-empty">No scores have been entered yet.</td>
                             </tr>
                         }
                         @foreach (var r in Model.Rows)
                         {
                             <tr>
                                 <td>@r.Category</td>
-                                <td>@r.Period</td>
+                                @if (showPeriod)
+                                {
+                                    <td>@r.Period</td>
+                                }
                                 <td class="gw-num">@GradeCalculator.Format(r.Weight)%</td>
                                 <td class="gw-num">
                                     @if (r.Score.HasValue)
@@ -117,7 +127,10 @@ else
                         <tfoot>
                             <tr>
                                 <th>Total</th>
-                                <th></th>
+                                @if (showPeriod)
+                                {
+                                    <th></th>
+                                }
                                 <th class="gw-num">@GradeCalculator.Format(Model.WeightTotal)%</th>
                                 <th></th>
                                 <th class="gw-num">@GradeCalculator.Format(Model.Earned)</th>

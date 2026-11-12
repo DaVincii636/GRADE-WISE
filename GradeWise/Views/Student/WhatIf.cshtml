@@ -2,10 +2,20 @@
 @using GradeWise.Services
 @{
     ViewBag.Title = "What-If simulator";
+    // Final Grade keeps the plain wording; Midterm and Final Term name the period.
+    var isFinalGrade = Model.Scope == GradeWise.Models.GradeScopes.FinalGrade;
+    var projectedLabel = isFinalGrade ? "Projected final grade" : "Projected " + Model.ScopeLabel + " grade";
+    var targetLabel = isFinalGrade ? "Target final grade" : "Target " + Model.ScopeLabel + " grade";
 }
 
 <h1 class="gw-page-title">What-If simulator</h1>
-<p class="gw-page-sub">Try different scores for your remaining work and see where your final grade could land.</p>
+<p class="gw-page-sub">
+    Try different scores for your remaining work and see where your @(isFinalGrade ? "final" : Model.ScopeLabel) grade could land.
+    @if (Model.HasCourse)
+    {
+        <span class="gw-badge">Showing: @Model.ScopeLabel</span>
+    }
+</p>
 
 @if (!Model.HasCourse)
 {
@@ -39,13 +49,13 @@ else
     if (!Model.HasCategories)
     {
         <div class="gw-alert gw-alert-warn" role="status">
-            Your instructor has not set the grading categories for this course yet, so there is nothing to simulate.
+            Your instructor has not set the @Model.ScopeLabel grading categories for this course yet, so there is nothing to simulate.
         </div>
     }
     else if (!Model.WeightsOk)
     {
         <div class="gw-alert gw-alert-warn" role="status">
-            The grading weights for this course add up to <strong>@GradeCalculator.Format(Model.WeightTotal)%</strong>, not 100%.
+            The @Model.ScopeLabel grading weights for this course add up to <strong>@GradeCalculator.Format(Model.WeightTotal)%</strong>, not 100%.
             The simulator is switched off until your instructor fixes them, because the results would not be reliable.
         </div>
     }
@@ -54,7 +64,7 @@ else
         <section class="gw-stats" aria-label="Final result">
             <div class="gw-stat" data-tab="Final">
                 <div class="gw-stat-value">@GradeCalculator.Format(Model.Earned)%</div>
-                <div class="gw-stat-label">Final grade</div>
+                <div class="gw-stat-label">@(isFinalGrade ? "Final grade" : Model.ScopeLabel + " grade")</div>
             </div>
             <div class="gw-stat" data-tab="Grade">
                 <div class="gw-stat-value">@GradeCalculator.Format(Model.Equivalent)</div>
@@ -62,7 +72,7 @@ else
             </div>
         </section>
         <div class="gw-alert gw-alert-ok" role="status">
-            Every category in this course is already graded, so there is nothing left to simulate.
+            Every @Model.ScopeLabel category in this course is already graded, so there is nothing left to simulate.
         </div>
     }
     else
@@ -84,7 +94,7 @@ else
                 </div>
                 <div class="gw-stat gw-stat-live" data-tab="Projected">
                     <div class="gw-stat-value" id="sim-final" aria-live="polite">&mdash;</div>
-                    <div class="gw-stat-label">Projected final grade</div>
+                    <div class="gw-stat-label">@projectedLabel</div>
                 </div>
                 <div class="gw-stat gw-stat-live" data-tab="Grade">
                     <div class="gw-stat-value" id="sim-grade" aria-live="polite">&mdash;</div>
@@ -144,7 +154,7 @@ else
                 </div>
                 <div class="gw-panel-body">
                     <p class="gw-hint-block gw-muted">
-                        Pick the final grade you are aiming for and see what your remaining work needs to average.
+                        Pick the @(isFinalGrade ? "final" : Model.ScopeLabel) grade you are aiming for and see what your remaining work needs to average.
                     </p>
 
                     <div class="gw-chips" role="group" aria-label="Target equivalent grade">
@@ -158,7 +168,7 @@ else
                     </div>
 
                     <div class="gw-sim-control gw-sim-target">
-                        <label for="sim-target-num" class="gw-sim-label">Target final grade</label>
+                        <label for="sim-target-num" class="gw-sim-label">@targetLabel</label>
                         <input type="range" id="sim-target-range" min="0" max="100" step="0.5" value="@GradeCalculator.Raw(GradeCalculator.PassingAverage)"
                                aria-label="Target slider" />
                         <input type="number" id="sim-target-num" class="gw-score-input" min="0" max="100" step="0.01" value="@GradeCalculator.Raw(GradeCalculator.PassingAverage)" />
@@ -210,7 +220,7 @@ else
             </div>
             <div class="gw-panel-body">
                 <p class="gw-hint-block gw-muted">
-                    Your projected final grade is the points you have already earned, plus the points your remaining work could add.
+                    Your @projectedLabel.ToLowerInvariant() is the points you have already earned, plus the points your remaining work could add.
                     Each category adds <strong>weight &times; score &divide; 100</strong>. This table uses your own numbers and changes as you move the sliders.
                 </p>
                 <div class="gw-table-wrap">
@@ -239,7 +249,7 @@ else
                         </tbody>
                         <tfoot>
                             <tr>
-                                <th scope="row">Projected final grade</th>
+                                <th scope="row">@projectedLabel</th>
                                 <td class="gw-calc-note" id="calc-sum" aria-live="polite">&mdash;</td>
                                 <td class="gw-num" id="calc-total">&mdash;</td>
                             </tr>

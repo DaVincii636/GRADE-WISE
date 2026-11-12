@@ -49,6 +49,15 @@ namespace GradeWise.Models
         public string Name { get; set; }
         public string Term { get; set; }
 
+        /// <summary>The course's reflected scope: "midterm", "final-term" or "final-grade". Set by the instructor.</summary>
+        public string Scope { get; set; } = GradeScopes.Midterm;
+
+        /// <summary>"Midterm", "Final Term" or "Final Grade".</summary>
+        public string ScopeLabel { get; set; } = "Midterm";
+
+        /// <summary>True when the scope has at least one category.</summary>
+        public bool ScopeHasCategories { get; set; }
+
         public bool HasCategories { get; set; }
         public double WeightTotal { get; set; }
         public bool WeightsOk { get; set; }
@@ -98,6 +107,15 @@ namespace GradeWise.Models
         public string Code { get; set; }
         public string Name { get; set; }
         public string Term { get; set; }
+
+        /// <summary>The course's reflected scope: "midterm", "final-term" or "final-grade". Set by the instructor.</summary>
+        public string Scope { get; set; } = GradeScopes.Midterm;
+
+        /// <summary>"Midterm", "Final Term" or "Final Grade".</summary>
+        public string ScopeLabel { get; set; } = "Midterm";
+
+        /// <summary>True when the scope has at least one category.</summary>
+        public bool ScopeHasCategories { get; set; }
 
         public bool HasCategories { get; set; }
         public double WeightTotal { get; set; }

@@ -65,17 +65,21 @@ namespace GradeWise.Services
             if (mine.Count == 0) return model;
 
             var course = mine.FirstOrDefault(c => c.Id == requestedCourseId) ?? mine[0];
+            var scope = GradeScopes.Normalize(course.ReflectedScope);
             var scores = ScoresOf(db, course, studentId);
-            var result = GradeCalculator.Calculate(course.Categories, scores);
+            var result = GradeCalculator.CalculateScope(course.Categories, scores, scope);
 
             model.HasCourse = true;
             model.SelectedId = course.Id;
             model.Code = course.Code;
             model.Name = course.Name;
             model.Term = course.Term;
-            model.HasCategories = course.Categories.Count > 0;
-            model.WeightTotal = result.TotalWeight;
-            model.WeightsOk = model.HasCategories && GradeCalculator.IsFullWeight(result.TotalWeight);
+            model.Scope = scope;
+            model.ScopeLabel = GradeScopes.Label(scope);
+            model.ScopeHasCategories = GradeCalculator.ScopeCategories(course.Categories, scope).Any();
+            model.HasCategories = model.ScopeHasCategories;
+            model.WeightTotal = GradeCalculator.ScopeTotal(course.Categories, scope);
+            model.WeightsOk = GradeCalculator.ScopeReady(course.Categories, scope);
             model.Average = result.Average;
             model.Equivalent = GradeCalculator.EquivalentFromEarned(result);
             model.Earned = result.Earned;
@@ -86,25 +90,25 @@ namespace GradeWise.Services
                 ? Math.Max(0, Math.Min(100, Math.Round(result.Average.Value)))
                 : 75;
 
-            foreach (var category in course.Categories)
+            foreach (var category in GradeCalculator.ScopeCategories(course.Categories, scope))
             {
                 var own = FindScore(scores, category.Name);
+                var weight = GradeCalculator.ScopeWeight(category, scope);
 
                 if (own.HasValue)
                 {
-                    var effective = GradeCalculator.EffectiveWeight(category);
                     model.Graded.Add(new BreakdownRow
                     {
                         Category = category.Name,
                         Period = GradePeriods.Normalize(category.Period),
-                        Weight = effective,
+                        Weight = weight,
                         Score = own,
-                        WeightedPoints = effective * own.Value / 100.0
+                        WeightedPoints = weight * own.Value / 100.0
                     });
                 }
                 else
                 {
-                    model.Ungraded.Add(new GradeCategory { Name = category.Name, Period = GradePeriods.Normalize(category.Period), Weight = GradeCalculator.EffectiveWeight(category) });
+                    model.Ungraded.Add(new GradeCategory { Name = category.Name, Period = GradePeriods.Normalize(category.Period), Weight = weight });
                 }
             }
 
@@ -167,17 +171,22 @@ namespace GradeWise.Services
                 }
             }
 
+            // Everything below follows the scope the instructor chose for this course.
+            var scope = GradeScopes.Normalize(course.ReflectedScope);
             var mine = ScoresFrom(byStudent, studentId);
-            var result = GradeCalculator.Calculate(course.Categories, mine);
+            var result = GradeCalculator.CalculateScope(course.Categories, mine, scope);
 
             model.HasCourse = true;
             model.SelectedId = course.Id;
             model.Code = course.Code;
             model.Name = course.Name;
             model.Term = course.Term;
-            model.HasCategories = course.Categories.Count > 0;
-            model.WeightTotal = result.TotalWeight;
-            model.WeightsOk = model.HasCategories && GradeCalculator.IsFullWeight(result.TotalWeight);
+            model.Scope = scope;
+            model.ScopeLabel = GradeScopes.Label(scope);
+            model.ScopeHasCategories = GradeCalculator.ScopeCategories(course.Categories, scope).Any();
+            model.HasCategories = model.ScopeHasCategories;
+            model.WeightTotal = GradeCalculator.ScopeTotal(course.Categories, scope);
+            model.WeightsOk = GradeCalculator.ScopeReady(course.Categories, scope);
             model.Average = result.Average;
             model.Equivalent = GradeCalculator.EquivalentFromEarned(result);
             model.Earned = result.Earned;
@@ -189,12 +198,12 @@ namespace GradeWise.Services
             var everyone = course.StudentIds.Select(id => ScoresFrom(byStudent, id)).ToList();
 
             // The class benchmark is the average of every student's Earned Grade (null = nothing graded yet).
-            var earned = everyone.Select(s => GradeCalculator.Calculate(course.Categories, s).EarnedOrNull).ToList();
+            var earned = everyone.Select(s => GradeCalculator.CalculateScope(course.Categories, s, scope).EarnedOrNull).ToList();
             var summary = GradeCalculator.Summarize(earned);
             model.ClassGraded = summary.Graded;
             model.ClassAverage = summary.Graded >= MinClassSize ? summary.Average : null;
 
-            foreach (var category in course.Categories)
+            foreach (var category in GradeCalculator.ScopeCategories(course.Categories, scope))
             {
                 var own = FindScore(mine, category.Name);
 
@@ -204,14 +213,14 @@ namespace GradeWise.Services
                     .Select(v => v.Value)
                     .ToList();
 
-                var effective = GradeCalculator.EffectiveWeight(category);
+                var weight = GradeCalculator.ScopeWeight(category, scope);
                 model.Rows.Add(new BreakdownRow
                 {
                     Category = category.Name,
                     Period = GradePeriods.Normalize(category.Period),
-                    Weight = effective,
+                    Weight = weight,
                     Score = own,
-                    WeightedPoints = own.HasValue ? (double?)(effective * own.Value / 100.0) : null,
+                    WeightedPoints = own.HasValue ? (double?)(weight * own.Value / 100.0) : null,
                     ClassAverage = classScores.Count >= MinClassSize ? (double?)classScores.Average() : null
                 });
             }
