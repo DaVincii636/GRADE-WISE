@@ -1,0 +1,108 @@
+@model string
+@{
+    // The student's own sign-in details. Opened by the pencil button in the top bar (see _Layout).
+    // After a failed save the controller redirects here with the problems in TempData, and the
+    // modal opens again by itself so the student can read them.
+    var errors = TempData["EditInfoErrors"] as List<string> ?? new List<string>();
+    var which = TempData["EditInfoForm"] as string;
+    var typedEmail = TempData["EditInfoEmail"] as string ?? string.Empty;
+
+    var emailErrors = which == "email" ? errors : new List<string>();
+    var passwordErrors = which == "password" ? errors : new List<string>();
+    var reopen = emailErrors.Count > 0 || passwordErrors.Count > 0;
+    var focusPassword = passwordErrors.Count > 0;
+}
+
+<div id="gw-editinfo-modal" class="gw-modal-backdrop" hidden @(reopen ? "data-open-on-load" : null)>
+    <div class="gw-panel gw-card-raised gw-modal-card" role="dialog" aria-modal="true" aria-labelledby="gw-editinfo-title">
+        <div class="gw-panel-head">
+            <h2 id="gw-editinfo-title" class="gw-panel-title">Edit information</h2>
+        </div>
+        <div class="gw-modal-top">
+            <div class="gw-modal-meta">
+                <span class="gw-muted">Change the email or password you use to sign in.</span>
+            </div>
+            <button type="button" class="gw-iconbtn gw-modal-close" data-modal-close aria-label="Close" title="Close">
+                <img src="@Url.Content("~/Content/img/icons/close.svg")" alt="" width="20" height="20" />
+            </button>
+        </div>
+
+        <div class="gw-panel-body gw-editinfo-body">
+            <section class="gw-editinfo-section" aria-labelledby="gw-ei-email-h">
+                <h3 id="gw-ei-email-h" class="gw-editinfo-heading">Change email</h3>
+                <p class="gw-muted gw-editinfo-current">Current email: <strong>@Model</strong></p>
+
+                @if (emailErrors.Count > 0)
+                {
+                    <div class="gw-alert" role="alert">
+                        <strong>Your email was not changed.</strong>
+                        <ul class="gw-error-list">
+                            @foreach (var e in emailErrors)
+                            {
+                                <li>@e</li>
+                            }
+                        </ul>
+                    </div>
+                }
+
+                @using (Html.BeginForm("ChangeEmail", "Account", FormMethod.Post))
+                {
+                    @Html.AntiForgeryToken()
+                    <div class="gw-field">
+                        <label for="gw-ei-newemail">New email</label>
+                        <input type="email" id="gw-ei-newemail" name="newEmail" value="@typedEmail" maxlength="254" required autocomplete="email" @(focusPassword ? null : "data-autofocus") />
+                    </div>
+                    <div class="gw-field">
+                        <label for="gw-ei-emailpw">Current password</label>
+                        <input type="password" id="gw-ei-emailpw" name="currentPassword" maxlength="128" required autocomplete="current-password" />
+                    </div>
+                    <div class="gw-form-buttons">
+                        <button type="submit" class="gw-btn">Update email</button>
+                    </div>
+                }
+            </section>
+
+            <section class="gw-editinfo-section" aria-labelledby="gw-ei-pw-h">
+                <h3 id="gw-ei-pw-h" class="gw-editinfo-heading">Change password</h3>
+                <p class="gw-field-hint gw-hint-block">At least 8 characters, with at least one letter and one number.</p>
+
+                @if (passwordErrors.Count > 0)
+                {
+                    <div class="gw-alert" role="alert">
+                        <strong>Your password was not changed.</strong>
+                        <ul class="gw-error-list">
+                            @foreach (var e in passwordErrors)
+                            {
+                                <li>@e</li>
+                            }
+                        </ul>
+                    </div>
+                }
+
+                @using (Html.BeginForm("ChangePassword", "Account", FormMethod.Post))
+                {
+                    @Html.AntiForgeryToken()
+                    <div class="gw-field">
+                        <label for="gw-ei-pwcurrent">Current password</label>
+                        <input type="password" id="gw-ei-pwcurrent" name="currentPassword" maxlength="128" required autocomplete="current-password" @(focusPassword ? "data-autofocus" : null) />
+                    </div>
+                    <div class="gw-field">
+                        <label for="gw-ei-pwnew">New password</label>
+                        <input type="password" id="gw-ei-pwnew" name="newPassword" maxlength="128" required autocomplete="new-password" />
+                    </div>
+                    <div class="gw-field">
+                        <label for="gw-ei-pwconfirm">Confirm new password</label>
+                        <input type="password" id="gw-ei-pwconfirm" name="confirmPassword" maxlength="128" required autocomplete="new-password" />
+                    </div>
+                    <div class="gw-form-buttons">
+                        <button type="submit" class="gw-btn">Update password</button>
+                    </div>
+                }
+            </section>
+        </div>
+
+        <div class="gw-modal-foot">
+            <button type="button" class="gw-btn gw-btn-outline" data-modal-close>Close</button>
+        </div>
+    </div>
+</div>

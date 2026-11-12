@@ -3157,3 +3157,33 @@ body.gw-modal-open {
         display: none;
     }
 }
+
+/* ---------- Phase 8: Edit Information modal (email and password) ---------- */
+.gw-editinfo-body {
+    overflow-y: auto;
+}
+
+.gw-editinfo-section+.gw-editinfo-section {
+    margin-top: 22px;
+    padding-top: 18px;
+    border-top: 1.5px dashed var(--gw-ink);
+}
+
+.gw-editinfo-heading {
+    margin: 0 0 8px;
+    font-size: 1.05rem;
+    font-weight: 700;
+}
+
+.gw-editinfo-current {
+    margin: 0 0 12px;
+    overflow-wrap: anywhere;
+}
+
+.gw-editinfo-section .gw-alert {
+    margin-bottom: 12px;
+}
+
+.gw-editinfo-section .gw-form-buttons {
+    margin-top: 14px;
+}

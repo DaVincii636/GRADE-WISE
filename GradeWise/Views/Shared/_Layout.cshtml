@@ -4,6 +4,7 @@
     // Who is signed in? Look the account up in MongoDB so updates show right away.
     string role = null;
     string userName = null;
+    string userEmail = null;
     if (User.Identity.IsAuthenticated)
     {
         try
@@ -15,12 +16,14 @@
             {
                 role = me.Role;
                 userName = me.FullName;
+                userEmail = me.Email;
             }
         }
         catch (Exception)
         {
             role = null;
             userName = null;
+            userEmail = null;
         }
     }
 }
@@ -32,7 +35,7 @@
     <title>@ViewBag.Title - GradeWise</title>
     <link rel="stylesheet" href="~/Content/fonts.css" />
     @Styles.Render("~/Content/css")
-    <link rel="stylesheet" href="@Url.Content("~/Content/Site.css?v=9")" />
+    <link rel="stylesheet" href="@Url.Content("~/Content/Site.css?v=10")" />
     @Scripts.Render("~/bundles/modernizr")
 </head>
 <body>
@@ -50,6 +53,9 @@
                     @if (role == GradeWise.Models.Roles.Student)
                     {
                         @Html.Action("Bell", "Notifications")
+                        <button type="button" class="gw-iconbtn gw-edit-btn" data-modal-open="gw-editinfo-modal" aria-haspopup="dialog" aria-label="Edit information" title="Edit information">
+                            <img src="~/Content/img/icons/edit.svg" alt="" width="24" height="24" />
+                        </button>
                     }
                     <a href="@Url.Action("Logout", "Account", new { area = "" })" class="gw-iconbtn gw-signout" aria-label="Sign out" title="Sign out">
                         <img src="~/Content/img/icons/sign-out.svg" alt="" width="24" height="24" />
@@ -66,6 +72,11 @@
     <footer class="gw-footer">
         &copy; @DateTime.Now.Year GradeWise
     </footer>
+
+    @if (role == GradeWise.Models.Roles.Student)
+    {
+        @Html.Partial("_EditInfoModal", userEmail ?? string.Empty)
+    }
 
     @Scripts.Render("~/bundles/jquery")
     @Scripts.Render("~/bundles/bootstrap")

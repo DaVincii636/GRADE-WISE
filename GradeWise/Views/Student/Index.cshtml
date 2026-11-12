@@ -61,6 +61,15 @@
     </div>
 </div>
 
+@{
+    // Shown after the student changes their email or password (see AccountController).
+    var flash = TempData["Message"] as string;
+}
+@if (!string.IsNullOrEmpty(flash))
+{
+    <div class="gw-alert gw-alert-ok" role="status">@flash</div>
+}
+
 @if (!Model.HasCourse)
 {
     <section class="gw-panel">

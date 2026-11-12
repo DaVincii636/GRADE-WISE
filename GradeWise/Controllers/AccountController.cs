@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Web;
 using System.Web.Mvc;
@@ -107,7 +108,126 @@ namespace GradeWise.Controllers
             return RedirectToAction("Login", "Account");
         }
 
+        // POST: /Account/ChangeEmail
+        // The student's own email only. The signed-in account is found from the sign-in cookie,
+        // never from the form, so nobody can change somebody else's details.
+        [Authorize]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public ActionResult ChangeEmail(string newEmail, string currentPassword)
+        {
+            var db = new MongoDbContext();
+            var me = FindCurrentUser(db);
+            if (me == null || !me.IsActive) return RedirectToAction("Logout");
+
+            newEmail = (newEmail ?? string.Empty).Trim();
+            var errors = new List<string>();
+
+            if (newEmail.Length == 0) errors.Add("Enter your new email address.");
+            else if (!ValidationHelper.IsValidEmail(newEmail)) errors.Add("Enter a valid email address.");
+            else if (string.Equals(newEmail, me.Email, StringComparison.OrdinalIgnoreCase)) errors.Add("That is already your email address.");
+
+            AddPasswordError(errors, me, currentPassword);
+
+            // Only reveal that an address is taken once the password is right.
+            if (errors.Count == 0)
+            {
+                var lower = newEmail.ToLower();
+                var taken = db.Users.Find(u => u.Email.ToLower() == lower && u.Id != me.Id).FirstOrDefault();
+                if (taken != null) errors.Add("That email is already used by another account.");
+            }
+
+            if (errors.Count > 0)
+            {
+                TempData["EditInfoEmail"] = newEmail;
+                return EditInfoFailed("email", errors, me);
+            }
+
+            // Stored in lower case, the same way the Admin screen creates accounts.
+            var saved = newEmail.ToLowerInvariant();
+            db.Users.UpdateOne(u => u.Id == me.Id, Builders<User>.Update.Set(u => u.Email, saved));
+
+            TempData["Message"] = "Email updated.";
+            return RedirectToDashboard(me.Role);
+        }
+
+        // POST: /Account/ChangePassword
+        [Authorize]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public ActionResult ChangePassword(string currentPassword, string newPassword, string confirmPassword)
+        {
+            var db = new MongoDbContext();
+            var me = FindCurrentUser(db);
+            if (me == null || !me.IsActive) return RedirectToAction("Logout");
+
+            var errors = new List<string>();
+
+            AddPasswordError(errors, me, currentPassword);
+
+            var problem = ValidationHelper.PasswordProblem(newPassword);
+            if (problem != null)
+            {
+                errors.Add(problem);
+            }
+            else
+            {
+                if (newPassword == currentPassword) errors.Add("The new password must be different from your current password.");
+                if (newPassword != confirmPassword) errors.Add("The new password and its confirmation do not match.");
+            }
+
+            if (errors.Count > 0) return EditInfoFailed("password", errors, me);
+
+            string salt;
+            int iterations;
+            var hash = PasswordHelper.CreateHash(newPassword, out salt, out iterations);
+
+            var update = Builders<User>.Update
+                .Set(u => u.PasswordHash, hash)
+                .Set(u => u.Salt, salt)
+                .Set(u => u.PasswordIterations, iterations)
+                .Set(u => u.MustChangePassword, false);
+            db.Users.UpdateOne(u => u.Id == me.Id, update);
+
+            TempData["Message"] = "Password updated.";
+            return RedirectToDashboard(me.Role);
+        }
+
         // ---------- helpers ----------
+
+        /// <summary>The account behind the sign-in cookie (its name is the StudentNo), or null.</summary>
+        private User FindCurrentUser(MongoDbContext db)
+        {
+            try
+            {
+                var name = (User.Identity.Name ?? string.Empty).ToLower();
+                return db.Users.Find(u => u.StudentNo.ToLower() == name || u.Email.ToLower() == name).FirstOrDefault();
+            }
+            catch (Exception)
+            {
+                return null;
+            }
+        }
+
+        private static void AddPasswordError(List<string> errors, User me, string currentPassword)
+        {
+            if (string.IsNullOrEmpty(currentPassword))
+            {
+                errors.Add("Enter your current password.");
+            }
+            else if (!PasswordHelper.Verify(currentPassword, me.PasswordHash, me.Salt, me.PasswordIterations))
+            {
+                errors.Add("Your current password is incorrect.");
+            }
+        }
+
+        /// <summary>Keeps the problems for one request and sends the student back to the dashboard, where the layout reopens the modal.</summary>
+        private ActionResult EditInfoFailed(string form, List<string> errors, User me)
+        {
+            TempData["EditInfoErrors"] = errors;
+            TempData["EditInfoForm"] = form;
+            return RedirectToDashboard(me.Role);
+        }
 
         public static string DashboardController(string role)
         {

@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Net.Mail;
 using System.Text.RegularExpressions;
 using System.Web.Mvc;
 using GradeWise.Data;
@@ -68,7 +67,7 @@ namespace GradeWise.Controllers
                 errors.Add("Student number or username can only use letters, numbers, dots, dashes and underscores (up to 50 characters).");
 
             if (email.Length == 0) errors.Add("Email is required.");
-            else if (!IsValidEmail(email)) errors.Add("Enter a valid email address.");
+            else if (!ValidationHelper.IsValidEmail(email)) errors.Add("Enter a valid email address.");
 
             if (!AllRoles.Contains(role)) errors.Add("Choose a role.");
 
@@ -301,18 +300,6 @@ namespace GradeWise.Controllers
         private bool IsMe(User target)
         {
             return string.Equals(target.StudentNo, User.Identity.Name, StringComparison.OrdinalIgnoreCase);
-        }
-
-        private static bool IsValidEmail(string email)
-        {
-            try
-            {
-                return new MailAddress(email).Address == email;
-            }
-            catch (FormatException)
-            {
-                return false;
-            }
         }
     }
 }
