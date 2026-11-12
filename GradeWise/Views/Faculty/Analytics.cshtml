@@ -88,7 +88,7 @@
                         var bin = Model.Bins[i];
                         var modalId = "gw-bin-modal-" + i;
                         var studentWord = Model.StudentCount == 1 ? "student" : "students";
-                        var tooltip = bin.Label + ": " + bin.PercentText + " (" + bin.Count + " of " + Model.StudentCount + " " + studentWord + ") — Click to view students";
+                        var tooltip = bin.Label + ": " + bin.PercentText + " (" + bin.Count + " of " + Model.StudentCount + " " + studentWord + "). Click to view students";
                         <tr class="gw-dist-row" data-modal-target="@modalId" title="@tooltip">
                             <th scope="row">@bin.Label</th>
                             <td class="gw-num">@bin.Count</td>
@@ -112,7 +112,7 @@
                     {
                         var notGradedModalId = "gw-bin-modal-notgraded";
                         var notGradedWord = Model.StudentCount == 1 ? "student" : "students";
-                        var notGradedTip = "Not graded yet: " + Model.NotGradedPercentText + " (" + Model.NotGraded + " of " + Model.StudentCount + " " + notGradedWord + ") — Click to view students";
+                        var notGradedTip = "Not graded yet: " + Model.NotGradedPercentText + " (" + Model.NotGraded + " of " + Model.StudentCount + " " + notGradedWord + "). Click to view students";
                         <tr class="gw-dist-none gw-dist-row" data-modal-target="@notGradedModalId" title="@notGradedTip">
                             <th scope="row">Not graded yet</th>
                             <td class="gw-num">@Model.NotGraded</td>

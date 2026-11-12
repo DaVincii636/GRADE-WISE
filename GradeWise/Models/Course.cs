@@ -22,6 +22,9 @@ namespace GradeWise.Models
 
         public string Term { get; set; }
 
+        /// <summary>Section the course is for (e.g. SBIT-3D). Empty until the sections module exists.</summary>
+        public string Section { get; set; } = string.Empty;
+
         /// <summary>Id of the faculty user who owns the course.</summary>
         public string FacultyId { get; set; }
 

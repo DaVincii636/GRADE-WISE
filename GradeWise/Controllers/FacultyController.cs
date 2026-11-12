@@ -35,16 +35,17 @@ namespace GradeWise.Controllers
         // POST: /Faculty/CreateCourse
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public ActionResult CreateCourse(string code, string name, string term)
+        public ActionResult CreateCourse(string code, string name, string section, string term)
         {
             List<string> errors;
-            var id = CourseService.CreateCourse(CurrentFacultyId(), code, name, term, out errors);
+            var id = CourseService.CreateCourse(CurrentFacultyId(), code, name, section, term, out errors);
 
             if (id == null)
             {
                 var form = CourseService.NewCourseForm();
                 form.Code = code;
                 form.Name = name;
+                form.Section = section;
                 form.Term = term;
                 form.Errors = errors;
                 return View(form);

@@ -11,6 +11,7 @@ namespace GradeWise.Models
         public string Code { get; set; }
         public string Name { get; set; }
         public string Term { get; set; }
+        public string Section { get; set; }
         public int StudentCount { get; set; }
         public int CategoryCount { get; set; }
         public double WeightTotal { get; set; }
@@ -49,6 +50,7 @@ namespace GradeWise.Models
         public string Code { get; set; }
         public string Name { get; set; }
         public string Term { get; set; }
+        public string Section { get; set; }
         public List<GradeCategory> Categories { get; set; } = new List<GradeCategory>();
         public double WeightTotal { get; set; }
         public List<ScoreRow> Rows { get; set; } = new List<ScoreRow>();
@@ -95,7 +97,9 @@ namespace GradeWise.Models
     {
         public string Code { get; set; }
         public string Name { get; set; }
+        public string Section { get; set; }
         public string Term { get; set; }
+        public List<string> SectionNames { get; set; } = new List<string>();
         public List<string> TermNames { get; set; } = new List<string>();
         public List<string> Errors { get; set; } = new List<string>();
     }

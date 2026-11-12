@@ -39,6 +39,7 @@ namespace GradeWise.Services
                     Code = course.Code,
                     Name = course.Name,
                     Term = course.Term,
+                    Section = course.Section,
                     StudentCount = course.StudentIds.Count,
                     CategoryCount = course.Categories.Count,
                     WeightTotal = GradeCalculator.TotalWeight(course.Categories),
@@ -54,6 +55,15 @@ namespace GradeWise.Services
 
         // ---------- create course ----------
 
+        /// <summary>
+        /// Sections a faculty member can pick when creating a course.
+        /// TODO: load these from the sections module once it exists. Empty for now.
+        /// </summary>
+        public static List<string> GetAvailableSections()
+        {
+            return new List<string>();
+        }
+
         public static CreateCourseViewModel NewCourseForm()
         {
             var model = new CreateCourseViewModel();
@@ -61,6 +71,7 @@ namespace GradeWise.Services
 
             var terms = db.Terms.Find(_ => true).ToList();
             model.TermNames = terms.Select(t => t.Name).ToList();
+            model.SectionNames = GetAvailableSections();
             var current = terms.FirstOrDefault(t => t.IsCurrent);
             model.Term = current == null ? null : current.Name;
 
@@ -68,11 +79,12 @@ namespace GradeWise.Services
         }
 
         /// <summary>Creates a course owned by the faculty member. Returns the new id, or null when there are errors.</summary>
-        public static string CreateCourse(string facultyId, string code, string name, string term, out List<string> errors)
+        public static string CreateCourse(string facultyId, string code, string name, string section, string term, out List<string> errors)
         {
             errors = new List<string>();
             code = (code ?? string.Empty).Trim();
             name = (name ?? string.Empty).Trim();
+            section = (section ?? string.Empty).Trim();
             term = (term ?? string.Empty).Trim();
 
             if (code.Length == 0) errors.Add("Course code is required.");
@@ -80,6 +92,12 @@ namespace GradeWise.Services
 
             if (name.Length == 0) errors.Add("Course name is required.");
             else if (name.Length > MaxNameLength) errors.Add("Course name must be " + MaxNameLength + " characters or fewer.");
+
+            if (section.Length > 0 &&
+                !GetAvailableSections().Any(x => string.Equals(x, section, StringComparison.OrdinalIgnoreCase)))
+            {
+                errors.Add("Choose a section from the list.");
+            }
 
             var db = new MongoDbContext();
             var chosenTerm = db.Terms.Find(t => t.Name.ToLower() == term.ToLower()).FirstOrDefault();
@@ -108,6 +126,7 @@ namespace GradeWise.Services
                 Id = "c-" + Guid.NewGuid().ToString("N").Substring(0, 8),
                 Code = code,
                 Name = name,
+                Section = section,
                 Term = chosenTerm.Name,
                 FacultyId = facultyId
             };
@@ -131,6 +150,7 @@ namespace GradeWise.Services
                 Code = course.Code,
                 Name = course.Name,
                 Term = course.Term,
+                Section = course.Section,
                 Categories = course.Categories.Select(c => new GradeCategory { Name = c.Name, Weight = c.Weight }).ToList(),
                 WeightTotal = GradeCalculator.TotalWeight(course.Categories),
                 Rows = rows,

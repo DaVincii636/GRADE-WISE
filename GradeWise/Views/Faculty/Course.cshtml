@@ -8,7 +8,7 @@
 }
 
 <h1 class="gw-page-title">@Model.Code &middot; @Model.Name</h1>
-<p class="gw-page-sub">@Model.Term</p>
+<p class="gw-page-sub">@Model.Term@if (!string.IsNullOrWhiteSpace(Model.Section)) { <text> &middot; Section @Model.Section</text> }</p>
 
 @if (!string.IsNullOrEmpty(error))
 {

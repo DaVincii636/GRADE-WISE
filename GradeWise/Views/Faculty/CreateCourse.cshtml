@@ -36,6 +36,16 @@
                 <input type="text" id="name" name="name" value="@Model.Name" maxlength="100" required placeholder="Introduction to Programming" />
             </div>
             <div class="gw-field">
+                <label for="section">Section</label>
+                <select id="section" name="section">
+                    <option value="">No sections available yet</option>
+                    @foreach (var s in Model.SectionNames)
+                    {
+                        <option value="@s" selected="@(s == Model.Section)">@s</option>
+                    }
+                </select>
+            </div>
+            <div class="gw-field">
                 <label for="term">Term</label>
                 <select id="term" name="term" required>
                     @foreach (var t in Model.TermNames)

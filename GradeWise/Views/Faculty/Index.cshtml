@@ -67,25 +67,20 @@
                             <span class="gw-collection-code">@c.Code &middot; @c.Name</span>
                             <span class="gw-collection-meta">
                                 @c.Term &middot; @c.StudentCount students &middot;
+                                @if (string.IsNullOrWhiteSpace(c.Section))
+                                {
+                                    <span class="gw-muted">No section</span>
+                                }
+                                else
+                                {
+                                    <span>Section @c.Section</span>
+                                }
                                 @if (c.CategoryCount == 0)
                                 {
                                     <span class="gw-status gw-status-warn">No weights set</span>
                                 }
-                                else if (GradeCalculator.IsFullWeight(c.WeightTotal))
-                                {
-                                    <span>weights 100%</span>
-                                }
-                                else
-                                {
-                                    <span class="gw-status gw-status-warn">weights @GradeCalculator.Format(c.WeightTotal)%</span>
-                                }
                                 &middot; class average @GradeCalculator.Format(c.ClassAverage)
                             </span>
-                        </span>
-                        <span class="gw-row-actions gw-collection-buttons">
-                            @Html.ActionLink("Scores", "Course", "Faculty", new { id = c.Id }, new { @class = "gw-btn gw-btn-small" })
-                            @Html.ActionLink("Students", "Enroll", "Faculty", new { id = c.Id }, new { @class = "gw-btn gw-btn-small gw-btn-outline" })
-                            @Html.ActionLink("Categories", "Categories", "Faculty", new { id = c.Id }, new { @class = "gw-btn gw-btn-small gw-btn-outline" })
                         </span>
                         <a href="@Url.Action("Course", "Faculty", new { id = c.Id })" class="gw-collection-go" aria-label="Open @c.Code">
                             <img src="@Url.Content("~/Content/img/icons/chevron-right.svg")" alt="" class="gw-collection-chevron" width="20" height="20" />
