@@ -335,22 +335,6 @@
         </div>
     </div>
 
-    @* ---------- Confirmation (make current / archive / restore) ---------- *@
-    <div id="term-confirm" class="gw-modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="term-confirm-title" aria-describedby="term-confirm-body" hidden>
-        <div class="gw-panel gw-card-raised gw-modal-card gw-terms-modal">
-            <div class="gw-panel-head">
-                <h2 id="term-confirm-title" class="gw-panel-title"></h2>
-            </div>
-            <div class="gw-panel-body">
-                <div id="term-confirm-body"></div>
-            </div>
-            <div class="gw-modal-foot gw-terms-modal-foot">
-                <button type="button" class="gw-btn gw-btn-outline gw-btn-small" data-modal-close>Cancel</button>
-                <button type="button" class="gw-btn gw-btn-small" data-confirm-yes></button>
-            </div>
-        </div>
-    </div>
-
     @* Posts "Make current" to the existing SetCurrentTerm action (the script sets the URL). *@
     @using (Html.BeginForm("Terms", "Admin", FormMethod.Post, new { id = "term-current-form", hidden = "hidden" }))
     {
@@ -685,44 +669,23 @@
             });
 
             document.addEventListener("keydown", function (e) {
-                if (e.key !== "Escape") { return; }
+                if (e.key !== "Escape" || e.defaultPrevented) { return; }   // the shared dialog handles its own Esc
                 var open = root.querySelectorAll(".gw-modal-backdrop:not([hidden])");
                 if (open.length) { closeModal(open[open.length - 1]); }
             });
 
-            // ---------- confirmation ----------
-            var confirmModal = document.getElementById("term-confirm");
-            var confirmTitle = document.getElementById("term-confirm-title");
-            var confirmBody = document.getElementById("term-confirm-body");
-            var confirmYes = confirmModal.querySelector("[data-confirm-yes]");
-            var confirmAction = null;
-
+            // ---------- confirmation (the shared dialog from gw-modal.js) ----------
             // paragraphs: [{ text, bold, muted }] pieces; each inner array is one paragraph
             function askConfirm(opts) {
-                confirmTitle.textContent = opts.title;
-                confirmBody.innerHTML = "";
-                opts.paragraphs.forEach(function (pieces) {
-                    var p = el("p");
-                    pieces.forEach(function (piece) {
-                        if (piece.muted) { p.className = "gw-muted"; }
-                        p.appendChild(piece.bold ? el("strong", null, piece.text) : document.createTextNode(piece.text));
-                    });
-                    confirmBody.appendChild(p);
+                GW.confirm({
+                    title: opts.title,
+                    paragraphs: opts.paragraphs,
+                    okText: opts.yes,
+                    tone: opts.tone
+                }).then(function (ok) {
+                    if (ok) { opts.action(); }
                 });
-                confirmYes.textContent = opts.yes;
-                confirmYes.className = "gw-btn gw-btn-small" + (opts.yesClass ? " " + opts.yesClass : "");
-                confirmYes.disabled = false;
-                confirmAction = opts.action;
-                openModal(confirmModal, confirmYes);
             }
-
-            confirmYes.addEventListener("click", function () {
-                if (!confirmAction) { return; }
-                confirmYes.disabled = true;
-                var run = confirmAction;
-                confirmAction = null;
-                run();
-            });
 
             function previewWarning() {
                 return store.hasChanges()
@@ -740,7 +703,7 @@
                 askConfirm({
                     title: "Change the current term?",
                     paragraphs: paragraphs,
-                    yes: "Yes, make it current",
+                    yes: "Make current",
                     action: function () { server.setCurrent(t.id); }
                 });
             }
@@ -753,14 +716,13 @@
                         [{ text: "Its courses, grades and history are kept. Nothing is deleted, and you can restore it at any time.", muted: true }]
                     ],
                     yes: "Archive term",
-                    yesClass: "gw-btn-danger",
+                    tone: "danger",
                     action: function () {
                         store.archive(t.id, today).then(function (saved) {
-                            closeModal(confirmModal, true);
                             render();
                             say(saved.name + " was archived (preview only; resets on reload).");
                             focusRow(saved.id, "view");
-                        }, function (err) { closeModal(confirmModal); say(err.message, true); });
+                        }, function (err) { say(err.message, true); });
                     }
                 });
             }
@@ -770,14 +732,12 @@
                     title: "Restore this term?",
                     paragraphs: [[{ text: t.name, bold: true }, { text: " will move back to Active terms." }]],
                     yes: "Restore term",
-                    yesClass: "gw-btn-gold",
                     action: function () {
                         store.restore(t.id).then(function (saved) {
-                            closeModal(confirmModal, true);
                             render();
                             say(saved.name + " was restored (preview only; resets on reload).");
                             focusRow(saved.id, "edit");
-                        }, function (err) { closeModal(confirmModal); say(err.message, true); });
+                        }, function (err) { say(err.message, true); });
                     }
                 });
             }

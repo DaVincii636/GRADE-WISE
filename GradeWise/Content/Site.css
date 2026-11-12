@@ -1190,29 +1190,6 @@ input[type="range"] {
     min-height: 1.4em;
 }
 
-.gw-check-panel {
-    padding: 0;
-}
-
-.gw-check-summary {
-    cursor: pointer;
-    padding: 14px 18px;
-    color: var(--gw-ink);
-    font-weight: 700;
-}
-
-.gw-check-ok {
-    color: var(--gw-ink);
-    font-weight: 700;
-}
-
-.gw-check-bad {
-    color: var(--gw-ink);
-    font-weight: 700;
-    text-decoration: underline wavy var(--gw-orange);
-    text-underline-offset: 3px;
-}
-
 @media (max-width: 576px) {
     .gw-sim-control {
         gap: 8px;
@@ -2637,6 +2614,10 @@ body.gw-modal-open {
     margin: 0;
 }
 
+.gw-modal-body p + p {
+    margin-top: 10px;
+}
+
 /* the dialog from gw-modal.js always sits above any markup-defined modal that opened it */
 .gw-modal-backdrop--top {
     z-index: 1060;
@@ -3216,4 +3197,18 @@ body.gw-modal-open {
     .gw-history-more {
         display: none !important;
     }
+}
+
+/* ---------- Phase 10: "How this is calculated" panel (What-If) ---------- */
+.gw-calc-note {
+    color: var(--gw-muted);
+    font-size: 0.95rem;
+}
+
+.gw-calc-table tfoot td {
+    font-weight: 700;
+}
+
+.gw-calc-table tfoot .gw-calc-note {
+    font-weight: 400;
 }

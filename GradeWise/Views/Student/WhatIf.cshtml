@@ -21,19 +21,18 @@ else
 {
     <section class="gw-panel gw-picker-panel">
         <div class="gw-panel-body">
-            @using (Html.BeginForm("WhatIf", "Student", FormMethod.Get, new { @class = "gw-picker" }))
-            {
+            <div class="gw-picker">
                 <label for="course-picker">Course</label>
-                <select id="course-picker" name="id" class="gw-inline-select">
+                <select id="course-picker" class="gw-inline-select"
+                        data-url="@Url.Action("WhatIf", "Student", new { id = "__ID__" })">
                     @foreach (var c in Model.Courses)
                     {
                         <option value="@c.Id" selected="@(c.Id == Model.SelectedId)">@c.Code &middot; @c.Name</option>
                     }
                 </select>
-                <button type="submit" class="gw-btn gw-btn-small gw-btn-outline">View</button>
                 @Html.ActionLink("Back to my grades", "Index", "Student", new { id = Model.SelectedId }, new { @class = "gw-btn gw-btn-small gw-btn-outline" })
                 <span class="gw-muted">@Model.Term</span>
-            }
+            </div>
         </div>
     </section>
 
@@ -71,7 +70,8 @@ else
         <div id="whatif"
              data-earned="@GradeCalculator.Raw(Model.Earned)"
              data-remaining="@GradeCalculator.Raw(Model.RemainingWeight)"
-             data-default="@GradeCalculator.Raw(Model.DefaultScore)">
+             data-default="@GradeCalculator.Raw(Model.DefaultScore)"
+             data-target="@GradeCalculator.Raw(GradeCalculator.PassingAverage)">
 
             <section class="gw-stats" aria-label="Projection">
                 <div class="gw-stat" data-tab="Earned">
@@ -159,9 +159,9 @@ else
 
                     <div class="gw-sim-control gw-sim-target">
                         <label for="sim-target-num" class="gw-sim-label">Target final grade</label>
-                        <input type="range" id="sim-target-range" min="0" max="100" step="0.5" value="75"
+                        <input type="range" id="sim-target-range" min="0" max="100" step="0.5" value="@GradeCalculator.Raw(GradeCalculator.PassingAverage)"
                                aria-label="Target slider" />
-                        <input type="number" id="sim-target-num" class="gw-score-input" min="0" max="100" step="0.01" value="75" />
+                        <input type="number" id="sim-target-num" class="gw-score-input" min="0" max="100" step="0.01" value="@GradeCalculator.Raw(GradeCalculator.PassingAverage)" />
                         <span class="gw-muted">%</span>
                     </div>
 
@@ -204,59 +204,71 @@ else
             </section>
         }
 
-        <details class="gw-panel gw-check-panel">
-            <summary class="gw-check-summary">Check the math</summary>
+        <section class="gw-panel gw-calc" aria-label="How this is calculated">
+            <div class="gw-panel-head">
+                <h2 class="gw-panel-title">How this is calculated</h2>
+            </div>
             <div class="gw-panel-body">
                 <p class="gw-hint-block gw-muted">
-                    The page works out each example below in JavaScript. The server works out the same examples with its own
-                    calculator. If the two ever disagree, this table says so.
+                    Your projected final grade is the points you have already earned, plus the points your remaining work could add.
+                    Each category adds <strong>weight &times; score &divide; 100</strong>. This table uses your own numbers and changes as you move the sliders.
                 </p>
                 <div class="gw-table-wrap">
-                    <table class="gw-table">
+                    <table class="gw-table gw-calc-table">
                         <thead>
                             <tr>
-                                <th>Example</th>
-                                <th class="gw-num">Page</th>
-                                <th class="gw-num">Server</th>
-                                <th>Result</th>
+                                <th>Part</th>
+                                <th>Working</th>
+                                <th class="gw-num">Points</th>
                             </tr>
                         </thead>
                         <tbody>
-                            @foreach (var k in Model.Checks)
+                            <tr>
+                                <th scope="row">Earned so far</th>
+                                <td class="gw-calc-note">Graded work, already counted</td>
+                                <td class="gw-num">@GradeCalculator.Format(Model.Earned)</td>
+                            </tr>
+                            @foreach (var c in Model.Ungraded)
                             {
-                                <tr class="gw-check-row"
-                                    data-kind="@k.Kind"
-                                    data-earned="@GradeCalculator.Raw(k.Earned)"
-                                    data-remaining="@GradeCalculator.Raw(k.Remaining)"
-                                    data-input="@GradeCalculator.Raw(k.Input)"
-                                    data-expected="@GradeCalculator.Raw(k.Expected)"
-                                    data-status="@k.Status">
-                                    <td>
-                                        @k.Label
-                                        <span class="gw-th-sub">
-                                            @(k.Kind == "final" ? "(projected final grade)" : "(average needed on the rest)")
-                                        </span>
-                                    </td>
-                                    <td class="gw-num gw-check-page">&mdash;</td>
-                                    <td class="gw-num">@GradeCalculator.Format(k.Expected)</td>
-                                    <td class="gw-check-match">&mdash;</td>
+                                <tr class="gw-calc-row">
+                                    <th scope="row">@c.Name</th>
+                                    <td class="gw-calc-note"><span class="gw-calc-formula">&mdash;</span></td>
+                                    <td class="gw-num gw-calc-points">&mdash;</td>
                                 </tr>
                             }
                         </tbody>
+                        <tfoot>
+                            <tr>
+                                <th scope="row">Projected final grade</th>
+                                <td class="gw-calc-note" id="calc-sum" aria-live="polite">&mdash;</td>
+                                <td class="gw-num" id="calc-total">&mdash;</td>
+                            </tr>
+                            <tr>
+                                <th scope="row">Equivalent grade</th>
+                                <td class="gw-calc-note">Looked up on the grade scale (@GradeCalculator.Format(GradeCalculator.PassingAverage)% is the lowest passing average)</td>
+                                <td class="gw-num" id="calc-grade">&mdash;</td>
+                            </tr>
+                        </tfoot>
                     </table>
                 </div>
+                <p class="gw-note">Each line is rounded to two decimals for display; the total is worked out from the exact values.</p>
             </div>
-        </details>
+        </section>
     }
 }
 
 @section scripts {
     <script src="@Url.Content("~/Scripts/whatif.js")"></script>
     <script>
-        // Switch course as soon as another one is picked (the View button still works without JavaScript).
+        // Switch course as soon as another one is picked. The address is built from the page's own route,
+        // so the course you are leaving can never be sent along with the new one.
         var picker = document.getElementById("course-picker");
         if (picker) {
-            picker.addEventListener("change", function () { picker.form.submit(); });
+            picker.addEventListener("change", function () {
+                var template = picker.getAttribute("data-url");
+                if (!template || !picker.value) return;
+                window.location.href = template.replace("__ID__", encodeURIComponent(picker.value));
+            });
         }
     </script>
 }

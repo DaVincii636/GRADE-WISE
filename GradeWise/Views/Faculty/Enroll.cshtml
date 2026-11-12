@@ -56,7 +56,7 @@
                         <td>@s.StudentNo</td>
                         <td>@s.Email</td>
                         <td>
-                            @using (Html.BeginForm("Unenroll", "Faculty", new { id = Model.CourseId }, FormMethod.Post, new { @class = "gw-row-form", data_confirm = "Remove " + s.FullName + " from this course? Their scores for it are deleted." }))
+                            @using (Html.BeginForm("Unenroll", "Faculty", new { id = Model.CourseId }, FormMethod.Post, new { @class = "gw-row-form", data_confirm = "Remove " + s.FullName + " from this course? Their scores for it are deleted.", data_confirm_title = "Remove student?", data_confirm_ok = "Remove", data_confirm_tone = "danger" }))
                             {
                                 @Html.AntiForgeryToken()
                                 <input type="hidden" name="studentId" value="@s.Id" />
@@ -113,14 +113,6 @@
 
 @section scripts {
     <script>
-        // Ask before any form that has a data-confirm message.
-        document.addEventListener("submit", function (e) {
-            var msg = e.target.getAttribute("data-confirm");
-            if (msg && !window.confirm(msg)) {
-                e.preventDefault();
-            }
-        });
-
         var selectAll = document.getElementById("select-all");
         if (selectAll) {
             selectAll.addEventListener("click", function () {

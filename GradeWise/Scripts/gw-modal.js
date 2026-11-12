@@ -2,6 +2,7 @@
  * GradeWise shared modal dialogs (Phase 2).
  *
  *   GW.confirm({ title, message, okText, cancelText, tone })  -> Promise<boolean>
+ *     (instead of "message" you may pass "paragraphs": [[{ text, bold, muted }, ...], ...], one inner array per paragraph)
  *   GW.alert({ title, message, okText })                       -> Promise<void>
  *   GW.modal.open(elementOrId) / GW.modal.close(element)       -> markup-defined modals
  *
@@ -143,7 +144,7 @@
 
         var body = doc.createElement("div");
         body.className = "gw-panel-body gw-modal-body";
-        var message = doc.createElement("p");
+        var message = doc.createElement("div");
         message.id = "gw-dialog-message";
         body.appendChild(message);
 
@@ -168,6 +169,29 @@
         return dialog;
     }
 
+    // Fills the message box: one paragraph from "message", or several (with bold or muted pieces) from "paragraphs".
+    function fillMessage(box, opts) {
+        while (box.firstChild) box.removeChild(box.firstChild);
+
+        var list = opts.paragraphs;
+        if (!list || !list.length) list = [[{ text: opts.message || "" }]];
+
+        list.forEach(function (pieces) {
+            var p = doc.createElement("p");
+            pieces.forEach(function (piece) {
+                if (piece.muted) p.className = "gw-muted";
+                if (piece.bold) {
+                    var strong = doc.createElement("strong");
+                    strong.textContent = piece.text;
+                    p.appendChild(strong);
+                } else {
+                    p.appendChild(doc.createTextNode(piece.text));
+                }
+            });
+            box.appendChild(p);
+        });
+    }
+
     // Shows the dialog once and resolves true (OK) or false (Cancel, Esc, backdrop click).
     function show(opts, withCancel) {
         return new Promise(function (resolve) {
@@ -176,7 +200,7 @@
             var settled = false;
 
             d.title.textContent = opts.title || (withCancel ? "Please confirm" : "Notice");
-            d.message.textContent = opts.message || "";
+            fillMessage(d.message, opts);
             d.ok.textContent = opts.okText || "OK";
             d.cancel.textContent = opts.cancelText || "Cancel";
             d.cancel.hidden = !withCancel;

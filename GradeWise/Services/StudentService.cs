@@ -106,51 +106,7 @@ namespace GradeWise.Services
             }
 
             model.Scale = GradeCalculator.Scale();
-            model.Checks = BuildChecks();
             return model;
-        }
-
-        private static List<WhatIfCheck> BuildChecks()
-        {
-            return new List<WhatIfCheck>
-            {
-                FinalCheck("55 points earned, 80% on the remaining 45%", 55, 45, 80),
-                FinalCheck("40 points earned, 50% on the remaining 60%", 40, 60, 50),
-                TargetCheck("Target 85% with 55 earned and 45% left", 85, 55, 45),
-                TargetCheck("Target 75% with 59.6 earned and 30% left", 75, 59.6, 30),
-                TargetCheck("Target 70% with 72 earned and 20% left (already secured)", 70, 72, 20),
-                TargetCheck("Target 100% with 50 earned and 40% left (out of reach)", 100, 50, 40)
-            };
-        }
-
-        private static WhatIfCheck FinalCheck(string label, double earned, double remaining, double average)
-        {
-            return new WhatIfCheck
-            {
-                Label = label,
-                Kind = "final",
-                Earned = earned,
-                Remaining = remaining,
-                Input = average,
-                Expected = GradeCalculator.ProjectFinal(earned, new[] { remaining }, new[] { average }),
-                Status = ""
-            };
-        }
-
-        private static WhatIfCheck TargetCheck(string label, double target, double earned, double remaining)
-        {
-            var result = GradeCalculator.CheckTarget(target, earned, remaining);
-
-            return new WhatIfCheck
-            {
-                Label = label,
-                Kind = "required",
-                Earned = earned,
-                Remaining = remaining,
-                Input = target,
-                Expected = result.Required ?? 0,
-                Status = result.Status.ToString()
-            };
         }
 
         /// <summary>

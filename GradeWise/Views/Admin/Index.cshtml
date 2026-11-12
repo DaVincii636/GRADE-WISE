@@ -123,7 +123,11 @@
                                         <input type="hidden" name="active" value="@((!u.IsActive).ToString().ToLowerInvariant())" />
                                         if (u.IsActive)
                                         {
-                                            <button type="submit" class="gw-btn gw-btn-small gw-btn-outline">Disable</button>
+                                            <button type="submit" class="gw-btn gw-btn-small gw-btn-outline"
+                                                    data-confirm="Disable @(u.FullName)? They cannot sign in until you enable the account again."
+                                                    data-confirm-title="Disable this account?"
+                                                    data-confirm-ok="Disable"
+                                                    data-confirm-tone="danger">Disable</button>
                                         }
                                         else
                                         {
@@ -131,7 +135,7 @@
                                         }
                                     }
                                 }
-                                @using (Html.BeginForm("ResetPassword", "Admin", new { id = u.Id }, FormMethod.Post, new { @class = "gw-row-form", data_confirm = "Reset the password for " + u.FullName + "? The old password stops working." }))
+                                @using (Html.BeginForm("ResetPassword", "Admin", new { id = u.Id }, FormMethod.Post, new { @class = "gw-row-form", data_confirm = "Reset the password for " + u.FullName + "? The old password stops working.", data_confirm_title = "Reset password?", data_confirm_ok = "Reset" }))
                                 {
                                     @Html.AntiForgeryToken()
                                     <button type="submit" class="gw-btn gw-btn-small gw-btn-outline">Reset password</button>
@@ -147,14 +151,6 @@
 
 @section scripts {
     <script>
-        // Ask before any form that has a data-confirm message.
-        document.addEventListener("submit", function (e) {
-            var msg = e.target.getAttribute("data-confirm");
-            if (msg && !window.confirm(msg)) {
-                e.preventDefault();
-            }
-        });
-
         // Copy the one-time temporary password (the box is only shown once).
         var copyBtn = document.getElementById("copy-password");
         if (copyBtn) {

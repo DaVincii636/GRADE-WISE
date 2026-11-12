@@ -88,27 +88,6 @@ namespace GradeWise.Models
         public double Grade { get; set; }
     }
 
-    /// <summary>One worked example the What-If page re-checks against the server's calculator.</summary>
-    public class WhatIfCheck
-    {
-        public string Label { get; set; }
-
-        /// <summary>"final" (projected final grade) or "required" (average needed for a target).</summary>
-        public string Kind { get; set; }
-
-        public double Earned { get; set; }
-        public double Remaining { get; set; }
-
-        /// <summary>The assumed average on the remaining work ("final"), or the target ("required").</summary>
-        public double Input { get; set; }
-
-        /// <summary>The server's answer.</summary>
-        public double Expected { get; set; }
-
-        /// <summary>The server's target status for "required" examples; empty for "final".</summary>
-        public string Status { get; set; }
-    }
-
     /// <summary>Everything the What-If simulator page needs. Only the student's own scores are in it.</summary>
     public class WhatIfViewModel
     {
@@ -145,7 +124,5 @@ namespace GradeWise.Models
         public List<GradeCategory> Ungraded { get; set; } = new List<GradeCategory>();
 
         public List<GradeStep> Scale { get; set; } = new List<GradeStep>();
-
-        public List<WhatIfCheck> Checks { get; set; } = new List<WhatIfCheck>();
     }
 }

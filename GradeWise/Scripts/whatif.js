@@ -1,9 +1,10 @@
 /*
- * GradeWise What-If simulator (Phase 7).
+ * GradeWise What-If simulator (Phase 7, updated in Phase 10).
  *
  * The formulas at the top mirror Services/GradeCalculator.cs (ProjectFinal, CheckTarget, EquivalentGrade).
- * The page also re-checks them against the server's answers (the "Check the math" panel), so a change in
- * one place that is not made in the other shows up as a mismatch.
+ * KEEP THEM IDENTICAL: if a formula or the grade scale changes in one file, change it in the other too.
+ * The grade scale itself is not copied here; it is read from the target buttons the server renders
+ * (GradeCalculator.Scale()), and the default target comes from GradeCalculator.PassingAverage (data-target).
  *
  * Scores and weights are percentages. "earned" is points already earned (weight x score / 100, added up),
  * "remaining" is the weight of the categories that are not graded yet.
@@ -88,7 +89,8 @@
         var earned = parseFloat(host.getAttribute("data-earned"));
         var remaining = parseFloat(host.getAttribute("data-remaining"));
         var defaultScore = parseFloat(host.getAttribute("data-default"));
-        var defaultTarget = 75;
+        var targetAttr = parseFloat(host.getAttribute("data-target"));
+        var defaultTarget = isFinite(targetAttr) ? targetAttr : 65;   // 65 = GradeCalculator.PassingAverage
 
         var finalOut = document.getElementById("sim-final");
         var gradeOut = document.getElementById("sim-grade");
@@ -99,6 +101,14 @@
         var compareMsg = document.getElementById("sim-compare");
         var applyBtn = document.getElementById("sim-apply");
         var resetBtn = document.getElementById("sim-reset");
+
+        // "How this is calculated" table: one row per slider row, in the same order.
+        var calcRows = [].slice.call(document.querySelectorAll(".gw-calc-row")).map(function (tr) {
+            return { formula: tr.querySelector(".gw-calc-formula"), points: tr.querySelector(".gw-calc-points") };
+        });
+        var calcSum = document.getElementById("calc-sum");
+        var calcTotal = document.getElementById("calc-total");
+        var calcGrade = document.getElementById("calc-grade");
 
         // Grade table, read from the target buttons so the numbers come from the server's scale.
         var chips = [].slice.call(document.querySelectorAll(".gw-chip"));
@@ -138,6 +148,42 @@
             el.textContent = text;
         }
 
+        function short(value) {
+            return String(Math.round(value * 100) / 100);
+        }
+
+        // Fills the "How this is calculated" table from the same numbers the sliders use.
+        function updateCalc(projected) {
+            if (!calcSum || !calcTotal || !calcGrade) return;
+
+            var parts = [fmt(earned)];
+            rows.forEach(function (row, i) {
+                var cell = calcRows[i];
+                if (!cell) return;
+                var value = readNumber(row.num);
+                if (value === null) {
+                    cell.formula.textContent = short(row.weight) + "% x (enter a score)";
+                    cell.points.textContent = "\u2014";
+                    return;
+                }
+                var points = row.weight * clampScore(value) / 100;
+                cell.formula.textContent = short(row.weight) + "% x " + short(value) + " / 100";
+                cell.points.textContent = fmt(points);
+                parts.push(fmt(points));
+            });
+
+            if (projected === null) {
+                calcSum.textContent = "Enter a score from 0 to 100 in each highlighted box to see the total.";
+                calcTotal.textContent = "\u2014";
+                calcGrade.textContent = "\u2014";
+                return;
+            }
+
+            calcSum.textContent = parts.join(" + ") + " = " + fmt(projected);
+            calcTotal.textContent = fmt(projected) + "%";
+            calcGrade.textContent = fmt(equivalentGrade(projected, scale));
+        }
+
         function update() {
             // --- scenario: projected final grade from the sliders ---
             var weights = [];
@@ -168,6 +214,8 @@
                 setMessage(scenarioMsg, "", "Enter a score from 0 to 100 in each highlighted box.");
                 scenarioMsg.style.display = "";
             }
+
+            updateCalc(projected);
 
             // --- target: what the remaining work must average ---
             var target = readNumber(targetNum);
@@ -259,32 +307,6 @@
             targetNum.value = String(defaultTarget);
             targetRange.value = String(defaultTarget);
             update();
-        });
-
-        // "Check the math": run the same formulas here and compare with the server's answers.
-        [].slice.call(document.querySelectorAll(".gw-check-row")).forEach(function (tr) {
-            var kind = tr.getAttribute("data-kind");
-            var e = parseFloat(tr.getAttribute("data-earned"));
-            var r = parseFloat(tr.getAttribute("data-remaining"));
-            var input = parseFloat(tr.getAttribute("data-input"));
-            var expected = parseFloat(tr.getAttribute("data-expected"));
-            var expectedStatus = tr.getAttribute("data-status");
-
-            var page;
-            var same;
-            if (kind === "final") {
-                page = projectFinal(e, [r], [input]);
-                same = Math.abs(page - expected) < 0.005;
-            } else {
-                var res = checkTarget(input, e, r);
-                page = res.required === null ? 0 : res.required;
-                same = Math.abs(page - expected) < 0.005 && res.status === expectedStatus;
-            }
-
-            tr.querySelector(".gw-check-page").textContent = fmt(page);
-            var cell = tr.querySelector(".gw-check-match");
-            cell.textContent = same ? "Match" : "Different";
-            cell.className = "gw-check-match " + (same ? "gw-check-ok" : "gw-check-bad");
         });
 
         update();

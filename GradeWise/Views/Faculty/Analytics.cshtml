@@ -188,7 +188,7 @@
                         </div>
                     }
                     <div class="gw-modal-foot">
-                        <button type="button" class="gw-btn gw-btn-outline gw-btn-small" data-modal-close>Close</button>
+                        <button type="button" class="gw-btn gw-btn-outline" data-modal-close>Close</button>
                     </div>
                 </div>
             </div>
@@ -235,7 +235,7 @@
                         </table>
                     </div>
                     <div class="gw-modal-foot">
-                        <button type="button" class="gw-btn gw-btn-outline gw-btn-small" data-modal-close>Close</button>
+                        <button type="button" class="gw-btn gw-btn-outline" data-modal-close>Close</button>
                     </div>
                 </div>
             </div>
@@ -285,55 +285,25 @@
 
 @section scripts {
     <script>
+        // Bars and rows open their modal through the shared component (gw-modal.js), which also handles
+        // Close buttons, Esc, a click on the dark backdrop, the Tab key and returning focus.
         (function () {
-            function openModal(id) {
-                var modal = document.getElementById(id);
-                if (!modal) return;
-                modal.hidden = false;
-                document.body.classList.add("gw-modal-open");
-                var closeBtn = modal.querySelector("[data-modal-close]");
-                if (closeBtn) closeBtn.focus();
-            }
-
-            function closeModal(modal) {
-                if (!modal) return;
-                modal.hidden = true;
-                document.body.classList.remove("gw-modal-open");
+            function openFrom(el) {
+                var id = el.getAttribute("data-modal-target");
+                if (id && window.GW) GW.modal.open(id);
             }
 
             document.addEventListener("click", function (e) {
                 var trigger = e.target.closest("[data-modal-target]");
-                if (trigger) {
-                    openModal(trigger.getAttribute("data-modal-target"));
-                    return;
-                }
-
-                var closeBtn = e.target.closest("[data-modal-close]");
-                if (closeBtn) {
-                    closeModal(closeBtn.closest(".gw-modal-backdrop"));
-                    return;
-                }
-
-                if (e.target.classList && e.target.classList.contains("gw-modal-backdrop")) {
-                    closeModal(e.target);
-                }
+                if (trigger) openFrom(trigger);
             });
 
             document.addEventListener("keydown", function (e) {
-                if (e.key === "Escape") {
-                    var openModals = document.querySelectorAll(".gw-modal-backdrop:not([hidden])");
-                    for (var i = 0; i < openModals.length; i++) {
-                        closeModal(openModals[i]);
-                    }
-                    return;
-                }
-
-                if (e.key === "Enter" || e.key === " ") {
-                    var focused = document.activeElement;
-                    if (focused && focused.hasAttribute("data-modal-target")) {
-                        e.preventDefault();
-                        openModal(focused.getAttribute("data-modal-target"));
-                    }
+                if (e.key !== "Enter" && e.key !== " ") return;
+                var focused = document.activeElement;
+                if (focused && focused.hasAttribute("data-modal-target")) {
+                    e.preventDefault();
+                    openFrom(focused);
                 }
             });
         })();
