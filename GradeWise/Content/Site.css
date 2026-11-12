@@ -3362,3 +3362,11 @@ body.gw-modal-open {
         page-break-inside: avoid;
     }
 }
+
+/* ---------- Plan 2, Phase 4 (follow-up 2): history starts on its own printed page ---------- */
+@media print {
+    .gw-summary-sheet .gw-history-panel {
+        break-before: page;
+        page-break-before: always;
+    }
+}
