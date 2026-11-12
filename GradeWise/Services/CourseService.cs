@@ -219,8 +219,11 @@ namespace GradeWise.Services
             }
             if (problems > 0) return false;
 
-            // Which categories really changed, per student (used for the notification below).
-            var changedByStudent = new Dictionary<string, List<string>>();
+            // The scores that really changed, per student. Worked out once and shared by the progress
+            // history and the notification below. A record is written once, however many cells changed.
+            var changesByStudent = new Dictionary<string, List<ScoreChange>>();
+            var recordsByStudent = new Dictionary<string, GradeRecord>();
+            var toWrite = new Dictionary<string, GradeRecord>();
 
             foreach (var change in pending)
             {
@@ -229,36 +232,43 @@ namespace GradeWise.Services
                 var newScore = change.Item3;
 
                 var entry = record.Scores.FirstOrDefault(s => string.Equals(s.Category, categoryName, StringComparison.OrdinalIgnoreCase));
-                if (entry != null)
-                {
-                    if (!SameScore(entry.Score, newScore))
-                    {
-                        List<string> names;
-                        if (!changedByStudent.TryGetValue(record.StudentId, out names))
-                        {
-                            names = new List<string>();
-                            changedByStudent[record.StudentId] = names;
-                        }
-                        names.Add(categoryName);
-                    }
+                if (entry == null) continue;
 
-                    entry.Score = newScore;
+                recordsByStudent[record.StudentId] = record;
+
+                if (!SameScore(entry.Score, newScore))
+                {
+                    List<ScoreChange> list;
+                    if (!changesByStudent.TryGetValue(record.StudentId, out list))
+                    {
+                        list = new List<ScoreChange>();
+                        changesByStudent[record.StudentId] = list;
+                    }
+                    list.Add(new ScoreChange { Category = entry.Category, OldScore = entry.Score, NewScore = newScore });
                 }
 
+                if (entry.Score != newScore)
+                {
+                    entry.Score = newScore;
+                    toWrite[record.Id] = record;
+                }
+            }
+
+            foreach (var record in toWrite.Values)
+            {
                 var update = Builders<GradeRecord>.Update.Set(g => g.Scores, record.Scores);
                 db.Grades.UpdateOne(g => g.Id == record.Id, update);
             }
 
-            var now = DateTime.Now;
-            foreach (var studentId in course.StudentIds)
+            // One history row and one notification per student per save, only for students whose scores really changed.
+            var nowUtc = DateTime.UtcNow;
+            foreach (var changed in changesByStudent)
             {
-                HistoryService.Record(course, studentId, now);
-            }
+                HistoryService.RecordChange(course, changed.Key, recordsByStudent[changed.Key].Scores,
+                    nowUtc, HistoryService.ReasonScores, changed.Value);
 
-            // One notification per student per save, and only for students whose scores really changed.
-            foreach (var changed in changedByStudent)
-            {
-                NotificationService.NotifyScoresChanged(course, changed.Key, changed.Value);
+                NotificationService.NotifyScoresChanged(course, changed.Key,
+                    changed.Value.Select(c => c.Category).ToList());
             }
 
             return true;
@@ -510,6 +520,7 @@ namespace GradeWise.Services
             }
 
             var gradeRecords = db.Grades.Find(g => g.CourseId == course.Id).ToList();
+            var rebuiltByStudent = new Dictionary<string, List<ScoreEntry>>();
             foreach (var record in gradeRecords)
             {
                 var rebuilt = new List<ScoreEntry>();
@@ -526,6 +537,7 @@ namespace GradeWise.Services
 
                 var gradeUpdate = Builders<GradeRecord>.Update.Set(g => g.Scores, rebuilt);
                 db.Grades.UpdateOne(g => g.Id == record.Id, gradeUpdate);
+                rebuiltByStudent[record.StudentId] = rebuilt;
             }
 
             // Compared before saving, so students are only told when something really changed.
@@ -534,16 +546,18 @@ namespace GradeWise.Services
             var courseUpdate = Builders<Course>.Update.Set(c => c.Categories, newCategories);
             db.Courses.UpdateOne(c => c.Id == course.Id, courseUpdate);
 
-            var now = DateTime.Now;
-            foreach (var studentId in course.StudentIds)
-            {
-                HistoryService.Record(course, studentId, now);
-            }
-
             if (categoriesChanged)
             {
+                // The history is worked out with the NEW categories and the rebuilt scores.
+                course.Categories = newCategories;
+                var nowUtc = DateTime.UtcNow;
+
                 foreach (var studentId in course.StudentIds)
                 {
+                    List<ScoreEntry> scores;
+                    if (!rebuiltByStudent.TryGetValue(studentId, out scores)) scores = new List<ScoreEntry>();
+
+                    HistoryService.RecordCategoriesChanged(course, studentId, scores, nowUtc);
                     NotificationService.NotifyCategoriesChanged(course, studentId);
                 }
             }

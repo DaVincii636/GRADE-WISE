@@ -157,7 +157,7 @@ namespace GradeWise.Data
         private static List<ScoreSnapshot> BuildSnapshots()
         {
             var list = new List<ScoreSnapshot>();
-            var now = DateTime.Now;
+            var now = DateTime.UtcNow;
 
             foreach (var course in Courses)
             {
@@ -173,7 +173,15 @@ namespace GradeWise.Data
                         var soFar = graded.Take(step + 1).ToList();
                         var result = GradeCalculator.Calculate(course.Categories, soFar);
                         var when = now.AddDays(-14 * (graded.Count - 1 - step)).AddHours(-1);
-                        list.Add(HistoryService.Make(course.Id, record.StudentId, when, result));
+
+                        // Each demo snapshot is "one score was entered", so the history can say what changed.
+                        var snapshot = HistoryService.Make(course.Id, record.StudentId, when, result);
+                        snapshot.Reason = HistoryService.ReasonScores;
+                        snapshot.Changes = new List<ScoreChange>
+                        {
+                            new ScoreChange { Category = graded[step].Category, OldScore = null, NewScore = graded[step].Score }
+                        };
+                        list.Add(snapshot);
                     }
                 }
             }

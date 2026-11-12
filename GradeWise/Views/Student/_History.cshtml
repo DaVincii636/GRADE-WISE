@@ -5,10 +5,16 @@
 @using System.Linq
 @using GradeWise.Services
 @{
-    var points = Model.History.Where(h => h.Average.HasValue).ToList();
+    // Oldest first, as the service returns them. The chart plots Earned Grade (points out of 100).
+    var points = Model.History;
 
-    // Chart size and margins. Averages run from 0 to 100 up the side.
+    // The table starts with this many rows; "See more" reveals more, ten at a time.
+    const int FirstShown = 5;
+    const int MoreStep = 10;
+
+    // Chart size and margins. Earned Grade runs from 0 to 100 up the side.
     const double W = 600, H = 190, L = 40, R = 16, T = 12, B = 30;
+    var pass = GradeCalculator.PassingAverage;
     Func<int, double> px = i => points.Count == 1 ? L + (W - L - R) / 2 : L + (W - L - R) * i / (points.Count - 1);
     Func<double, double> py = v => T + (H - T - B) * (1 - v / 100.0);
 
@@ -18,10 +24,11 @@
         + "\" text-anchor=\"" + anchor + "\">" + content + "</text>";
 
     // Points for the ink line, and the same points closed along the bottom for the lime area fill.
-    var linePoints = string.Join(" ", points.Select((p, i) => GradeCalculator.Raw(px(i)) + "," + GradeCalculator.Raw(py(p.Average.Value))));
+    var linePoints = string.Join(" ", points.Select((p, i) => GradeCalculator.Raw(px(i)) + "," + GradeCalculator.Raw(py(p.Earned))));
     var areaPoints = linePoints + " " + GradeCalculator.Raw(W - R) + "," + GradeCalculator.Raw(H - B)
         + " " + GradeCalculator.Raw(L) + "," + GradeCalculator.Raw(H - B);
 
+    var hiddenCount = Math.Max(0, points.Count - FirstShown);
 }
 
 <section class="gw-panel">
@@ -29,12 +36,12 @@
         <h2 class="gw-panel-title">Progress history</h2>
     </div>
 
-    @if (Model.History.Count == 0)
+    @if (points.Count == 0)
     {
         <div class="gw-panel-body gw-empty-state">
             <img src="@Url.Content("~/Content/img/stickers/mascot-cat.svg")" alt="" class="gw-empty-mascot" width="72" height="72" />
             <p class="gw-empty-title">No history yet</p>
-            <p class="gw-muted">A snapshot of your average is saved each time your instructor updates your scores.</p>
+            <p class="gw-muted">A snapshot of your Earned Grade is saved each time your instructor updates your scores.</p>
         </div>
     }
     else
@@ -43,22 +50,23 @@
         {
             <div class="gw-panel-body">
                 <svg class="gw-chart" viewBox="0 0 @W @H" role="img"
-                     aria-label="Line chart of your average over time, from @GradeCalculator.Format(points[0].Average) to @GradeCalculator.Format(points[points.Count - 1].Average) percent">
+                     aria-label="Line chart of your Earned Grade over time, from @GradeCalculator.Format(points[0].Earned) to @GradeCalculator.Format(points[points.Count - 1].Earned) out of 100. Passing is @(pass.ToString("0")).">
                     @foreach (var tick in new[] { 0, 50, 100 })
                     {
                         <line class="gw-chart-grid" x1="@GradeCalculator.Raw(L)" x2="@GradeCalculator.Raw(W - R)" y1="@GradeCalculator.Raw(py(tick))" y2="@GradeCalculator.Raw(py(tick))" />
                         @Html.Raw(label(L - 6, py(tick) + 4, "end", tick.ToString()))
                     }
-                    <line class="gw-chart-pass" x1="@GradeCalculator.Raw(L)" x2="@GradeCalculator.Raw(W - R)" y1="@GradeCalculator.Raw(py(75))" y2="@GradeCalculator.Raw(py(75))" />
-                    @Html.Raw(label(W - R, py(75) - 4, "end", "passing 75"))
+                    <line class="gw-chart-pass" x1="@GradeCalculator.Raw(L)" x2="@GradeCalculator.Raw(W - R)" y1="@GradeCalculator.Raw(py(pass))" y2="@GradeCalculator.Raw(py(pass))" />
+                    @Html.Raw(label(L - 6, py(pass) + 4, "end", pass.ToString("0")))
+                    @Html.Raw(label(W - R, py(pass) - 4, "end", "passing " + pass.ToString("0")))
 
                     <polygon class="gw-chart-area" points="@areaPoints" />
                     <polyline class="gw-chart-line" points="@linePoints" />
 
                     @for (var i = 0; i < points.Count; i++)
                     {
-                        <circle class="gw-chart-dot" cx="@GradeCalculator.Raw(px(i))" cy="@GradeCalculator.Raw(py(points[i].Average.Value))" r="4">
-                            <title>@points[i].Label: @GradeCalculator.Format(points[i].Average)%</title>
+                        <circle class="gw-chart-dot" cx="@GradeCalculator.Raw(px(i))" cy="@GradeCalculator.Raw(py(points[i].Earned))" r="4">
+                            <title>@points[i].Label: Earned Grade @GradeCalculator.Format(points[i].Earned)</title>
                         </circle>
                     }
                 </svg>
@@ -66,22 +74,25 @@
         }
 
         <div class="gw-table-wrap">
-            <table class="gw-table">
+            <table class="gw-table gw-history-table" id="gw-history-table">
                 <thead>
                     <tr>
                         <th>When</th>
-                        <th class="gw-num">Average</th>
-                        <th class="gw-num">Equivalent grade</th>
+                        <th>What changed</th>
+                        <th class="gw-num">Earned Grade</th>
+                        <th class="gw-num">Equivalent</th>
                         <th class="gw-num">Change</th>
                     </tr>
                 </thead>
                 <tbody>
-                    @for (var i = Model.History.Count - 1; i >= 0; i--)
+                    @for (var i = points.Count - 1; i >= 0; i--)
                     {
-                        var h = Model.History[i];
-                        <tr>
-                            <td>@h.Label</td>
-                            <td class="gw-num">@(h.Average.HasValue ? GradeCalculator.Format(h.Average) + "%" : "\u2014")</td>
+                        var h = points[i];
+                        var rowNumber = points.Count - 1 - i;   // 0 is the newest row
+                        <tr class="gw-history-row" hidden="@(rowNumber >= FirstShown)">
+                            <td><time class="gw-history-time" datetime="@h.Iso">@h.Label</time></td>
+                            <td class="gw-history-what" title="@h.Details">@h.Summary</td>
+                            <td class="gw-num">@GradeCalculator.Format(h.Earned)</td>
                             <td class="gw-num">@GradeCalculator.Format(h.Equivalent)</td>
                             <td class="gw-num">
                                 @if (h.Change.HasValue)
@@ -99,5 +110,48 @@
             </table>
         </div>
 
+        if (hiddenCount > 0)
+        {
+            <div class="gw-panel-body gw-history-more">
+                <button type="button" class="gw-btn gw-btn-small gw-btn-outline" id="gw-history-more" data-step="@MoreStep">See more (@hiddenCount)</button>
+            </div>
+        }
     }
 </section>
+
+<script>
+    (function () {
+        function pad(n) { return n < 10 ? "0" + n : String(n); }
+
+        // Show each time in the viewer's own time zone as MM/DD/YYYY h:mm AM/PM.
+        var times = document.querySelectorAll("time.gw-history-time[datetime]");
+        for (var t = 0; t < times.length; t++) {
+            var d = new Date(times[t].getAttribute("datetime"));
+            if (isNaN(d.getTime())) continue;
+            var hours = d.getHours();
+            var suffix = hours >= 12 ? "PM" : "AM";
+            hours = hours % 12;
+            if (hours === 0) hours = 12;
+            times[t].textContent = pad(d.getMonth() + 1) + "/" + pad(d.getDate()) + "/" + d.getFullYear() +
+                " " + hours + ":" + pad(d.getMinutes()) + " " + suffix;
+        }
+
+        // "See more" shows ten more rows each click and disappears when none are left.
+        var button = document.getElementById("gw-history-more");
+        if (!button) return;
+        var step = parseInt(button.getAttribute("data-step"), 10) || 10;
+
+        button.addEventListener("click", function () {
+            var hidden = document.querySelectorAll("#gw-history-table tr.gw-history-row[hidden]");
+            var show = Math.min(step, hidden.length);
+            for (var i = 0; i < show; i++) hidden[i].removeAttribute("hidden");
+
+            var left = hidden.length - show;
+            if (left <= 0) {
+                button.parentNode.removeChild(button);
+            } else {
+                button.textContent = "See more (" + left + ")";
+            }
+        });
+    })();
+</script>

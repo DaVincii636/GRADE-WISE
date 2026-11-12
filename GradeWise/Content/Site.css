@@ -3187,3 +3187,33 @@ body.gw-modal-open {
 .gw-editinfo-section .gw-form-buttons {
     margin-top: 14px;
 }
+
+/* ---------- Progress history table: what changed, See more (Phase 9) ---------- */
+.gw-history-table tr[hidden] {
+    display: none;
+}
+
+.gw-history-time {
+    white-space: nowrap;
+}
+
+.gw-history-what {
+    max-width: 280px;
+    overflow-wrap: anywhere;
+}
+
+.gw-history-more {
+    text-align: right;
+}
+
+@media print {
+
+    /* a printed summary lists every row, and has no button to press */
+    .gw-history-table tr[hidden] {
+        display: table-row !important;
+    }
+
+    .gw-history-more {
+        display: none !important;
+    }
+}

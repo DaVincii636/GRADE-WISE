@@ -4,9 +4,20 @@ using GradeWise.Services;
 
 namespace GradeWise.Models
 {
+    /// <summary>One score that changed in a save: Category, what it was and what it became (null = empty).</summary>
+    public class ScoreChange
+    {
+        public string Category { get; set; }
+
+        public double? OldScore { get; set; }
+
+        public double? NewScore { get; set; }
+    }
+
     /// <summary>
     /// A student's standing in one course at one moment. A new one is kept each time a score
     /// or a weight changes the student's numbers, so the progress history can be drawn later.
+    /// Snapshots saved before Reason and Changes existed have neither; they load with empty values.
     /// </summary>
     public class ScoreSnapshot
     {
@@ -16,30 +27,52 @@ namespace GradeWise.Models
 
         public string StudentId { get; set; }
 
+        /// <summary>When the snapshot was taken. New snapshots are written in UTC.</summary>
         public DateTime TakenAt { get; set; }
 
-        /// <summary>Weighted average of the graded work at that time (percent). Null when nothing was graded.</summary>
+        /// <summary>Weighted average of the graded work at that time (percent). Null when nothing was graded. Kept for old snapshots.</summary>
         public double? Average { get; set; }
 
+        /// <summary>Earned Grade at that time: points collected out of 100 (ungraded work counts as 0).</summary>
         public double Earned { get; set; }
 
         public double GradedWeight { get; set; }
+
+        /// <summary>Why it was taken, e.g. "Scores updated" or "Categories changed". Empty on old snapshots.</summary>
+        public string Reason { get; set; }
+
+        /// <summary>The scores that changed in that save. Empty on old snapshots and on category changes.</summary>
+        public List<ScoreChange> Changes { get; set; } = new List<ScoreChange>();
     }
 
     /// <summary>One point of a student's progress history (a snapshot made ready for display).</summary>
     public class HistoryPoint
     {
+        /// <summary>When it was taken, in UTC.</summary>
         public DateTime TakenAt { get; set; }
 
-        /// <summary>The date and time as text, e.g. "Oct 26, 2026 3:05 PM".</summary>
+        /// <summary>The same moment as ISO text (UTC, ends in Z). The page turns it into the viewer's own time.</summary>
+        public string Iso { get; set; }
+
+        /// <summary>The date and time as text, e.g. "10/26/2026 3:05 PM" (server time; the page replaces it with the viewer's time).</summary>
         public string Label { get; set; }
 
-        public double? Average { get; set; }
+        /// <summary>Earned Grade at that moment (points out of 100).</summary>
+        public double Earned { get; set; }
+
+        /// <summary>False when nothing was graded yet at that moment (the equivalent grade is then not shown).</summary>
+        public bool HasGrades { get; set; }
 
         public double? Equivalent { get; set; }
 
-        /// <summary>Change in average since the snapshot before this one. Null for the first, or when either has no average.</summary>
+        /// <summary>Change in Earned Grade since the snapshot before this one. Null for the first.</summary>
         public double? Change { get; set; }
+
+        /// <summary>Short text of what changed, e.g. "Quizzes 80 -> 85, Exam - -> 90".</summary>
+        public string Summary { get; set; }
+
+        /// <summary>The full list of changes (for a tooltip); the same as Summary when it is short.</summary>
+        public string Details { get; set; }
     }
 
     /// <summary>A student and their calculated average inside a grade distribution range.</summary>
