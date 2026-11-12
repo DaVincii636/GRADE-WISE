@@ -30,7 +30,7 @@ namespace GradeWise.Services
             foreach (var course in courses)
             {
                 var rows = BuildRows(db, course, null);
-                var summary = GradeCalculator.Summarize(rows.Select(r => r.Result.Average));
+                var summary = GradeCalculator.Summarize(rows.Select(r => r.Result.EarnedOrNull));
                 var missing = rows.Sum(r => r.Inputs.Count(string.IsNullOrEmpty));
 
                 model.Courses.Add(new CourseListItem
@@ -163,7 +163,7 @@ namespace GradeWise.Services
                 MidtermTotal = GradeCalculator.PeriodTotal(course.Categories, GradePeriods.Midterm),
                 FinalTotal = GradeCalculator.PeriodTotal(course.Categories, GradePeriods.FinalTerm),
                 Rows = rows,
-                Summary = GradeCalculator.Summarize(rows.Select(r => r.Result.Average))
+                Summary = GradeCalculator.Summarize(rows.Select(r => r.Result.EarnedOrNull))
             };
         }
 

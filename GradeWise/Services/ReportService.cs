@@ -24,23 +24,24 @@ namespace GradeWise.Services
             if (course == null) return null;
 
             var students = EnrolledStudents(db, course);
-            var averages = students
-                .Select(s => GradeCalculator.Calculate(course.Categories, ScoresOf(db, course, s.Id)).Average)
+            // Earned Grade (points collected out of 100, ungraded work counts as 0). Null = nothing graded yet.
+            var earned = students
+                .Select(s => GradeCalculator.Calculate(course.Categories, ScoresOf(db, course, s.Id)).EarnedOrNull)
                 .ToList();
 
-            var summary = GradeCalculator.Summarize(averages);
-            var bins = GradeCalculator.Distribution(averages);
+            var summary = GradeCalculator.Summarize(earned);
+            var bins = GradeCalculator.Distribution(earned);
 
             var notGradedStudents = new List<DistributionStudent>();
             for (var sIdx = 0; sIdx < students.Count; sIdx++)
             {
                 var student = students[sIdx];
-                var avg = averages[sIdx];
+                var avg = earned[sIdx];
                 var entry = new DistributionStudent
                 {
                     StudentNo = student.StudentNo,
                     FullName = student.FullName,
-                    Average = avg
+                    Average = avg // holds the student's Earned Grade
                 };
 
                 if (!avg.HasValue)
@@ -107,8 +108,9 @@ namespace GradeWise.Services
         // ---------- class record CSV ----------
 
         /// <summary>
-        /// The class record as CSV text: one row per student with each category score, the average,
-        /// the equivalent grade and the points earned, then class average / highest / lowest rows.
+        /// The class record as CSV text: one row per student with each category score, then the Midterm and
+        /// Final Term Earned Grade and Equivalent, the Final Grade and its Equivalent, followed by class
+        /// average / highest / lowest rows. Every number is the zero-based Earned Grade, as on the Course page.
         /// Returns null if it is not the faculty member's course. The caller adds the UTF-8 marker Excel needs.
         /// </summary>
         public static string BuildClassCsv(string courseId, string facultyId, out string fileName)
@@ -123,24 +125,33 @@ namespace GradeWise.Services
                 + DateTime.Now.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) + ".csv";
 
             var students = EnrolledStudents(db, course);
-            var width = 2 + course.Categories.Count + 3;
+            var width = 2 + course.Categories.Count + 6;
             var sb = new StringBuilder();
 
             var header = new List<string> { Text("Student No"), Text("Name") };
             header.AddRange(course.Categories.Select(c => Text(c.Name + " (" + Whole(c.Weight) + "%)")));
-            header.Add(Text("Average (%)"));
-            header.Add(Text("Equivalent grade"));
-            header.Add(Text("Points earned"));
+            header.Add(Text("Midterm Earned"));
+            header.Add(Text("Midterm Equivalent"));
+            header.Add(Text("Final Term Earned"));
+            header.Add(Text("Final Term Equivalent"));
+            header.Add(Text("Final Grade"));
+            header.Add(Text("Equivalent"));
             AppendRow(sb, header);
 
-            var averages = new List<double?>();
+            var midtermEarned = new List<double?>();
+            var finalTermEarned = new List<double?>();
+            var finalGrades = new List<double?>();
             var categoryScores = course.Categories.Select(c => new List<double>()).ToList();
 
             foreach (var student in students)
             {
                 var scores = ScoresOf(db, course, student.Id);
                 var result = GradeCalculator.Calculate(course.Categories, scores);
-                averages.Add(result.Average);
+                var midterm = GradeCalculator.CalculatePeriod(course.Categories, scores, GradePeriods.Midterm);
+                var finalTerm = GradeCalculator.CalculatePeriod(course.Categories, scores, GradePeriods.FinalTerm);
+                midtermEarned.Add(midterm.EarnedOrNull);
+                finalTermEarned.Add(finalTerm.EarnedOrNull);
+                finalGrades.Add(result.EarnedOrNull);
 
                 var cells = new List<string> { Text(student.StudentNo), Text(student.FullName) };
 
@@ -151,28 +162,28 @@ namespace GradeWise.Services
                     if (value.HasValue) categoryScores[i].Add(value.Value);
                 }
 
-                var equivalent = GradeCalculator.EquivalentGrade(result.Average);
-                cells.Add(result.Average.HasValue ? Fixed(result.Average.Value) : string.Empty);
-                cells.Add(equivalent.HasValue ? Fixed(equivalent.Value) : string.Empty);
-                cells.Add(result.HasGrades ? Fixed(result.Earned) : string.Empty);
+                cells.Add(Cell(midterm.EarnedOrNull));
+                cells.Add(Cell(GradeCalculator.EquivalentFromEarned(midterm)));
+                cells.Add(Cell(finalTerm.EarnedOrNull));
+                cells.Add(Cell(GradeCalculator.EquivalentFromEarned(finalTerm)));
+                cells.Add(Cell(result.EarnedOrNull));
+                cells.Add(Cell(GradeCalculator.EquivalentFromEarned(result)));
                 AppendRow(sb, cells);
             }
 
-            var summary = GradeCalculator.Summarize(averages);
-            if (summary.Graded > 0)
+            var midtermSummary = GradeCalculator.Summarize(midtermEarned);
+            var finalTermSummary = GradeCalculator.Summarize(finalTermEarned);
+            var gradeSummary = GradeCalculator.Summarize(finalGrades);
+            if (gradeSummary.Graded > 0)
             {
                 AppendRow(sb, Enumerable.Repeat(string.Empty, width));
 
-                var average = new List<string> { string.Empty, Text("Class average") };
-                average.AddRange(categoryScores.Select(l => l.Count > 0 ? Fixed(l.Average()) : string.Empty));
-                average.Add(Fixed(summary.Average.Value));
-                var classGrade = GradeCalculator.EquivalentGrade(summary.Average);
-                average.Add(classGrade.HasValue ? Fixed(classGrade.Value) : string.Empty);
-                average.Add(string.Empty);
-                AppendRow(sb, average);
+                var categoryAverages = categoryScores.Select(l => l.Count > 0 ? Fixed(l.Average()) : string.Empty).ToList();
+                var noCategoryCells = Enumerable.Repeat(string.Empty, course.Categories.Count).ToList();
 
-                AppendRow(sb, SummaryRow("Highest", summary.Highest.Value, course.Categories.Count));
-                AppendRow(sb, SummaryRow("Lowest", summary.Lowest.Value, course.Categories.Count));
+                AppendRow(sb, ClassRow("Class average", categoryAverages, midtermSummary.Average, finalTermSummary.Average, gradeSummary.Average));
+                AppendRow(sb, ClassRow("Highest", noCategoryCells, midtermSummary.Highest, finalTermSummary.Highest, gradeSummary.Highest));
+                AppendRow(sb, ClassRow("Lowest", noCategoryCells, midtermSummary.Lowest, finalTermSummary.Lowest, gradeSummary.Lowest));
             }
 
             return sb.ToString();
@@ -208,14 +219,24 @@ namespace GradeWise.Services
             return name.Length == 0 ? "course" : name;
         }
 
-        private static List<string> SummaryRow(string label, double average, int categoryCount)
+        // One class row (average, highest or lowest). Each Equivalent is worked out from the Earned Grade next to it.
+        private static List<string> ClassRow(string label, IEnumerable<string> categoryCells, double? midterm, double? finalTerm, double? finalGrade)
         {
             var cells = new List<string> { string.Empty, Text(label) };
-            cells.AddRange(Enumerable.Repeat(string.Empty, categoryCount));
-            cells.Add(Fixed(average));
-            cells.Add(string.Empty);
-            cells.Add(string.Empty);
+            cells.AddRange(categoryCells);
+            cells.Add(Cell(midterm));
+            cells.Add(Cell(GradeCalculator.EquivalentGrade(midterm)));
+            cells.Add(Cell(finalTerm));
+            cells.Add(Cell(GradeCalculator.EquivalentGrade(finalTerm)));
+            cells.Add(Cell(finalGrade));
+            cells.Add(Cell(GradeCalculator.EquivalentGrade(finalGrade)));
             return cells;
+        }
+
+        // Two decimals, or an empty cell when there is no value (nothing graded in that scope).
+        private static string Cell(double? value)
+        {
+            return value.HasValue ? Fixed(value.Value) : string.Empty;
         }
 
         private static void AppendRow(StringBuilder sb, IEnumerable<string> cells)

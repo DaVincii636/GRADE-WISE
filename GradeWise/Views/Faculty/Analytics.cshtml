@@ -29,7 +29,7 @@
     </div>
     <div class="gw-stat" data-tab="Average">
         <div class="gw-stat-value">@(Model.Summary.Average.HasValue ? GradeCalculator.Format(Model.Summary.Average) + "%" : GradeCalculator.Format(Model.Summary.Average))</div>
-        <div class="gw-stat-label">Class average</div>
+        <div class="gw-stat-label">Class average (earned)</div>
     </div>
     <div class="gw-stat" data-tab="Highest">
         <div class="gw-stat-value">@(Model.Summary.Highest.HasValue ? GradeCalculator.Format(Model.Summary.Highest) + "%" : GradeCalculator.Format(Model.Summary.Highest))</div>
@@ -67,17 +67,18 @@
     {
         <div class="gw-panel-body">
             <p class="gw-hint-block gw-muted">
-                Number of students whose average (graded work so far) falls in each range.
-                A range includes its lower number but not its upper one, and averages are rounded to 2 decimals, as in the score table.
-                <strong>Click any bar</strong> to view the students and their specific averages in that range.
+                Number of students whose <strong>Earned Grade</strong> falls in each range. Earned Grade is the points collected out of 100,
+                and work that is not graded yet counts as 0.
+                A range includes its lower number but not its upper one, and Earned Grades are rounded to 2 decimals, as in the score table.
+                <strong>Click any bar</strong> to view the students and their Earned Grade in that range.
             </p>
         </div>
         <div class="gw-table-wrap">
             <table class="gw-table gw-dist-table">
-                <caption class="gw-sr-only">Number of students per average range</caption>
+                <caption class="gw-sr-only">Number of students per Earned Grade range</caption>
                 <thead>
                     <tr>
-                        <th scope="col">Average</th>
+                        <th scope="col">Earned Grade</th>
                         <th scope="col" class="gw-num">Students</th>
                         <th scope="col" class="gw-dist-col">Chart</th>
                     </tr>
@@ -144,7 +145,7 @@
             <div id="@modalId" class="gw-modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="@(modalId)-title" hidden>
                 <div class="gw-panel gw-card-raised gw-modal-card">
                     <div class="gw-panel-head">
-                        <h3 id="@(modalId)-title" class="gw-panel-title">Average: @bin.Label</h3>
+                        <h3 id="@(modalId)-title" class="gw-panel-title">Earned Grade: @bin.Label</h3>
                     </div>
                     <div class="gw-modal-top">
                         <div class="gw-modal-meta">
@@ -168,7 +169,7 @@
                                 <thead>
                                     <tr>
                                         <th scope="col">Name</th>
-                                        <th scope="col" class="gw-num">Specific average</th>
+                                        <th scope="col" class="gw-num">Earned Grade</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -216,7 +217,7 @@
                             <thead>
                                 <tr>
                                     <th scope="col">Name</th>
-                                    <th scope="col" class="gw-num">Specific average</th>
+                                    <th scope="col" class="gw-num">Earned Grade</th>
                                 </tr>
                             </thead>
                             <tbody>
