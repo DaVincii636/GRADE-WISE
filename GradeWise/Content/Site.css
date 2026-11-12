@@ -2223,3 +2223,520 @@ body.gw-modal-open {
         justify-content: flex-start;
     }
 }
+
+/* ---------- Sign-in input fields and password toggle ----------
+   Scoped to the login card only, so the label | value rows on other pages are unchanged.
+   On the sign-in card the label sits above its own outlined input box. */
+.gw-login-card .gw-login-field {
+    display: block;
+    background: transparent;
+    border: 0;
+}
+
+.gw-login-card .gw-login-field+.gw-login-field {
+    margin-top: 18px;
+}
+
+.gw-login-card .gw-login-field+*:not(.gw-field) {
+    margin-top: 24px;
+}
+
+.gw-login-card .gw-login-field label {
+    display: block;
+    margin: 0 0 6px;
+    padding: 0;
+    background: none;
+    border: 0;
+    font-size: 0.95rem;
+    font-weight: 700;
+}
+
+.gw-login-card .gw-login-field input {
+    box-sizing: border-box;
+    height: 48px;
+    padding: 0 14px;
+    border: var(--gw-outline);
+    background: var(--gw-paper);
+    line-height: normal;
+}
+
+.gw-login-card .gw-login-field input:focus {
+    outline: 3px solid var(--gw-ink);
+    outline-offset: -3px;
+    box-shadow: inset 0 0 0 6px var(--gw-lime);
+}
+
+.gw-password-wrap {
+    position: relative;
+}
+
+/* room on the right so typed text never runs under the eye button */
+.gw-login-card .gw-login-field .gw-password-wrap input {
+    padding-right: 54px;
+}
+
+/* hide Edge's own reveal button so there is only one eye */
+.gw-password-wrap input::-ms-reveal,
+.gw-password-wrap input::-ms-clear {
+    display: none;
+}
+
+.gw-password-toggle {
+    position: absolute;
+    top: 1.5px;
+    right: 1.5px;
+    bottom: 1.5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 46px;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    color: var(--gw-muted);
+    cursor: pointer;
+}
+
+.gw-password-toggle[hidden] {
+    display: none;
+}
+
+.gw-password-toggle:hover {
+    color: var(--gw-ink);
+}
+
+.gw-password-toggle:focus-visible {
+    outline: 3px solid var(--gw-ink);
+    outline-offset: -6px;
+    box-shadow: none;
+    color: var(--gw-ink);
+}
+
+.gw-password-toggle svg {
+    display: block;
+}
+
+/* ---------- Academic terms page ----------
+   Everything is scoped to .gw-terms so other Admin pages are unchanged.
+   Accents next to lime: soft blue (upcoming, filters, tabs) and warm gold (completed, notices). */
+.gw-terms {
+    --gw-terms-blue: #cddff4;
+    --gw-terms-blue-pale: #edf3fb;
+    --gw-terms-gold: #f1d48a;
+    --gw-terms-gold-pale: #fbf3dc;
+    --gw-terms-grey: #dcdad3;
+}
+
+/* tabs */
+.gw-terms .gw-terms-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0;
+    margin: 0 0 14px;
+    border-bottom: var(--gw-outline);
+}
+
+.gw-terms .gw-terms-tab {
+    position: relative;
+    margin: 0 -1.5px -1.5px 0;
+    padding: 8px 16px;
+    background: var(--gw-head);
+    color: var(--gw-ink);
+    border: var(--gw-outline);
+    border-radius: 0;
+    font: inherit;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.gw-terms .gw-terms-tab:hover {
+    background: var(--gw-terms-blue-pale);
+}
+
+.gw-terms .gw-terms-tab[aria-selected="true"] {
+    z-index: 1;
+    background: var(--gw-paper);
+    border-bottom-color: var(--gw-paper);
+    box-shadow: inset 0 4px 0 var(--gw-lime);
+}
+
+.gw-terms .gw-terms-tab:focus-visible {
+    z-index: 2;
+}
+
+.gw-terms .gw-terms-tab-count {
+    display: inline-block;
+    min-width: 1.6em;
+    margin-left: 6px;
+    padding: 0 6px;
+    background: var(--gw-ink);
+    color: var(--gw-paper);
+    font-family: var(--gw-font-pixel);
+    font-size: 0.7rem;
+    line-height: 1.7;
+    text-align: center;
+}
+
+.gw-terms .gw-terms-tabpanel[hidden] {
+    display: none;
+}
+
+/* filter bar */
+.gw-terms .gw-terms-filters {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 12px 14px;
+    padding: 12px 14px;
+    background: var(--gw-terms-blue-pale);
+    border: var(--gw-outline);
+}
+
+.gw-terms .gw-terms-filters[hidden],
+.gw-terms .gw-terms-filter[hidden] {
+    display: none;
+}
+
+.gw-terms .gw-terms-filter label {
+    display: block;
+    margin: 0 0 4px;
+    font-size: 0.85rem;
+    font-weight: 700;
+}
+
+.gw-terms .gw-terms-filter select,
+.gw-terms .gw-terms-filter input {
+    min-width: 150px;
+    height: 38px;
+}
+
+.gw-terms .gw-terms-filter-search input {
+    min-width: 200px;
+    padding-left: 34px;
+    background: var(--gw-paper) url(img/icons/search.svg) 9px center / 18px 18px no-repeat;
+}
+
+.gw-terms .gw-terms-filter input:focus {
+    outline: 3px solid var(--gw-ink);
+    outline-offset: 0;
+    box-shadow: 0 0 0 6px var(--gw-lime);
+}
+
+.gw-terms .gw-terms-filters .gw-btn {
+    margin: 0;
+    height: 38px;
+}
+
+.gw-terms .gw-terms-count {
+    flex: 1 1 auto;
+    margin: 0;
+    color: var(--gw-muted);
+    font-size: 0.85rem;
+    text-align: right;
+    align-self: center;
+}
+
+/* table */
+.gw-terms .gw-terms-table td {
+    vertical-align: middle;
+}
+
+.gw-terms .gw-terms-table tr[hidden] {
+    display: none;
+}
+
+.gw-terms .gw-terms-row-year,
+.gw-terms .gw-terms-row-status {
+    display: none;
+}
+
+.gw-terms .gw-terms-col-year,
+.gw-terms .gw-terms-col-date {
+    white-space: nowrap;
+}
+
+.gw-terms .gw-terms-unset {
+    color: var(--gw-muted);
+    font-style: italic;
+}
+
+.gw-terms .gw-row-actions {
+    align-items: center;
+}
+
+.gw-terms .gw-row-actions .gw-btn,
+.gw-terms .gw-row-form .gw-btn {
+    margin: 0;
+    white-space: nowrap;
+}
+
+.gw-terms .gw-terms-btn-archive:hover:not(:disabled) {
+    background: var(--gw-terms-gold);
+}
+
+.gw-terms .gw-terms-linkbtn {
+    margin-left: 6px;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--gw-ink);
+    font: inherit;
+    font-weight: 700;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    cursor: pointer;
+}
+
+/* status badges: each status has its own colour and its own word */
+.gw-terms .gw-term-status {
+    white-space: nowrap;
+}
+
+.gw-terms .gw-term-status-current {
+    background: var(--gw-lime);
+}
+
+.gw-terms .gw-term-status-upcoming {
+    background: var(--gw-terms-blue);
+}
+
+.gw-terms .gw-term-status-completed {
+    background: var(--gw-terms-gold);
+}
+
+.gw-terms .gw-term-status-archived {
+    background: var(--gw-terms-grey);
+}
+
+.gw-terms .gw-term-status-other {
+    background: var(--gw-paper);
+    border-style: dashed;
+}
+
+/* preview notice, flash message and the small label used in them */
+.gw-terms .gw-terms-preview-note {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 6px 10px;
+    margin: 0 0 16px;
+    padding: 10px 14px;
+    background: var(--gw-terms-gold-pale);
+    border: 1.5px dashed var(--gw-ink);
+    font-size: 0.9rem;
+}
+
+.gw-terms .gw-terms-preview-note[hidden],
+.gw-terms .gw-terms-flash[hidden],
+.gw-terms .gw-terms-tabs[hidden] {
+    display: none;
+}
+
+.gw-terms .gw-terms-pending-tag {
+    display: inline-block;
+    padding: 1px 7px;
+    background: var(--gw-terms-gold);
+    border: var(--gw-outline);
+    font-family: var(--gw-font-pixel);
+    font-size: 0.65rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+
+.gw-terms .gw-terms-form-note {
+    margin: 0 0 14px;
+    color: var(--gw-muted);
+    font-size: 0.85rem;
+}
+
+.gw-terms .gw-terms-archived-on {
+    white-space: nowrap;
+}
+
+/* restore: warm gold, so it reads differently from archive */
+.gw-terms .gw-btn-gold {
+    background: var(--gw-terms-gold);
+    color: var(--gw-ink);
+}
+
+.gw-terms .gw-btn-gold:hover {
+    background: var(--gw-lime);
+    color: var(--gw-ink);
+}
+
+/* add / edit form */
+.gw-terms .gw-terms-add-fields {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px 16px;
+    margin-bottom: 14px;
+}
+
+.gw-terms .gw-terms-control label {
+    display: block;
+    margin: 0 0 6px;
+    font-weight: 700;
+}
+
+.gw-terms .gw-terms-control select,
+.gw-terms .gw-terms-control input {
+    display: block;
+    width: 100%;
+    height: 44px;
+}
+
+.gw-terms .gw-terms-control input:focus {
+    outline: 3px solid var(--gw-ink);
+    outline-offset: 0;
+    box-shadow: 0 0 0 6px var(--gw-lime);
+}
+
+.gw-terms .gw-terms-req {
+    margin-left: 4px;
+    color: var(--gw-muted);
+    font-size: 0.75rem;
+    font-weight: 400;
+}
+
+.gw-terms .gw-terms-hint {
+    grid-column: 1 / -1;
+    margin: -4px 0 0;
+    color: var(--gw-muted);
+    font-size: 0.85rem;
+}
+
+.gw-terms .gw-terms-preview {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 10px;
+    margin: 0;
+    padding: 10px 14px;
+    background: var(--gw-terms-blue-pale);
+    border: 1.5px dashed var(--gw-ink);
+}
+
+.gw-terms .gw-terms-preview-label {
+    font-family: var(--gw-font-pixel);
+    font-size: 0.7rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+.gw-terms .gw-terms-feedback {
+    margin: 0;
+}
+
+.gw-terms .gw-terms-feedback[hidden] {
+    display: none;
+}
+
+/* modals (reuse the shared modal frame) */
+.gw-terms .gw-terms-modal {
+    max-width: 480px;
+}
+
+.gw-terms .gw-terms-form-modal {
+    max-width: 600px;
+}
+
+.gw-terms .gw-terms-form-modal form {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+.gw-terms .gw-terms-form-body {
+    overflow-y: auto;
+}
+
+.gw-terms .gw-terms-modal .gw-panel-body p:last-child {
+    margin-bottom: 0;
+}
+
+.gw-terms .gw-terms-modal-name {
+    margin: 0 0 14px;
+}
+
+.gw-terms .gw-terms-modal-note {
+    margin: 14px 0 0;
+}
+
+.gw-terms .gw-terms-modal [hidden] {
+    display: none;
+}
+
+.gw-terms .gw-terms-modal-foot {
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.gw-terms .gw-terms-modal-foot .gw-btn {
+    margin: 0;
+}
+
+@media (max-width: 767.98px) {
+    .gw-terms .gw-terms-col-date {
+        display: none;
+    }
+}
+
+@media (max-width: 575.98px) {
+    .gw-terms .gw-terms-add-fields {
+        grid-template-columns: 1fr;
+    }
+
+    .gw-terms .gw-terms-filter,
+    .gw-terms .gw-terms-filter select,
+    .gw-terms .gw-terms-filter input {
+        width: 100%;
+    }
+
+    .gw-terms .gw-terms-count {
+        text-align: left;
+    }
+
+    .gw-terms .gw-terms-tab {
+        flex: 1 1 auto;
+        padding: 8px 10px;
+    }
+
+    .gw-terms .gw-terms-table th,
+    .gw-terms .gw-terms-table td {
+        padding: 8px 10px;
+    }
+
+    /* school year moves under the semester */
+    .gw-terms .gw-terms-col-year {
+        display: none;
+    }
+
+    .gw-terms .gw-terms-row-year {
+        display: block;
+        margin-top: 4px;
+        color: var(--gw-muted);
+        font-size: 0.85rem;
+    }
+
+    /* status moves under the semester too (active list) */
+    .gw-terms .gw-terms-col-status {
+        display: none;
+    }
+
+    .gw-terms .gw-terms-row-status {
+        display: block;
+        margin-top: 6px;
+    }
+
+    .gw-terms .gw-row-actions {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .gw-terms .gw-row-actions .gw-row-form,
+    .gw-terms .gw-row-actions .gw-row-form .gw-btn {
+        width: 100%;
+    }
+}

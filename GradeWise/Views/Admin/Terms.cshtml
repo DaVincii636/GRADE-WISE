@@ -1,85 +1,1074 @@
 @model IEnumerable<GradeWise.Models.AcademicTerm>
+@functions {
+    // Server-side display details, used for the first render and when JavaScript is off.
+    // Semester and school year are read from the saved name ("1st Semester, S.Y. 2026-2027").
+    public class TermRow
+    {
+        public GradeWise.Models.AcademicTerm Term;
+        public string Semester;     // "1st Semester", "2nd Semester" or "Summer"; null if the name has another format
+        public string SchoolYear;   // "2026-2027"; null if unknown
+        public int Order;           // sort key (later terms are larger); 0 if unknown
+        public string Status;       // current, upcoming, completed or other
+    }
+
+    private static readonly System.Text.RegularExpressions.Regex TermPattern = new System.Text.RegularExpressions.Regex(
+        @"^\s*(1st Semester|2nd Semester|Summer)(?: Term)?\s*,\s*S\.?\s*Y\.?\s*(\d{4})\s*-\s*(\d{4})\s*$",
+        System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+
+    public static TermRow ReadTerm(GradeWise.Models.AcademicTerm term)
+    {
+        var row = new TermRow { Term = term, Status = term.IsCurrent ? "current" : "other" };
+        var m = TermPattern.Match(term.Name ?? string.Empty);
+        if (m.Success)
+        {
+            var sem = m.Groups[1].Value.ToLowerInvariant();
+            int semIndex = sem.StartsWith("1") ? 1 : sem.StartsWith("2") ? 2 : 3;
+            row.Semester = semIndex == 1 ? "1st Semester" : semIndex == 2 ? "2nd Semester" : "Summer";
+            row.SchoolYear = m.Groups[2].Value + "-" + m.Groups[3].Value;
+            row.Order = int.Parse(m.Groups[2].Value) * 10 + semIndex;
+        }
+        return row;
+    }
+
+    public static string StatusLabel(string status)
+    {
+        switch (status)
+        {
+            case "current": return "Current";
+            case "upcoming": return "Upcoming";
+            case "completed": return "Completed";
+            case "archived": return "Archived";
+            default: return "Not current";
+        }
+    }
+}
 @{
     ViewBag.Title = "Academic terms";
 
-    var terms = Model.ToList();
     var message = TempData["Message"] as string;
     var error = TempData["Error"] as string;
+
+    var rows = Model.Select(ReadTerm).ToList();
+    var currentRow = rows.FirstOrDefault(x => x.Term.IsCurrent);
+
+    if (currentRow != null && currentRow.Order > 0)
+    {
+        foreach (var r in rows.Where(x => !x.Term.IsCurrent && x.Order > 0))
+        {
+            r.Status = r.Order > currentRow.Order ? "upcoming" : r.Order < currentRow.Order ? "completed" : "other";
+        }
+    }
+    rows = rows.OrderByDescending(x => x.Order).ToList();
+
+    // School years offered in the form: last year to three years ahead, plus any year already in use.
+    var thisYear = DateTime.Now.Year;
+    var syOptions = Enumerable.Range(thisYear - 1, 5).Select(x => x + "-" + (x + 1))
+        .Union(rows.Where(x => x.SchoolYear != null).Select(x => x.SchoolYear))
+        .Distinct().OrderBy(x => x).ToList();
+
+    // The real terms from the database, handed to the page script (id, name, isCurrent only).
+    var termsJson = System.Web.Helpers.Json.Encode(Model.Select(x => new { id = x.Id, name = x.Name, isCurrent = x.IsCurrent }).ToList());
 }
 
-<h1 class="gw-page-title">Academic terms</h1>
-<p class="gw-page-sub">One term is current at a time. Add a term, then mark it as current when it starts.</p>
+<div class="gw-terms"
+     data-terms="@termsJson"
+     data-add-url="@Url.Action("AddTerm", "Admin")"
+     data-set-current-url="@Url.Action("SetCurrentTerm", "Admin")"
+     data-today="@DateTime.Now.ToString("yyyy-MM-dd")">
 
-@if (!string.IsNullOrEmpty(error))
-{
-    <div class="gw-alert" role="alert">@error</div>
-}
-@if (!string.IsNullOrEmpty(message))
-{
-    <div class="gw-alert gw-alert-ok" role="status">@message</div>
-}
+    <h1 class="gw-page-title">Academic terms</h1>
+    <p class="gw-page-sub">One term is current at a time. Add each term with its dates, then make it current when it starts.</p>
 
-<div class="gw-toolbar">
-    @Html.ActionLink("Back to accounts", "Index", "Admin", null, new { @class = "gw-btn gw-btn-outline" })
+    @if (!string.IsNullOrEmpty(error))
+    {
+        <div class="gw-alert" role="alert">@error</div>
+    }
+    @if (!string.IsNullOrEmpty(message))
+    {
+        <div class="gw-alert gw-alert-ok" role="status">@message</div>
+    }
+
+    @* Shown once the page script runs: explains which actions are saved and which are preview-only. *@
+    <div class="gw-terms-preview-note" id="terms-preview-note" hidden>
+        <span class="gw-terms-pending-tag">Preview</span>
+        <span><strong>Add term</strong> and <strong>Make current</strong> are saved. Dates, edits, archiving and restoring are kept on this page only and reset when the page reloads.</span>
+    </div>
+    <div class="gw-alert gw-alert-ok gw-terms-flash" id="terms-flash" role="status" hidden></div>
+
+    <div class="gw-toolbar">
+        @Html.ActionLink("Back to accounts", "Index", "Admin", null, new { @class = "gw-btn gw-btn-outline" })
+        <button type="button" class="gw-btn" data-term-add hidden>Add term</button>
+    </div>
+
+    <noscript>
+        @* Without JavaScript the term form cannot open, so offer the basic form. *@
+        <section class="gw-panel gw-form-narrow">
+            <div class="gw-panel-head"><h2 class="gw-panel-title">Add a term</h2></div>
+            <div class="gw-panel-body">
+                @using (Html.BeginForm("AddTerm", "Admin", FormMethod.Post))
+                {
+                    @Html.AntiForgeryToken()
+                    <div class="gw-field">
+                        <label for="name-basic">Term name</label>
+                        <input type="text" id="name-basic" name="name" maxlength="80" required placeholder="1st Semester, S.Y. 2027-2028" />
+                    </div>
+                    <button type="submit" class="gw-btn">Add term</button>
+                }
+            </div>
+        </section>
+    </noscript>
+
+    <section class="gw-panel gw-terms-panel">
+        <div class="gw-panel-head">
+            <h2 class="gw-panel-title">Terms</h2>
+        </div>
+
+        <div class="gw-panel-body">
+            <div class="gw-terms-tabs" role="tablist" aria-label="Term lists" id="term-tabs" hidden>
+                <button type="button" class="gw-terms-tab" role="tab" id="tab-active" aria-controls="panel-active" aria-selected="true">
+                    Active terms <span class="gw-terms-tab-count" data-count="active">@rows.Count</span>
+                </button>
+                <button type="button" class="gw-terms-tab" role="tab" id="tab-archived" aria-controls="panel-archived" aria-selected="false" tabindex="-1">
+                    Archived terms <span class="gw-terms-tab-count" data-count="archived">0</span>
+                </button>
+            </div>
+
+            <div class="gw-terms-filters" id="term-filters" hidden>
+                <div class="gw-terms-filter gw-terms-filter-search">
+                    <label for="filter-search">Search</label>
+                    <input type="search" id="filter-search" class="gw-inline-select" placeholder="Search terms" autocomplete="off" />
+                </div>
+                <div class="gw-terms-filter">
+                    <label for="filter-year">School year</label>
+                    <select id="filter-year" class="gw-inline-select">
+                        <option value="">All school years</option>
+                    </select>
+                </div>
+                <div class="gw-terms-filter">
+                    <label for="filter-semester">Semester</label>
+                    <select id="filter-semester" class="gw-inline-select">
+                        <option value="">All semesters</option>
+                        <option value="1st Semester">1st Semester</option>
+                        <option value="2nd Semester">2nd Semester</option>
+                        <option value="Summer">Summer</option>
+                    </select>
+                </div>
+                <div class="gw-terms-filter" data-filter-status-wrap>
+                    <label for="filter-status">Status</label>
+                    <select id="filter-status" class="gw-inline-select">
+                        <option value="">All statuses</option>
+                        <option value="current">Current</option>
+                        <option value="upcoming">Upcoming</option>
+                        <option value="completed">Completed</option>
+                        <option value="other">Not current</option>
+                    </select>
+                </div>
+                <button type="button" class="gw-btn gw-btn-small gw-btn-outline" id="filter-reset">Clear filters</button>
+                <p class="gw-terms-count" id="filter-count" aria-live="polite"></p>
+            </div>
+        </div>
+
+        @* ---------- Active terms (rows are redrawn by the script from the term store) ---------- *@
+        <div class="gw-terms-tabpanel" role="tabpanel" id="panel-active" aria-labelledby="tab-active" data-list="active">
+            <div class="gw-table-wrap">
+                <table class="gw-table gw-terms-table">
+                    <thead>
+                        <tr>
+                            <th scope="col">Semester</th>
+                            <th scope="col" class="gw-terms-col-year">School year</th>
+                            <th scope="col" class="gw-terms-col-date">Start date</th>
+                            <th scope="col" class="gw-terms-col-date">End date</th>
+                            <th scope="col" class="gw-terms-col-status">Status</th>
+                            <th scope="col">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody data-tbody="active">
+                        @if (rows.Count == 0)
+                        {
+                            <tr>
+                                <td colspan="6" class="gw-empty">No terms yet. Use Add term to create one.</td>
+                            </tr>
+                        }
+                        @foreach (var r in rows)
+                        {
+                            var t = r.Term;
+                            var yearText = r.SchoolYear == null ? "-" : "S.Y. " + r.SchoolYear;
+                            <tr class="@(t.IsCurrent ? "gw-term-current" : "")">
+                                <td><span class="gw-term-box">@(r.Semester ?? t.Name)</span></td>
+                                <td class="gw-terms-col-year">@yearText</td>
+                                <td class="gw-terms-col-date gw-terms-unset">Not set</td>
+                                <td class="gw-terms-col-date gw-terms-unset">Not set</td>
+                                <td class="gw-terms-col-status"><span class="gw-status gw-term-status gw-term-status-@r.Status">@StatusLabel(r.Status)</span></td>
+                                <td>
+                                    @if (!t.IsCurrent)
+                                    {
+                                        using (Html.BeginForm("SetCurrentTerm", "Admin", new { id = t.Id }, FormMethod.Post, new { @class = "gw-row-form" }))
+                                        {
+                                            @Html.AntiForgeryToken()
+                                            <button type="submit" class="gw-btn gw-btn-small">Make current</button>
+                                        }
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        @* ---------- Archived terms ---------- *@
+        <div class="gw-terms-tabpanel" role="tabpanel" id="panel-archived" aria-labelledby="tab-archived" data-list="archived" hidden>
+            <div class="gw-table-wrap">
+                <table class="gw-table gw-terms-table">
+                    <thead>
+                        <tr>
+                            <th scope="col">Semester</th>
+                            <th scope="col" class="gw-terms-col-year">School year</th>
+                            <th scope="col" class="gw-terms-col-date">Start date</th>
+                            <th scope="col" class="gw-terms-col-date">End date</th>
+                            <th scope="col" class="gw-terms-col-status">Archived on</th>
+                            <th scope="col">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody data-tbody="archived">
+                        <tr>
+                            <td colspan="6" class="gw-empty">No archived terms.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    @* ---------- Add / edit term (one form for both) ---------- *@
+    <div id="term-form-modal" class="gw-modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="term-form-title" hidden>
+        <div class="gw-panel gw-card-raised gw-modal-card gw-terms-modal gw-terms-form-modal">
+            <div class="gw-panel-head">
+                <h2 id="term-form-title" class="gw-panel-title">Add a term</h2>
+            </div>
+            @using (Html.BeginForm("AddTerm", "Admin", FormMethod.Post, new { id = "term-form", novalidate = "novalidate" }))
+            {
+                @Html.AntiForgeryToken()
+                <div class="gw-panel-body gw-terms-form-body">
+                    <div class="gw-terms-add-fields">
+                        <div class="gw-terms-control">
+                            <label for="term-semester">Semester <span class="gw-terms-req">required</span></label>
+                            <select id="term-semester" class="gw-inline-select" aria-required="true" aria-describedby="term-feedback">
+                                <option value="">Choose a semester</option>
+                                <option value="1st Semester">1st Semester</option>
+                                <option value="2nd Semester">2nd Semester</option>
+                                <option value="Summer">Summer</option>
+                            </select>
+                        </div>
+                        <div class="gw-terms-control">
+                            <label for="term-year">School year <span class="gw-terms-req">required</span></label>
+                            <select id="term-year" class="gw-inline-select" aria-required="true" aria-describedby="term-feedback">
+                                <option value="">Choose a school year</option>
+                                @foreach (var y in syOptions)
+                                {
+                                    <option value="@y">S.Y. @y</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="gw-terms-control">
+                            <label for="term-start">Start date <span class="gw-terms-req">required</span></label>
+                            <input type="date" id="term-start" class="gw-inline-select" aria-required="true" aria-describedby="term-feedback term-dates-hint" />
+                        </div>
+                        <div class="gw-terms-control">
+                            <label for="term-end">End date <span class="gw-terms-req">required</span></label>
+                            <input type="date" id="term-end" class="gw-inline-select" aria-required="true" aria-describedby="term-feedback term-dates-hint" />
+                        </div>
+
+                        <p class="gw-terms-hint" id="term-dates-hint">The end date must be after the start date, and both must fall within the school year.</p>
+
+                        <p class="gw-terms-preview">
+                            <span class="gw-terms-preview-label">Name</span>
+                            <strong id="term-preview">Choose a semester and school year</strong>
+                        </p>
+                    </div>
+
+                    <p class="gw-terms-form-note" id="term-form-note"></p>
+
+                    <div class="gw-alert gw-terms-feedback" id="term-feedback" role="alert" hidden></div>
+
+                    @* Only the name is sent to the existing AddTerm action. *@
+                    <input type="hidden" name="name" id="term-name" />
+                </div>
+                <div class="gw-modal-foot gw-terms-modal-foot">
+                    <button type="button" class="gw-btn gw-btn-outline gw-btn-small" data-modal-close>Cancel</button>
+                    <button type="submit" class="gw-btn gw-btn-small" id="term-form-submit">Add term</button>
+                </div>
+            }
+        </div>
+    </div>
+
+    @* ---------- View details ---------- *@
+    <div id="term-view" class="gw-modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="term-view-title" hidden>
+        <div class="gw-panel gw-card-raised gw-modal-card gw-terms-modal">
+            <div class="gw-panel-head">
+                <h2 id="term-view-title" class="gw-panel-title">Term details</h2>
+            </div>
+            <div class="gw-panel-body">
+                <p class="gw-terms-modal-name"><span class="gw-term-box" data-slot="name"></span></p>
+                <dl class="gw-facts">
+                    <dt>Semester</dt>
+                    <dd data-slot="semester"></dd>
+                    <dt>School year</dt>
+                    <dd data-slot="year"></dd>
+                    <dt>Start date</dt>
+                    <dd data-slot="start"></dd>
+                    <dt>End date</dt>
+                    <dd data-slot="end"></dd>
+                    <dt>Status</dt>
+                    <dd><span class="gw-status gw-term-status" data-slot="status"></span></dd>
+                    <dt data-slot-archived>Archived on</dt>
+                    <dd data-slot-archived data-slot="archived"></dd>
+                </dl>
+                <p class="gw-muted gw-small gw-terms-modal-note" data-slot="note"></p>
+            </div>
+            <div class="gw-modal-foot gw-terms-modal-foot">
+                <button type="button" class="gw-btn gw-btn-outline gw-btn-small" data-modal-close>Close</button>
+                <button type="button" class="gw-btn gw-btn-outline gw-btn-small" data-view-action="edit">Edit</button>
+                <button type="button" class="gw-btn gw-btn-outline gw-btn-small" data-view-action="restore">Restore</button>
+                <button type="button" class="gw-btn gw-btn-small" data-view-action="current">Make current</button>
+            </div>
+        </div>
+    </div>
+
+    @* ---------- Confirmation (make current / archive / restore) ---------- *@
+    <div id="term-confirm" class="gw-modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="term-confirm-title" aria-describedby="term-confirm-body" hidden>
+        <div class="gw-panel gw-card-raised gw-modal-card gw-terms-modal">
+            <div class="gw-panel-head">
+                <h2 id="term-confirm-title" class="gw-panel-title"></h2>
+            </div>
+            <div class="gw-panel-body">
+                <div id="term-confirm-body"></div>
+            </div>
+            <div class="gw-modal-foot gw-terms-modal-foot">
+                <button type="button" class="gw-btn gw-btn-outline gw-btn-small" data-modal-close>Cancel</button>
+                <button type="button" class="gw-btn gw-btn-small" data-confirm-yes></button>
+            </div>
+        </div>
+    </div>
+
+    @* Posts "Make current" to the existing SetCurrentTerm action (the script sets the URL). *@
+    @using (Html.BeginForm("Terms", "Admin", FormMethod.Post, new { id = "term-current-form", hidden = "hidden" }))
+    {
+        @Html.AntiForgeryToken()
+    }
 </div>
 
-<section class="gw-panel">
-    <div class="gw-panel-head">
-        <h2 class="gw-panel-title">Terms</h2>
-    </div>
-    <div class="gw-table-wrap">
-        <table class="gw-table">
-            <thead>
-                <tr>
-                    <th>Term</th>
-                    <th>Status</th>
-                    <th>Action</th>
-                </tr>
-            </thead>
-            <tbody>
-                @if (terms.Count == 0)
-                {
-                    <tr>
-                        <td colspan="3" class="gw-empty">No terms yet. Add one below.</td>
-                    </tr>
-                }
-                @foreach (var t in terms)
-                {
-                    <tr class="@(t.IsCurrent ? "gw-term-current" : "")">
-                        <td><span class="gw-term-box">@t.Name</span></td>
-                        <td>
-                            <span class="gw-status @(t.IsCurrent ? "gw-status-active" : "gw-status-off")">@(t.IsCurrent ? "Current" : "Not current")</span>
-                        </td>
-                        <td>
-                            @if (!t.IsCurrent)
-                            {
-                                using (Html.BeginForm("SetCurrentTerm", "Admin", new { id = t.Id }, FormMethod.Post, new { @class = "gw-row-form" }))
-                                {
-                                    @Html.AntiForgeryToken()
-                                    <button type="submit" class="gw-btn gw-btn-small gw-btn-outline">Make current</button>
-                                }
-                            }
-                        </td>
-                    </tr>
-                }
-            </tbody>
-        </table>
-    </div>
-</section>
+@section scripts {
+    @* =====================================================================
+       1) TEMPORARY TERM STORE (in memory only)
+       Holds the terms for this page view. Nothing is written to the database, localStorage
+       or sessionStorage; a reload starts again from the real terms the server sent.
+       To connect the database later, replace the bodies of update / archive / restore
+       (and add start / end dates to load) with calls to new Admin actions. Every method
+       already returns a Promise, so the page code below does not need to change.
+       ===================================================================== *@
+    <script>
+        window.GradeWiseTermStore = (function () {
+            var PATTERN = /^\s*(1st Semester|2nd Semester|Summer)(?: Term)?\s*,\s*S\.?\s*Y\.?\s*(\d{4})\s*-\s*(\d{4})\s*$/i;
+            var terms = [];
+            var changed = false;
 
-<section class="gw-panel gw-form-narrow">
-    <div class="gw-panel-head">
-        <h2 class="gw-panel-title">Add a term</h2>
-    </div>
-    <div class="gw-panel-body">
-        @using (Html.BeginForm("AddTerm", "Admin", FormMethod.Post))
-        {
-            @Html.AntiForgeryToken()
-            <div class="gw-field">
-                <label for="name">Term name</label>
-                <input type="text" id="name" name="name" maxlength="80" required placeholder="1st Semester, S.Y. 2027-2028" />
-            </div>
-            <button type="submit" class="gw-btn">Add term</button>
-        }
-    </div>
-</section>
+            function parseName(name) {
+                var m = PATTERN.exec(name || "");
+                if (!m) { return { semester: "", schoolYear: "" }; }
+                var s = m[1].toLowerCase();
+                var semester = s.charAt(0) === "1" ? "1st Semester" : s.charAt(0) === "2" ? "2nd Semester" : "Summer";
+                return { semester: semester, schoolYear: m[2] + "-" + m[3] };
+            }
+
+            function buildName(semester, schoolYear) {
+                return semester + ", S.Y. " + schoolYear;
+            }
+
+            function copy(t) {
+                var c = {};
+                for (var k in t) { if (Object.prototype.hasOwnProperty.call(t, k)) { c[k] = t[k]; } }
+                return c;
+            }
+
+            function find(id) {
+                for (var i = 0; i < terms.length; i++) { if (terms[i].id === id) { return terms[i]; } }
+                return null;
+            }
+
+            function fail(message) { return Promise.reject(new Error(message)); }
+
+            return {
+                parseName: parseName,
+                buildName: buildName,
+
+                // initial: [{ id, name, isCurrent }] as stored in the database today
+                load: function (initial) {
+                    terms = (initial || []).map(function (t) {
+                        var p = parseName(t.name);
+                        return {
+                            id: t.id,
+                            name: t.name,
+                            semester: p.semester,
+                            schoolYear: p.schoolYear,
+                            startDate: "",       // not stored in the database yet
+                            endDate: "",         // not stored in the database yet
+                            isCurrent: !!t.isCurrent,
+                            archived: false,     // not stored in the database yet
+                            archivedOn: ""
+                        };
+                    });
+                    changed = false;
+                },
+
+                list: function () { return terms.map(copy); },
+
+                get: function (id) { var t = find(id); return t ? copy(t) : null; },
+
+                nameTaken: function (name, exceptId) {
+                    var n = (name || "").trim().toLowerCase();
+                    return terms.some(function (t) { return t.id !== exceptId && (t.name || "").trim().toLowerCase() === n; });
+                },
+
+                hasChanges: function () { return changed; },
+
+                // changes: { semester, schoolYear, startDate, endDate }
+                update: function (id, changes) {
+                    var t = find(id);
+                    if (!t) { return fail("That term no longer exists."); }
+                    var name = buildName(changes.semester, changes.schoolYear);
+                    if (this.nameTaken(name, id)) { return fail(name + " already exists."); }
+                    t.semester = changes.semester;
+                    t.schoolYear = changes.schoolYear;
+                    t.name = name;
+                    t.startDate = changes.startDate;
+                    t.endDate = changes.endDate;
+                    changed = true;
+                    return Promise.resolve(copy(t));
+                },
+
+                archive: function (id, today) {
+                    var t = find(id);
+                    if (!t) { return fail("That term no longer exists."); }
+                    if (t.isCurrent) { return fail("The current term cannot be archived. Make another term current first."); }
+                    t.archived = true;
+                    t.archivedOn = today;
+                    changed = true;
+                    return Promise.resolve(copy(t));
+                },
+
+                restore: function (id) {
+                    var t = find(id);
+                    if (!t) { return fail("That term no longer exists."); }
+                    t.archived = false;
+                    t.archivedOn = "";
+                    changed = true;
+                    return Promise.resolve(copy(t));
+                }
+            };
+        })();
+    </script>
+
+    @* =====================================================================
+       2) EXISTING SERVER ACTIONS (saved to the database)
+       Add term -> POST /Admin/AddTerm (name)
+       Make current -> POST /Admin/SetCurrentTerm/{id}
+       Both reload the page, which also clears the temporary store above.
+       ===================================================================== *@
+    <script>
+        window.GradeWiseTermServer = (function () {
+            var root = document.querySelector(".gw-terms");
+            return {
+                setCurrent: function (id) {
+                    var form = document.getElementById("term-current-form");
+                    form.action = root.getAttribute("data-set-current-url").replace(/\/$/, "") + "/" + encodeURIComponent(id);
+                    form.submit();
+                }
+                // Add term submits the add / edit form itself (see "add / edit form" below).
+            };
+        })();
+    </script>
+
+    @* =====================================================================
+       3) PAGE (tables, filters, tabs and modals)
+       ===================================================================== *@
+    <script>
+        (function () {
+            var store = window.GradeWiseTermStore;
+            var server = window.GradeWiseTermServer;
+            var root = document.querySelector(".gw-terms");
+            var today = root.getAttribute("data-today");
+
+            var initial = [];
+            try { initial = JSON.parse(root.getAttribute("data-terms")) || []; } catch (err) { initial = []; }
+            store.load(initial);
+
+            var STATUS_LABELS = { current: "Current", upcoming: "Upcoming", completed: "Completed", archived: "Archived", other: "Not current" };
+            var SEM_ORDER = { "1st Semester": 1, "2nd Semester": 2, "Summer": 3 };
+            var MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+            function formatDate(value) {
+                if (!value) { return "Not set"; }
+                var p = value.split("-");
+                return MONTHS[parseInt(p[1], 10) - 1] + " " + parseInt(p[2], 10) + ", " + p[0];
+            }
+
+            function order(t) {
+                if (!t.schoolYear) { return 0; }
+                return parseInt(t.schoolYear.split("-")[0], 10) * 10 + (SEM_ORDER[t.semester] || 0);
+            }
+
+            // Status: archived and current first; then dates (if set); otherwise position relative to the current term.
+            function statusOf(t, current) {
+                if (t.archived) { return "archived"; }
+                if (t.isCurrent) { return "current"; }
+                if (t.startDate && t.endDate) {
+                    if (t.endDate < today) { return "completed"; }
+                    if (t.startDate > today) { return "upcoming"; }
+                }
+                if (current && order(current) && order(t)) {
+                    return order(t) > order(current) ? "upcoming" : order(t) < order(current) ? "completed" : "other";
+                }
+                return "other";
+            }
+
+            function statusNote(status, t) {
+                var notes = {
+                    current: "This is the current term.",
+                    upcoming: t.startDate ? "Starts on " + formatDate(t.startDate) + "." : "Comes after the current term.",
+                    completed: t.endDate ? "Ended on " + formatDate(t.endDate) + "." : "Comes before the current term.",
+                    archived: "Archived. Its records are kept and it can be restored.",
+                    other: "Not the current term."
+                };
+                return notes[status] || notes.other;
+            }
+
+            function el(tag, cls, text) {
+                var e = document.createElement(tag);
+                if (cls) { e.className = cls; }
+                if (text !== undefined) { e.textContent = text; }
+                return e;
+            }
+
+            function button(label, action, cls, disabledTitle) {
+                var b = el("button", "gw-btn gw-btn-small " + (cls === undefined ? "gw-btn-outline" : cls), label);
+                b.type = "button";
+                b.setAttribute("data-action", action);
+                if (disabledTitle) { b.disabled = true; b.title = disabledTitle; }
+                return b;
+            }
+
+            function badge(status) {
+                return el("span", "gw-status gw-term-status gw-term-status-" + status, STATUS_LABELS[status] || STATUS_LABELS.other);
+            }
+
+            // ---------- flash message ----------
+            var flash = document.getElementById("terms-flash");
+            var flashTimer = null;
+            function say(text, isError) {
+                flash.textContent = text;
+                flash.className = "gw-alert gw-terms-flash" + (isError ? "" : " gw-alert-ok");
+                flash.setAttribute("role", isError ? "alert" : "status");
+                flash.hidden = false;
+                clearTimeout(flashTimer);
+                flashTimer = setTimeout(function () { flash.hidden = true; }, 7000);
+            }
+
+            // ---------- render ----------
+            var tbodies = { active: root.querySelector('[data-tbody="active"]'), archived: root.querySelector('[data-tbody="archived"]') };
+
+            function renderRow(t, status) {
+                var tr = el("tr");
+                tr.setAttribute("data-term-row", "");
+                tr.setAttribute("data-id", t.id);
+                tr.setAttribute("data-name", t.name);
+                tr.setAttribute("data-semester", t.semester);
+                tr.setAttribute("data-year", t.schoolYear);
+                tr.setAttribute("data-status", status);
+                if (status === "current") { tr.className = "gw-term-current"; }
+
+                var yearText = t.schoolYear ? "S.Y. " + t.schoolYear : "-";
+                var first = el("td");
+                first.appendChild(el("span", "gw-term-box", t.semester || t.name));
+                first.appendChild(el("span", "gw-terms-row-year", yearText));
+                var under = el("span", "gw-terms-row-status");
+                under.appendChild(t.archived ? el("span", "gw-status gw-term-status gw-term-status-archived", "Archived " + formatDate(t.archivedOn)) : badge(status));
+                first.appendChild(under);
+                tr.appendChild(first);
+
+                tr.appendChild(el("td", "gw-terms-col-year", yearText));
+                tr.appendChild(el("td", "gw-terms-col-date" + (t.startDate ? "" : " gw-terms-unset"), formatDate(t.startDate)));
+                tr.appendChild(el("td", "gw-terms-col-date" + (t.endDate ? "" : " gw-terms-unset"), formatDate(t.endDate)));
+
+                var statusCell = el("td", "gw-terms-col-status");
+                statusCell.appendChild(t.archived ? el("span", "gw-terms-archived-on", formatDate(t.archivedOn)) : badge(status));
+                tr.appendChild(statusCell);
+
+                var actions = el("div", "gw-row-actions");
+                actions.appendChild(button("View", "view"));
+                if (t.archived) {
+                    actions.appendChild(button("Restore", "restore", "gw-btn-gold"));
+                } else {
+                    actions.appendChild(button("Edit", "edit"));
+                    actions.appendChild(button("Archive", "archive", "gw-btn-outline gw-terms-btn-archive",
+                        t.isCurrent ? "Make another term current before archiving this one" : null));
+                    if (!t.isCurrent) { actions.appendChild(button("Make current", "current", "")); }
+                }
+                var actionCell = el("td");
+                actionCell.appendChild(actions);
+                tr.appendChild(actionCell);
+                return tr;
+            }
+
+            function emptyRow(text, withReset) {
+                var tr = el("tr");
+                var td = el("td", "gw-empty", text);
+                td.colSpan = 6;
+                if (withReset) {
+                    var b = el("button", "gw-terms-linkbtn", "Clear filters");
+                    b.type = "button";
+                    b.setAttribute("data-filter-reset", "");
+                    td.appendChild(document.createTextNode(" "));
+                    td.appendChild(b);
+                    tr.setAttribute("data-filter-empty", "");
+                }
+                tr.appendChild(td);
+                return tr;
+            }
+
+            function render() {
+                var all = store.list();
+                var current = all.filter(function (t) { return t.isCurrent && !t.archived; })[0] || null;
+                var active = all.filter(function (t) { return !t.archived; })
+                    .sort(function (a, b) { return order(b) - order(a); });
+                var archived = all.filter(function (t) { return t.archived; })
+                    .sort(function (a, b) { return (b.archivedOn || "").localeCompare(a.archivedOn || "") || order(b) - order(a); });
+
+                [["active", active, "No terms yet. Use Add term to create one.", "No active terms match these filters."],
+                 ["archived", archived, "No archived terms. Archived terms appear here and can be restored.", "No archived terms match these filters."]]
+                .forEach(function (set) {
+                    var body = tbodies[set[0]];
+                    body.innerHTML = "";
+                    set[1].forEach(function (t) { body.appendChild(renderRow(t, statusOf(t, current))); });
+                    body.appendChild(set[1].length ? emptyRow(set[3], true) : emptyRow(set[2], false));
+                    root.querySelector('[data-count="' + set[0] + '"]').textContent = set[1].length;
+                });
+
+                refreshYearFilter(all);
+                applyFilters();
+            }
+
+            // ---------- modals ----------
+            var focusStack = [];
+
+            function openModal(modal, focusEl) {
+                focusStack.push(document.activeElement);
+                modal.hidden = false;
+                document.body.classList.add("gw-modal-open");
+                (focusEl || modal.querySelector("[data-modal-close]")).focus();
+            }
+
+            function closeModal(modal, keepFocus) {
+                if (!modal || modal.hidden) { return; }
+                modal.hidden = true;
+                if (!root.querySelector(".gw-modal-backdrop:not([hidden])")) {
+                    document.body.classList.remove("gw-modal-open");
+                }
+                var back = focusStack.pop();
+                if (!keepFocus && back && back.focus && document.body.contains(back)) { back.focus(); }
+            }
+
+            root.addEventListener("click", function (e) {
+                var closer = e.target.closest("[data-modal-close]");
+                if (closer) { closeModal(closer.closest(".gw-modal-backdrop")); return; }
+                if (e.target.classList && e.target.classList.contains("gw-modal-backdrop")) { closeModal(e.target); }
+            });
+
+            document.addEventListener("keydown", function (e) {
+                if (e.key !== "Escape") { return; }
+                var open = root.querySelectorAll(".gw-modal-backdrop:not([hidden])");
+                if (open.length) { closeModal(open[open.length - 1]); }
+            });
+
+            // ---------- confirmation ----------
+            var confirmModal = document.getElementById("term-confirm");
+            var confirmTitle = document.getElementById("term-confirm-title");
+            var confirmBody = document.getElementById("term-confirm-body");
+            var confirmYes = confirmModal.querySelector("[data-confirm-yes]");
+            var confirmAction = null;
+
+            // paragraphs: [{ text, bold, muted }] pieces; each inner array is one paragraph
+            function askConfirm(opts) {
+                confirmTitle.textContent = opts.title;
+                confirmBody.innerHTML = "";
+                opts.paragraphs.forEach(function (pieces) {
+                    var p = el("p");
+                    pieces.forEach(function (piece) {
+                        if (piece.muted) { p.className = "gw-muted"; }
+                        p.appendChild(piece.bold ? el("strong", null, piece.text) : document.createTextNode(piece.text));
+                    });
+                    confirmBody.appendChild(p);
+                });
+                confirmYes.textContent = opts.yes;
+                confirmYes.className = "gw-btn gw-btn-small" + (opts.yesClass ? " " + opts.yesClass : "");
+                confirmYes.disabled = false;
+                confirmAction = opts.action;
+                openModal(confirmModal, confirmYes);
+            }
+
+            confirmYes.addEventListener("click", function () {
+                if (!confirmAction) { return; }
+                confirmYes.disabled = true;
+                var run = confirmAction;
+                confirmAction = null;
+                run();
+            });
+
+            function previewWarning() {
+                return store.hasChanges()
+                    ? [{ text: "The page will reload, so preview changes made here (dates, edits, archiving) will be cleared.", muted: true }]
+                    : null;
+            }
+
+            function askMakeCurrent(t) {
+                var current = store.list().filter(function (x) { return x.isCurrent; })[0];
+                var paragraphs = [[{ text: t.name, bold: true }, { text: " will become the current term." }]];
+                if (current) { paragraphs.push([{ text: current.name + " will no longer be current.", muted: true }]); }
+                paragraphs.push([{ text: "New courses will use the current term by default.", muted: true }]);
+                var warn = previewWarning();
+                if (warn) { paragraphs.push(warn); }
+                askConfirm({
+                    title: "Change the current term?",
+                    paragraphs: paragraphs,
+                    yes: "Yes, make it current",
+                    action: function () { server.setCurrent(t.id); }
+                });
+            }
+
+            function askArchive(t) {
+                askConfirm({
+                    title: "Archive this term?",
+                    paragraphs: [
+                        [{ text: t.name, bold: true }, { text: " will move to Archived terms." }],
+                        [{ text: "Its courses, grades and history are kept. Nothing is deleted, and you can restore it at any time.", muted: true }]
+                    ],
+                    yes: "Archive term",
+                    yesClass: "gw-btn-danger",
+                    action: function () {
+                        store.archive(t.id, today).then(function (saved) {
+                            closeModal(confirmModal, true);
+                            render();
+                            say(saved.name + " was archived (preview only; resets on reload).");
+                            focusRow(saved.id, "view");
+                        }, function (err) { closeModal(confirmModal); say(err.message, true); });
+                    }
+                });
+            }
+
+            function askRestore(t) {
+                askConfirm({
+                    title: "Restore this term?",
+                    paragraphs: [[{ text: t.name, bold: true }, { text: " will move back to Active terms." }]],
+                    yes: "Restore term",
+                    yesClass: "gw-btn-gold",
+                    action: function () {
+                        store.restore(t.id).then(function (saved) {
+                            closeModal(confirmModal, true);
+                            render();
+                            say(saved.name + " was restored (preview only; resets on reload).");
+                            focusRow(saved.id, "edit");
+                        }, function (err) { closeModal(confirmModal); say(err.message, true); });
+                    }
+                });
+            }
+
+            // after a row moves lists, put focus somewhere sensible
+            function focusRow(id, action) {
+                var row = root.querySelector('tr[data-term-row][data-id="' + id + '"]');
+                var panel = row ? row.closest(".gw-terms-tabpanel") : null;
+                if (panel && panel.hidden) { selectTab(document.getElementById(panel.getAttribute("aria-labelledby")), false); }
+                var b = row ? row.querySelector('[data-action="' + action + '"]') : null;
+                if (b) { b.focus(); }
+            }
+
+            // ---------- add / edit form ----------
+            var formModal = document.getElementById("term-form-modal");
+            var form = document.getElementById("term-form");
+            var formTitle = document.getElementById("term-form-title");
+            var formNote = document.getElementById("term-form-note");
+            var submitBtn = document.getElementById("term-form-submit");
+            var semSel = document.getElementById("term-semester");
+            var yearSel = document.getElementById("term-year");
+            var startIn = document.getElementById("term-start");
+            var endIn = document.getElementById("term-end");
+            var nameInput = document.getElementById("term-name");
+            var preview = document.getElementById("term-preview");
+            var feedback = document.getElementById("term-feedback");
+            var fields = [semSel, yearSel, startIn, endIn];
+            var editingId = null;  // null while adding
+            var tried = false;     // "missing" messages only after a first submit
+
+            function composedName() {
+                return semSel.value && yearSel.value ? store.buildName(semSel.value, yearSel.value) : "";
+            }
+
+            function syRange() {
+                if (!yearSel.value) { return null; }
+                var y = yearSel.value.split("-");
+                return { min: y[0] + "-01-01", max: y[1] + "-12-31" };
+            }
+
+            function validate() {
+                var problems = [];
+                if (!semSel.value) { problems.push({ field: semSel, text: "Choose a semester.", missing: true }); }
+                if (!yearSel.value) { problems.push({ field: yearSel, text: "Choose a school year.", missing: true }); }
+                if (!startIn.value) { problems.push({ field: startIn, text: "Enter a start date.", missing: true }); }
+                if (!endIn.value) { problems.push({ field: endIn, text: "Enter an end date.", missing: true }); }
+                if (startIn.value && endIn.value && endIn.value <= startIn.value) {
+                    problems.push({ field: endIn, text: "The end date must be after the start date." });
+                }
+                var range = syRange();
+                if (range) {
+                    if (startIn.value && (startIn.value < range.min || startIn.value > range.max)) {
+                        problems.push({ field: startIn, text: "The start date must fall within S.Y. " + yearSel.value + "." });
+                    }
+                    if (endIn.value && (endIn.value < range.min || endIn.value > range.max)) {
+                        problems.push({ field: endIn, text: "The end date must fall within S.Y. " + yearSel.value + "." });
+                    }
+                }
+                var name = composedName();
+                if (name && store.nameTaken(name, editingId)) {
+                    problems.push({ field: semSel, text: name + " already exists. Choose a different semester or school year." });
+                    problems.push({ field: yearSel, text: "" });
+                }
+                return problems;
+            }
+
+            function renderForm() {
+                var name = composedName();
+                preview.textContent = name || "Choose a semester and school year";
+                nameInput.value = name;
+                var range = syRange();
+                startIn.min = endIn.min = range ? range.min : "";
+                startIn.max = endIn.max = range ? range.max : "";
+                if (startIn.value) { endIn.min = startIn.value; }
+
+                var problems = validate().filter(function (p) { return tried || !p.missing; });
+                fields.forEach(function (f) {
+                    var bad = problems.some(function (p) { return p.field === f; });
+                    f.classList.toggle("gw-input-bad", bad);
+                    f.setAttribute("aria-invalid", bad ? "true" : "false");
+                });
+                var texts = problems.map(function (p) { return p.text; }).filter(function (t, i, a) { return t && a.indexOf(t) === i; });
+                feedback.textContent = texts.join(" ");
+                feedback.hidden = texts.length === 0;
+                return problems;
+            }
+
+            fields.forEach(function (f) {
+                f.addEventListener("change", renderForm);
+                f.addEventListener("input", renderForm);
+            });
+
+            function ensureYearOption(year) {
+                if (!year) { return; }
+                for (var i = 0; i < yearSel.options.length; i++) { if (yearSel.options[i].value === year) { return; } }
+                var opt = el("option", null, "S.Y. " + year);
+                opt.value = year;
+                yearSel.appendChild(opt);
+            }
+
+            function openForm(t) {
+                editingId = t ? t.id : null;
+                tried = false;
+                form.reset();
+                if (t) {
+                    formTitle.textContent = "Edit term";
+                    submitBtn.textContent = "Save changes";
+                    formNote.textContent = "Changes are kept on this page only (preview) and reset when the page reloads.";
+                    ensureYearOption(t.schoolYear);
+                    semSel.value = t.semester || "";
+                    yearSel.value = t.schoolYear || "";
+                    startIn.value = t.startDate || "";
+                    endIn.value = t.endDate || "";
+                } else {
+                    formTitle.textContent = "Add a term";
+                    submitBtn.textContent = "Add term";
+                    formNote.textContent = "The term is saved to the database by name. Its dates are checked but not stored yet.";
+                }
+                submitBtn.disabled = false;
+                renderForm();
+                openModal(formModal, semSel);
+            }
+
+            form.addEventListener("submit", function (e) {
+                tried = true;
+                var problems = renderForm();
+                if (problems.length) {
+                    e.preventDefault();
+                    problems[0].field.focus();
+                    return;
+                }
+                if (editingId === null) {
+                    // Add: let the form post to the existing AddTerm action (real save).
+                    submitBtn.disabled = true;
+                    return;
+                }
+                // Edit: temporary store only.
+                e.preventDefault();
+                var id = editingId;
+                store.update(id, { semester: semSel.value, schoolYear: yearSel.value, startDate: startIn.value, endDate: endIn.value })
+                    .then(function (saved) {
+                        closeModal(formModal, true);
+                        render();
+                        say(saved.name + " was updated (preview only; resets on reload).");
+                        focusRow(saved.id, "edit");
+                    }, function (err) {
+                        feedback.textContent = err.message;
+                        feedback.hidden = false;
+                    });
+            });
+
+            root.querySelector("[data-term-add]").addEventListener("click", function () { openForm(null); });
+
+            // ---------- view ----------
+            var viewModal = document.getElementById("term-view");
+            var viewing = null;
+
+            function slot(name) { return viewModal.querySelector('[data-slot="' + name + '"]'); }
+
+            function openView(t) {
+                var current = store.list().filter(function (x) { return x.isCurrent; })[0] || null;
+                var status = statusOf(t, current);
+                viewing = t;
+                slot("name").textContent = t.name;
+                slot("semester").textContent = t.semester || "Not in the standard format";
+                slot("year").textContent = t.schoolYear ? "S.Y. " + t.schoolYear : "Not in the standard format";
+                slot("start").textContent = formatDate(t.startDate);
+                slot("end").textContent = formatDate(t.endDate);
+                var b = slot("status");
+                b.textContent = STATUS_LABELS[status];
+                b.className = "gw-status gw-term-status gw-term-status-" + status;
+                var archivedEls = viewModal.querySelectorAll("[data-slot-archived]");
+                for (var i = 0; i < archivedEls.length; i++) { archivedEls[i].hidden = !t.archived; }
+                slot("archived").textContent = formatDate(t.archivedOn);
+                slot("note").textContent = statusNote(status, t);
+                viewModal.querySelector('[data-view-action="edit"]').hidden = t.archived;
+                viewModal.querySelector('[data-view-action="restore"]').hidden = !t.archived;
+                viewModal.querySelector('[data-view-action="current"]').hidden = t.archived || t.isCurrent;
+                openModal(viewModal);
+            }
+
+            viewModal.addEventListener("click", function (e) {
+                var b = e.target.closest("[data-view-action]");
+                if (!b || !viewing) { return; }
+                var t = store.get(viewing.id);
+                closeModal(viewModal, true);
+                var a = b.getAttribute("data-view-action");
+                if (a === "edit") { openForm(t); }
+                else if (a === "restore") { askRestore(t); }
+                else { askMakeCurrent(t); }
+            });
+
+            // ---------- row buttons ----------
+            root.addEventListener("click", function (e) {
+                var b = e.target.closest("tr[data-term-row] [data-action]");
+                if (!b || b.disabled) { return; }
+                var t = store.get(b.closest("tr").getAttribute("data-id"));
+                if (!t) { return; }
+                var a = b.getAttribute("data-action");
+                if (a === "view") { openView(t); }
+                else if (a === "edit") { openForm(t); }
+                else if (a === "archive") { askArchive(t); }
+                else if (a === "restore") { askRestore(t); }
+                else if (a === "current") { askMakeCurrent(t); }
+            });
+
+            // ---------- tabs ----------
+            var tabs = root.querySelectorAll('[role="tab"]');
+            var statusWrap = root.querySelector("[data-filter-status-wrap]");
+
+            function selectTab(tab, focus) {
+                for (var i = 0; i < tabs.length; i++) {
+                    var on = tabs[i] === tab;
+                    tabs[i].setAttribute("aria-selected", on ? "true" : "false");
+                    tabs[i].tabIndex = on ? 0 : -1;
+                    document.getElementById(tabs[i].getAttribute("aria-controls")).hidden = !on;
+                }
+                statusWrap.hidden = tab.id === "tab-archived";   // status filter is for active terms
+                if (focus) { tab.focus(); }
+                applyFilters();
+            }
+
+            Array.prototype.forEach.call(tabs, function (tab) {
+                tab.addEventListener("click", function () { selectTab(tab, false); });
+                tab.addEventListener("keydown", function (e) {
+                    if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") { return; }
+                    var list = Array.prototype.slice.call(tabs);
+                    var next = list[(list.indexOf(tab) + (e.key === "ArrowRight" ? 1 : list.length - 1)) % list.length];
+                    selectTab(next, true);
+                });
+            });
+
+            // ---------- filters ----------
+            var fSearch = document.getElementById("filter-search");
+            var fYear = document.getElementById("filter-year");
+            var fSem = document.getElementById("filter-semester");
+            var fStatus = document.getElementById("filter-status");
+            var count = document.getElementById("filter-count");
+
+            function refreshYearFilter(all) {
+                var keep = fYear.value;
+                var years = all.map(function (t) { return t.schoolYear; })
+                    .filter(function (y, i, a) { return y && a.indexOf(y) === i; }).sort().reverse();
+                while (fYear.options.length > 1) { fYear.remove(1); }
+                years.forEach(function (y) {
+                    var o = el("option", null, "S.Y. " + y);
+                    o.value = y;
+                    fYear.appendChild(o);
+                });
+                fYear.value = years.indexOf(keep) !== -1 ? keep : "";
+            }
+
+            function applyFilters() {
+                var panel = root.querySelector(".gw-terms-tabpanel:not([hidden])");
+                var q = fSearch.value.trim().toLowerCase();
+                var shownHere = 0, totalHere = 0;
+                Array.prototype.forEach.call(root.querySelectorAll(".gw-terms-tabpanel"), function (list) {
+                    var isArchived = list.getAttribute("data-list") === "archived";
+                    var rows = list.querySelectorAll("tr[data-term-row]");
+                    var shown = 0;
+                    Array.prototype.forEach.call(rows, function (r) {
+                        var text = (r.getAttribute("data-name") + " " + r.getAttribute("data-year")).toLowerCase();
+                        var ok = (!q || text.indexOf(q) !== -1) &&
+                                 (!fYear.value || r.getAttribute("data-year") === fYear.value) &&
+                                 (!fSem.value || r.getAttribute("data-semester") === fSem.value) &&
+                                 (isArchived || !fStatus.value || r.getAttribute("data-status") === fStatus.value);
+                        r.hidden = !ok;
+                        if (ok) { shown++; }
+                    });
+                    var empty = list.querySelector("[data-filter-empty]");
+                    if (empty) { empty.hidden = shown !== 0; }
+                    if (list === panel) { shownHere = shown; totalHere = rows.length; }
+                });
+                var archivedTab = panel.getAttribute("data-list") === "archived";
+                count.textContent = "Showing " + shownHere + " of " + totalHere + (archivedTab ? " archived" : " active") + (totalHere === 1 ? " term" : " terms");
+            }
+
+            function resetFilters() {
+                fSearch.value = ""; fYear.value = ""; fSem.value = ""; fStatus.value = "";
+                applyFilters();
+            }
+
+            fSearch.addEventListener("input", applyFilters);
+            [fYear, fSem, fStatus].forEach(function (s) { s.addEventListener("change", applyFilters); });
+            document.getElementById("filter-reset").addEventListener("click", resetFilters);
+            root.addEventListener("click", function (e) { if (e.target.closest("[data-filter-reset]")) { resetFilters(); } });
+
+            // ---------- start ----------
+            ["term-tabs", "term-filters", "terms-preview-note"].forEach(function (id) { document.getElementById(id).hidden = false; });
+            root.querySelector("[data-term-add]").hidden = false;
+            render();
+        })();
+    </script>
+}
