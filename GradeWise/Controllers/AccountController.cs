@@ -105,6 +105,11 @@ namespace GradeWise.Controllers
         {
             FormsAuthentication.SignOut();
             Session.Abandon();
+
+            // Ask the browser to throw away what it kept of this site, so pressing Back after signing out
+            // cannot bring a signed-in page back. (Browsers that do not know this header ignore it.)
+            Response.AppendHeader("Clear-Site-Data", "\"cache\"");
+
             return RedirectToAction("Login", "Account");
         }
 

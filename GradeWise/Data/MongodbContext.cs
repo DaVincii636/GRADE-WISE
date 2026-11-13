@@ -10,8 +10,20 @@ namespace GradeWise.Data
         // One MongoClient (and one connection pool) for the whole app. The driver is built to be shared
         // and is thread-safe, so every "new MongoDbContext()" just reuses it. Do not dispose it.
         private static readonly Lazy<IMongoDatabase> SharedDatabase = new Lazy<IMongoDatabase>(() =>
-            new MongoClient(ConfigurationManager.ConnectionStrings["MongoConnection"].ConnectionString)
-                .GetDatabase("GradeWiseDb"));
+        {
+            var settings = MongoClientSettings.FromConnectionString(
+                ConfigurationManager.ConnectionStrings["MongoConnection"].ConnectionString);
+
+            // Keep a few connections open, so a click after a quiet moment does not wait for a new
+            // secure connection to Atlas to be set up.
+            settings.MinConnectionPoolSize = 3;
+            settings.MaxConnectionIdleTime = TimeSpan.FromMinutes(30);
+
+            // If Atlas cannot be reached, say so after 10 seconds instead of 30.
+            settings.ServerSelectionTimeout = TimeSpan.FromSeconds(10);
+
+            return new MongoClient(settings).GetDatabase("GradeWiseDb");
+        }, System.Threading.LazyThreadSafetyMode.PublicationOnly);   // a failed start is retried, not remembered
 
         private readonly IMongoDatabase _database;
 

@@ -41,12 +41,33 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>@ViewBag.Title - GradeWise</title>
-    <link rel="stylesheet" href="~/Content/fonts.css" />
+    @* Back button: a page that the browser puts back from its back-forward cache is hidden right away
+       (before it can be seen) and fetched again from the server, so a signed-out page is never shown. *@
+    <style>html.gw-checking body { visibility: hidden; }</style>
+    <script>
+        (function () {
+            var root = document.documentElement;
+            window.addEventListener("pageshow", function (e) {
+                if (!e.persisted) { return; }
+                root.classList.add("gw-checking");
+                window.location.reload();
+                // If the reload is slow, do not leave the page blank for long.
+                setTimeout(function () { root.classList.remove("gw-checking"); }, 5000);
+            });
+        })();
+    </script>
+    @* Start loading the three fonts at once instead of waiting for fonts.css to be read first. *@
+    <link rel="preload" href="@Url.Content("~/Content/fonts/SpaceGrotesk-Regular.woff2")" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="@Url.Content("~/Content/fonts/SpaceGrotesk-Bold.woff2")" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="@Url.Content("~/Content/fonts/Silkscreen-Regular.woff2")" as="font" type="font/woff2" crossorigin />
+    @* The ?v= is the file's last-saved time, so a changed file is fetched again and an unchanged one comes from the browser cache. *@
+    <link rel="stylesheet" href="@Url.Content("~/Content/fonts.css")?v=@System.IO.File.GetLastWriteTimeUtc(Server.MapPath("~/Content/fonts.css")).Ticks" />
     @Styles.Render("~/Content/css")
-    <link rel="stylesheet" href="@Url.Content("~/Content/Site.css?v=18")" />
+    <link rel="stylesheet" href="@Url.Content("~/Content/Site.css")?v=@System.IO.File.GetLastWriteTimeUtc(Server.MapPath("~/Content/Site.css")).Ticks" />
     @Scripts.Render("~/bundles/modernizr")
 </head>
 <body>
+    <div class="gw-progress" aria-hidden="true"></div>
     <header class="gw-topbar">
         <div class="gw-topbar-inner">
             <a href="@Url.Action("Index", "Home", new { area = "" })" class="gw-brand">
@@ -95,19 +116,55 @@
     }
     @RenderSection("scripts", required: false)
 
-    @if (!string.IsNullOrEmpty(role))
-    {
-        <script>
-            // A page restored from the browser's back-forward cache keeps the DOM it had
-            // when the user left (including any signed-in state). Ask the server again so
-            // the page reflects the current session. Scoped to signed-in pages because the
-            // Login page already has its own, stronger back/forward recovery in main.
-            window.addEventListener("pageshow", function (event) {
-                if (event.persisted) {
-                    window.location.reload();
+    <script>
+        // Instant feedback when something is clicked: a thin bar at the top of the page, and the
+        // pressed button is switched off so it cannot be sent twice while the next page loads.
+        (function () {
+            var root = document.documentElement;
+            var timer = null;
+
+            function stop() {
+                root.classList.remove("gw-loading");
+                clearTimeout(timer);
+                var busy = document.querySelectorAll(".gw-busy");
+                for (var i = 0; i < busy.length; i++) {
+                    busy[i].classList.remove("gw-busy");
+                    busy[i].disabled = false;
+                }
+            }
+
+            function start() {
+                root.classList.add("gw-loading");
+                clearTimeout(timer);
+                timer = setTimeout(stop, 12000);   // never get stuck if the page does not change
+            }
+
+            document.addEventListener("click", function (e) {
+                if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) { return; }
+                var a = e.target.closest ? e.target.closest("a[href]") : null;
+                if (!a) { return; }
+                var href = a.getAttribute("href") || "";
+                if (href === "" || href.charAt(0) === "#" || /^(javascript|mailto|tel):/i.test(href)) { return; }
+                if ((a.target && a.target !== "_self") || a.hasAttribute("download") || a.hasAttribute("data-no-progress") || a.hasAttribute("data-modal-open")) { return; }
+                if (a.origin && a.origin !== window.location.origin) { return; }
+                if (/\/Export/i.test(a.pathname)) { return; }   // a file download never leaves the page
+                start();
+            });
+
+            document.addEventListener("submit", function (e) {
+                var form = e.target;
+                if (e.defaultPrevented || !form || form.hasAttribute("data-no-progress") || (form.target && form.target !== "_self")) { return; }
+                start();
+                var button = e.submitter || form.querySelector('button[type="submit"], input[type="submit"]');
+                if (button && !button.disabled) {
+                    // After this click is handled, so the button's own value is still sent with the form.
+                    setTimeout(function () { button.disabled = true; button.classList.add("gw-busy"); }, 0);
                 }
             });
-        </script>
-    }
+
+            // Back to a page that was kept as it was: clear the bar and switch the buttons on again.
+            window.addEventListener("pageshow", stop);
+        })();
+    </script>
 </body>
 </html>

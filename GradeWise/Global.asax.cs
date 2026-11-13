@@ -80,7 +80,12 @@ namespace GradeWise
             try
             {
                 var db = new MongoDbContext();
-                user = db.Users.Find(u => u.StudentNo.ToLower() == ticket.Name.ToLower()).FirstOrDefault();
+                var signedInAs = ticket.Name;
+
+                // The sign-in name is saved exactly as stored, so this can use the StudentNo index.
+                // The case-insensitive search below is only a fallback for an unusual ticket.
+                user = db.Users.Find(u => u.StudentNo == signedInAs).FirstOrDefault()
+                    ?? db.Users.Find(u => u.StudentNo.ToLower() == signedInAs.ToLower()).FirstOrDefault();
             }
             catch (Exception)
             {

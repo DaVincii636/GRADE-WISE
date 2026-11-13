@@ -3697,3 +3697,47 @@ body.gw-modal-open {
         margin-left: 0;
     }
 }
+
+/* ---------- Click feedback: loading bar and busy buttons ---------- */
+.gw-progress {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 0;
+    height: 4px;
+    background: var(--gw-lime);
+    border-bottom: 1.5px solid var(--gw-ink);
+    opacity: 0;
+    pointer-events: none;
+    z-index: 3000;
+}
+
+html.gw-loading .gw-progress {
+    width: 85%;
+    opacity: 1;
+    transition: width 6s cubic-bezier(0.1, 0.7, 0.2, 1);
+}
+
+html.gw-loading,
+html.gw-loading a,
+html.gw-loading button {
+    cursor: progress;
+}
+
+.gw-busy {
+    opacity: 0.7;
+    cursor: progress;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    html.gw-loading .gw-progress {
+        width: 60%;
+        transition: none;
+    }
+}
+
+@media print {
+    .gw-progress {
+        display: none !important;
+    }
+}

@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Web.Mvc;
 using GradeWise.Data;
 using GradeWise.Models;
@@ -23,10 +24,13 @@ namespace GradeWise.Controllers
                 var me = CurrentStudentUser();
                 if (me == null) return new EmptyResult();
 
+                // One query instead of two: a student keeps at most MaxPerStudent messages, so the
+                // unread count can be taken from the same list. Only the newest ones are shown.
+                var all = NotificationService.ListFor(me.Id, NotificationService.MaxPerStudent);
                 var model = new NotificationBellViewModel
                 {
-                    Items = NotificationService.ListFor(me.Id),
-                    Unread = NotificationService.UnreadCount(me.Id)
+                    Items = all.Take(NotificationService.DefaultListLimit).ToList(),
+                    Unread = all.Count(n => !n.IsRead)
                 };
                 return PartialView(model);
             }

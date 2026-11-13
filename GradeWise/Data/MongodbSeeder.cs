@@ -78,6 +78,16 @@ namespace GradeWise.Data
             {
             }
 
+            // Every page looks the signed-in account up by its sign-in name.
+            try
+            {
+                db.Users.Indexes.CreateOne(new CreateIndexModel<User>(Builders<User>.IndexKeys.Ascending(u => u.StudentNo)));
+                db.Users.Indexes.CreateOne(new CreateIndexModel<User>(Builders<User>.IndexKeys.Ascending(u => u.Email)));
+            }
+            catch (System.Exception)
+            {
+            }
+
             // Notifications are listed per student, newest first, so index them that way.
             try
             {
