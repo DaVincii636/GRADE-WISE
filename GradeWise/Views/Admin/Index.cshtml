@@ -12,6 +12,10 @@
     var error = TempData["Error"] as string;
     var tempPassword = TempData["TempPassword"] as string;
     var tempPasswordFor = TempData["TempPasswordFor"] as string;
+
+    // Why an account cannot be deleted (owns courses, has grades or grade history, last administrator).
+    // Accounts not listed can be deleted. AdminController.DeleteUser enforces the same rules on the server.
+    var deleteBlockers = ViewBag.DeleteBlockers as Dictionary<string, string> ?? new Dictionary<string, string>();
 }
 
 <h1 class="gw-page-title">Accounts and terms</h1>
@@ -115,31 +119,20 @@
                         </td>
                         <td>
                             <div class="gw-row-actions">
-                                @if (!isMe)
-                                {
-                                    using (Html.BeginForm("SetActive", "Admin", new { id = u.Id }, FormMethod.Post, new { @class = "gw-row-form" }))
-                                    {
-                                        @Html.AntiForgeryToken()
-                                        <input type="hidden" name="active" value="@((!u.IsActive).ToString().ToLowerInvariant())" />
-                                        if (u.IsActive)
-                                        {
-                                            <button type="submit" class="gw-btn gw-btn-small gw-btn-outline"
-                                                    data-confirm="Disable @(u.FullName)? They cannot sign in until you enable the account again."
-                                                    data-confirm-title="Disable this account?"
-                                                    data-confirm-ok="Disable"
-                                                    data-confirm-tone="danger">Disable</button>
-                                        }
-                                        else
-                                        {
-                                            <button type="submit" class="gw-btn gw-btn-small">Enable</button>
-                                        }
-                                    }
-                                }
-                                @using (Html.BeginForm("ResetPassword", "Admin", new { id = u.Id }, FormMethod.Post, new { @class = "gw-row-form", data_confirm = "Reset the password for " + u.FullName + "? The old password stops working.", data_confirm_title = "Reset password?", data_confirm_ok = "Reset" }))
-                                {
-                                    @Html.AntiForgeryToken()
-                                    <button type="submit" class="gw-btn gw-btn-small gw-btn-outline">Reset password</button>
-                                }
+                                @* All account actions live in the Edit modal below; the row only carries what it needs. *@
+                                <button type="button" class="gw-btn gw-btn-small gw-btn-outline"
+                                        aria-haspopup="dialog"
+                                        aria-label="Edit account for @u.FullName"
+                                        data-account-edit
+                                        data-name="@u.FullName"
+                                        data-login="@u.StudentNo"
+                                        data-role="@u.Role"
+                                        data-active="@(u.IsActive ? "true" : "false")"
+                                        data-me="@(isMe ? "true" : "false")"
+                                        data-set-active-url="@Url.Action("SetActive", "Admin", new { id = u.Id })"
+                                        data-reset-url="@Url.Action("ResetPassword", "Admin", new { id = u.Id })"
+                                        data-delete-url="@Url.Action("DeleteUser", "Admin", new { id = u.Id })"
+                                        data-delete-blocked="@(deleteBlockers.ContainsKey(u.Id) ? deleteBlockers[u.Id] : "")">Edit</button>
                             </div>
                         </td>
                     </tr>
@@ -149,8 +142,230 @@
     </div>
 </section>
 
+@* ---------- Edit account modal ----------
+   One shared modal, filled from the clicked row's Edit button (data-* attributes) by the script below.
+   Every action is a normal POST to an existing AdminController action, so the server still checks the
+   administrator role, the anti-forgery token, and "not your own account" for each one. After the action
+   the controller redirects back here and the table, counts and messages show the saved state. *@
+<div id="gw-account-modal" class="gw-modal-backdrop" hidden>
+    <div class="gw-panel gw-card-raised gw-modal-card" role="dialog" aria-modal="true" aria-labelledby="gw-acct-title" aria-describedby="gw-acct-meta">
+        <div class="gw-panel-head">
+            <h2 id="gw-acct-title" class="gw-panel-title">Edit account</h2>
+        </div>
+        <div class="gw-modal-top">
+            <div class="gw-modal-meta gw-modal-meta-stack" id="gw-acct-meta">
+                <strong class="gw-profile-name" data-acct-field="name"></strong>
+                <span>ID: <span data-acct-field="login"></span></span>
+                <span>Role: <span data-acct-field="role"></span></span>
+                <span>Status: <span class="gw-status" data-acct-field="status"></span></span>
+            </div>
+            <button type="button" class="gw-iconbtn gw-modal-close" data-modal-close aria-label="Close" title="Close">
+                <img src="@Url.Content("~/Content/img/icons/close.svg")" alt="" width="20" height="20" />
+            </button>
+        </div>
+
+        <div class="gw-panel-body gw-editinfo-body">
+            @* ----- Disable / Enable ----- *@
+            <section class="gw-editinfo-section" aria-labelledby="gw-acct-access-h">
+                <h3 id="gw-acct-access-h" class="gw-editinfo-heading">Account access</h3>
+                <p class="gw-muted gw-editinfo-current" data-acct-access-text></p>
+
+                <p class="gw-muted gw-editinfo-current" data-acct-self-note hidden>
+                    You cannot disable or delete your own account. Ask another administrator.
+                </p>
+
+                <form method="post" action="" data-acct-form="access">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="active" value="" data-acct-active-input />
+                    <div class="gw-form-buttons">
+                        <button type="submit" class="gw-btn gw-btn-danger" data-acct-btn="disable"
+                                data-confirm-title="Disable this account?"
+                                data-confirm-ok="Disable account"
+                                data-confirm-tone="danger">Disable account</button>
+                        <button type="submit" class="gw-btn" data-acct-btn="enable"
+                                data-confirm-title="Enable this account?"
+                                data-confirm-ok="Enable account">Enable account</button>
+                    </div>
+                </form>
+            </section>
+
+            @* ----- Reset password ----- *@
+            <section class="gw-editinfo-section" aria-labelledby="gw-acct-reset-h">
+                <h3 id="gw-acct-reset-h" class="gw-editinfo-heading">Reset password</h3>
+                <p class="gw-muted gw-editinfo-current">
+                    Creates a new temporary password. The old password stops working right away.
+                    The new one is shown once on this page so you can give it to the user.
+                </p>
+                <form method="post" action="" data-acct-form="reset">
+                    @Html.AntiForgeryToken()
+                    <div class="gw-form-buttons">
+                        <button type="submit" class="gw-btn gw-btn-outline" data-acct-btn="reset"
+                                data-confirm-title="Reset password?"
+                                data-confirm-ok="Reset password">Reset password</button>
+                    </div>
+                </form>
+            </section>
+
+            @* ----- Delete ----- *@
+            <section class="gw-editinfo-section" aria-labelledby="gw-acct-delete-h" data-acct-delete-section>
+                <h3 id="gw-acct-delete-h" class="gw-editinfo-heading">Delete account</h3>
+
+                @* Shown instead of the form when the account cannot be deleted; filled by the script. *@
+                <div class="gw-alert gw-alert-info" role="note" data-acct-delete-blocked hidden>
+                    <strong>This account cannot be deleted.</strong>
+                    <span data-acct-delete-reason></span>
+                </div>
+                <div data-acct-delete-allowed>
+                    <div class="gw-alert gw-alert-warn" role="note">
+                        Deleting is permanent and cannot be undone. The account is removed from course rosters,
+                        and its empty grade records and notifications are deleted. If the user only needs to be
+                        blocked for now, disable the account instead.
+                    </div>
+                    <form method="post" action="" data-acct-form="delete">
+                        @Html.AntiForgeryToken()
+                        <p class="gw-muted gw-editinfo-current" id="gw-acct-delete-hint">
+                            To confirm, type the account ID <strong data-acct-field="login"></strong> below.
+                        </p>
+                        <div class="gw-field">
+                            <label for="gw-acct-delete-confirm">Account ID</label>
+                            <input type="text" id="gw-acct-delete-confirm" name="confirmLoginId" maxlength="50"
+                                   aria-describedby="gw-acct-delete-hint"
+                                   autocomplete="off" autocapitalize="off" spellcheck="false" data-acct-delete-input />
+                        </div>
+                        <div class="gw-form-buttons">
+                            <button type="submit" class="gw-btn gw-btn-danger" data-acct-btn="delete" disabled
+                                    data-confirm-title="Delete this account permanently?"
+                                    data-confirm-ok="Delete account"
+                                    data-confirm-tone="danger">Delete account</button>
+                        </div>
+                    </form>
+                </div>
+            </section>
+        </div>
+
+        <div class="gw-modal-foot">
+            <button type="button" class="gw-btn gw-btn-outline" data-modal-close>Close</button>
+        </div>
+    </div>
+</div>
+
 @section scripts {
     <script>
+        // Edit account modal: fill it from the clicked row, then open it with the shared GW.modal.
+        // Confirmations use the shared data-confirm dialog (gw-modal.js), which sits above this modal.
+        (function () {
+            var modal = document.getElementById("gw-account-modal");
+            if (!modal || !window.GW || !GW.modal) return;
+
+            function q(sel) { return modal.querySelector(sel); }
+            function setText(field, value) {
+                [].forEach.call(modal.querySelectorAll('[data-acct-field="' + field + '"]'), function (el) {
+                    el.textContent = value;
+                });
+            }
+
+            var accessText = q("[data-acct-access-text]");
+            var selfNote = q("[data-acct-self-note]");
+            var accessForm = q('[data-acct-form="access"]');
+            var activeInput = q("[data-acct-active-input]");
+            var disableBtn = q('[data-acct-btn="disable"]');
+            var enableBtn = q('[data-acct-btn="enable"]');
+            var resetForm = q('[data-acct-form="reset"]');
+            var resetBtn = q('[data-acct-btn="reset"]');
+            var deleteForm = q('[data-acct-form="delete"]');
+            var deleteBtn = q('[data-acct-btn="delete"]');
+            var deleteInput = q("[data-acct-delete-input]");
+            var deleteSection = q("[data-acct-delete-section]");
+            var deleteBlockedBox = q("[data-acct-delete-blocked]");
+            var deleteBlockedReason = q("[data-acct-delete-reason]");
+            var deleteAllowedBox = q("[data-acct-delete-allowed]");
+            var statusChip = q('[data-acct-field="status"]');
+
+            var current = null;   // the account the modal is showing
+
+            function deleteMatches() {
+                if (!current || !deleteInput || current.deleteBlocked) return false;
+                return deleteInput.value.trim().toLowerCase() === current.login.toLowerCase();
+            }
+
+            function syncDeleteButton() {
+                if (deleteBtn) deleteBtn.disabled = !deleteMatches();
+            }
+
+            function fill(btn) {
+                current = {
+                    name: btn.getAttribute("data-name") || "",
+                    login: btn.getAttribute("data-login") || "",
+                    role: btn.getAttribute("data-role") || "",
+                    active: btn.getAttribute("data-active") === "true",
+                    me: btn.getAttribute("data-me") === "true",
+                    setActiveUrl: btn.getAttribute("data-set-active-url") || "",
+                    resetUrl: btn.getAttribute("data-reset-url") || "",
+                    deleteUrl: btn.getAttribute("data-delete-url") || "",
+                    deleteBlocked: btn.getAttribute("data-delete-blocked") || ""
+                };
+                var c = current;
+
+                setText("name", c.name + (c.me ? " (you)" : ""));
+                setText("login", c.login);
+                setText("role", c.role);
+                statusChip.textContent = c.active ? "Active" : "Disabled";
+                statusChip.className = "gw-status " + (c.active ? "gw-status-active" : "gw-status-off");
+
+                // ----- access: the server also refuses to disable your own account -----
+                selfNote.hidden = !c.me;
+                accessForm.hidden = c.me;
+                accessText.hidden = c.me;
+                accessForm.action = c.setActiveUrl;
+                activeInput.value = c.active ? "false" : "true";
+                disableBtn.hidden = !c.active;
+                enableBtn.hidden = c.active;
+                accessText.textContent = c.active
+                    ? "This account is active. Disabling it stops " + c.name + " from signing in; their records are kept."
+                    : "This account is disabled. " + c.name + " cannot sign in until it is enabled again.";
+                disableBtn.setAttribute("data-confirm",
+                    "Disable " + c.name + " (" + c.login + ")? They are signed out and cannot sign in until you enable the account again.");
+                enableBtn.setAttribute("data-confirm",
+                    "Enable " + c.name + " (" + c.login + ")? They can sign in again with their current password.");
+
+                // ----- reset password -----
+                resetForm.action = c.resetUrl;
+                resetBtn.setAttribute("data-confirm",
+                    "Reset the password for " + c.name + " (" + c.login + ")? Their old password stops working right away.");
+
+                // ----- delete: never for your own account; explain up front when the server would refuse -----
+                deleteSection.hidden = c.me;
+                deleteBlockedBox.hidden = !c.deleteBlocked;
+                deleteBlockedReason.textContent = c.deleteBlocked;
+                deleteAllowedBox.hidden = !!c.deleteBlocked;
+                deleteForm.action = c.deleteBlocked ? "" : c.deleteUrl;
+                deleteInput.value = "";
+                deleteBtn.setAttribute("data-confirm",
+                    "Permanently delete " + c.name + " (" + c.login + ")? This cannot be undone.");
+                syncDeleteButton();
+            }
+
+            if (deleteInput) {
+                deleteInput.addEventListener("input", syncDeleteButton);
+                deleteInput.addEventListener("keydown", function (e) {
+                    // Enter must not bypass the confirmation when the ID does not match yet.
+                    if (e.key === "Enter" && !deleteMatches()) e.preventDefault();
+                });
+                deleteForm.addEventListener("submit", function (e) {
+                    if (!deleteMatches()) e.preventDefault();
+                }, true);
+            }
+
+            document.addEventListener("click", function (e) {
+                var btn = e.target.closest ? e.target.closest("[data-account-edit]") : null;
+                if (!btn) return;
+                e.preventDefault();
+                fill(btn);
+                GW.modal.open(modal, { focus: modal.querySelector(".gw-modal-close") });
+            });
+        })();
+
+
         // Copy the one-time temporary password (the box is only shown once).
         var copyBtn = document.getElementById("copy-password");
         if (copyBtn) {
