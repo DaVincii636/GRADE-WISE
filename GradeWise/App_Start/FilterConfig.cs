@@ -1,5 +1,6 @@
 ﻿using System.Web;
 using System.Web.Mvc;
+using GradeWise.Filters;
 
 namespace GradeWise
 {
@@ -8,6 +9,7 @@ namespace GradeWise
         public static void RegisterGlobalFilters(GlobalFilterCollection filters)
         {
             filters.Add(new HandleErrorAttribute());
+            filters.Add(new NoCacheAttribute());
         }
     }
 }
