@@ -1,4 +1,6 @@
 using System;
+using System.Diagnostics;
+using System.Net;
 using System.Security.Principal;
 using System.Web;
 using System.Web.Mvc;
@@ -16,6 +18,9 @@ namespace GradeWise
     {
         protected void Application_Start()
         {
+            // Atlas requires TLS 1.2+. Set this before any MongoDB call.
+            ServicePointManager.SecurityProtocol |= SecurityProtocolType.Tls12;
+
             AreaRegistration.RegisterAllAreas();
             FilterConfig.RegisterGlobalFilters(GlobalFilters.Filters);
             RouteConfig.RegisterRoutes(RouteTable.Routes);
@@ -25,7 +30,15 @@ namespace GradeWise
             AntiForgeryConfig.SuppressIdentityHeuristicChecks = true;
 
             // Seed initial data into MongoDB Atlas if the database is empty
-            MongoDbSeeder.Initialize();
+            try
+            {
+                MongoDbSeeder.Initialize();
+            }
+            catch (Exception ex)
+            {
+                // Don't take the whole site down if Atlas is unreachable.
+                Trace.TraceError("MongoDB seeding failed: " + ex.Message);
+            }
         }
 
         protected void Application_PostAuthenticateRequest(object sender, EventArgs e)

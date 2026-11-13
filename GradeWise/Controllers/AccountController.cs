@@ -64,7 +64,7 @@ namespace GradeWise.Controllers
             var passwordOk = user != null &&
                              PasswordHelper.Verify(password, user.PasswordHash, user.Salt, user.PasswordIterations);
 
-            if (!passwordOk)
+            if (!passwordOk)    
             {
                 ViewBag.Error = "Incorrect ID/email or password.";
                 return View();
