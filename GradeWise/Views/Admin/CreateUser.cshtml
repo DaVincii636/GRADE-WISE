@@ -5,14 +5,26 @@
     var fullName = ViewBag.FullName as string;
     var loginId = ViewBag.LoginId as string;
     var email = ViewBag.Email as string;
-    var selectedRole = (ViewBag.Role as string) ?? GradeWise.Models.Roles.Student;
+
+    // The role is chosen on the page itself. After a failed save (POST) it comes back locked;
+    // on a fresh visit (GET) nothing is chosen yet.
+    var isPost = string.Equals(Request.HttpMethod, "POST", StringComparison.OrdinalIgnoreCase);
     var roles = new[] { GradeWise.Models.Roles.Student, GradeWise.Models.Roles.Faculty, GradeWise.Models.Roles.Administrator };
+    var postedRole = ViewBag.Role as string;
+    var lockedRole = isPost && roles.Contains(postedRole) ? postedRole : "";
+
+    // Name parts are only used by this page. The server still receives one "fullName".
+    var firstName = isPost ? (Request.Form["firstName"] ?? "") : "";
+    var middleName = isPost ? (Request.Form["middleName"] ?? "") : "";
+    var lastName = isPost ? (Request.Form["lastName"] ?? "") : "";
+    var suffix = isPost ? (Request.Form["suffix"] ?? "") : "";
+    var suffixes = new[] { "Jr.", "Sr.", "II", "III", "IV", "V" };
 }
 
 <h1 class="gw-page-title">Add user</h1>
 <p class="gw-page-sub">Create a student, faculty or administrator account.</p>
 
-<section class="gw-panel gw-form-narrow">
+<section class="gw-panel gw-user-form">
     <div class="gw-panel-head">
         <h2 class="gw-panel-title">Account details</h2>
     </div>
@@ -30,36 +42,434 @@
             </div>
         }
 
-        @using (Html.BeginForm("CreateUser", "Admin", FormMethod.Post))
+        <noscript>
+            <div class="gw-alert" role="alert">This form needs JavaScript to build the name and sign-in ID. Please turn JavaScript on.</div>
+        </noscript>
+
+        @using (Html.BeginForm("CreateUser", "Admin", FormMethod.Post, new { id = "user-form", novalidate = "novalidate", data_locked_role = lockedRole, data_login_id = loginId ?? "" }))
         {
             @Html.AntiForgeryToken()
-            <div class="gw-field">
-                <label for="fullName">Full name</label>
-                <input type="text" id="fullName" name="fullName" value="@fullName" maxlength="100" required autofocus />
-            </div>
-            <div class="gw-field">
-                <label for="loginId">Student number or username</label>
-                <input type="text" id="loginId" name="loginId" value="@loginId" maxlength="50" required autocomplete="off" />
-                <p class="gw-field-hint">This is what the person types to sign in. It must be unique.</p>
-            </div>
-            <div class="gw-field">
-                <label for="email">Email</label>
-                <input type="email" id="email" name="email" value="@email" required autocomplete="off" />
-            </div>
-            <div class="gw-field">
-                <label for="role">Role</label>
-                <select id="role" name="role">
-                    @foreach (var r in roles)
-                    {
-                        <option value="@r" selected="@(r == selectedRole)">@r</option>
-                    }
-                </select>
-            </div>
-            <p class="gw-note">A temporary password is generated and shown once after you save.</p>
-            <div class="gw-form-buttons">
-                <button type="submit" class="gw-btn">Create account</button>
-                @Html.ActionLink("Cancel", "Index", "Admin")
+
+            @* ---------- 1. Role ---------- *@
+            <fieldset class="gw-user-step">
+                <legend class="gw-user-legend"><span class="gw-user-step-no">1</span> Role</legend>
+
+                <div id="role-choose">
+                    <p class="gw-user-help" id="role-help">Choose the role first. The form adjusts to it, and the role stays fixed once chosen.</p>
+                    <div class="gw-user-roles" role="radiogroup" aria-labelledby="role-help">
+                        <label class="gw-user-role">
+                            <input type="radio" name="role" value="@GradeWise.Models.Roles.Student" @(lockedRole == GradeWise.Models.Roles.Student ? "checked" : "") />
+                            <span class="gw-user-role-name">Student</span>
+                            <span class="gw-user-role-desc">Signs in with a student number, e.g. 26-0001</span>
+                        </label>
+                        <label class="gw-user-role">
+                            <input type="radio" name="role" value="@GradeWise.Models.Roles.Faculty" @(lockedRole == GradeWise.Models.Roles.Faculty ? "checked" : "") />
+                            <span class="gw-user-role-name">Faculty</span>
+                            <span class="gw-user-role-desc">Signs in with a username, e.g. fac_juan</span>
+                        </label>
+                        <label class="gw-user-role">
+                            <input type="radio" name="role" value="@GradeWise.Models.Roles.Administrator" @(lockedRole == GradeWise.Models.Roles.Administrator ? "checked" : "") />
+                            <span class="gw-user-role-name">Administrator</span>
+                            <span class="gw-user-role-desc">Signs in with a username, e.g. adm_juan</span>
+                        </label>
+                    </div>
+                    <p class="gw-user-error" id="role-error" hidden></p>
+                </div>
+
+                <div class="gw-user-locked" id="role-locked" hidden>
+                    <span class="gw-user-locked-label">Role</span>
+                    <span class="gw-badge gw-user-locked-badge" id="role-locked-name"></span>
+                    <span class="gw-user-locked-note">Fixed for this account</span>
+                    <button type="button" class="gw-user-linkbtn" id="role-change">Change role</button>
+                </div>
+            </fieldset>
+
+            <div id="user-details" hidden>
+                @* ---------- 2. Name ---------- *@
+                <fieldset class="gw-user-step">
+                    <legend class="gw-user-legend"><span class="gw-user-step-no">2</span> Name</legend>
+                    <div class="gw-user-grid">
+                        <div class="gw-user-control">
+                            <label for="firstName">First name <span class="gw-user-req">required</span></label>
+                            <input type="text" id="firstName" name="firstName" value="@firstName" maxlength="40" autocomplete="off" aria-describedby="firstName-error" />
+                            <p class="gw-user-error" id="firstName-error" hidden></p>
+                        </div>
+                        <div class="gw-user-control">
+                            <label for="middleName">Middle name <span class="gw-user-opt">optional</span></label>
+                            <input type="text" id="middleName" name="middleName" value="@middleName" maxlength="40" autocomplete="off" aria-describedby="middleName-error" />
+                            <p class="gw-user-error" id="middleName-error" hidden></p>
+                        </div>
+                        <div class="gw-user-control">
+                            <label for="lastName">Last name <span class="gw-user-req">required</span></label>
+                            <input type="text" id="lastName" name="lastName" value="@lastName" maxlength="40" autocomplete="off" aria-describedby="lastName-error" />
+                            <p class="gw-user-error" id="lastName-error" hidden></p>
+                        </div>
+                        <div class="gw-user-control">
+                            <label for="suffix">Suffix <span class="gw-user-opt">optional</span></label>
+                            <select id="suffix" name="suffix">
+                                <option value="">None</option>
+                                @foreach (var s in suffixes)
+                                {
+                                    <option value="@s" selected="@(s == suffix)">@s</option>
+                                }
+                            </select>
+                        </div>
+                    </div>
+                    <p class="gw-user-preview">
+                        <span class="gw-user-preview-label">Full name</span>
+                        <strong id="name-preview">Enter a first and last name</strong>
+                    </p>
+                    <p class="gw-user-error" id="name-error" hidden></p>
+                </fieldset>
+
+                @* ---------- 3. Sign-in and contact ---------- *@
+                <fieldset class="gw-user-step">
+                    <legend class="gw-user-legend"><span class="gw-user-step-no">3</span> Sign-in and contact</legend>
+                    <div class="gw-user-control">
+                        <label for="login-part" id="login-label">Sign-in ID <span class="gw-user-req">required</span></label>
+                        <div class="gw-user-idbox">
+                            <span class="gw-user-prefix" id="login-prefix" aria-hidden="true" hidden></span>
+                            <input type="text" id="login-part" maxlength="40" autocomplete="off" spellcheck="false" autocapitalize="off" aria-describedby="login-hint login-error" />
+                        </div>
+                        <p class="gw-user-help" id="login-hint"></p>
+                        <p class="gw-user-error" id="login-error" hidden></p>
+                    </div>
+                    <div class="gw-user-control">
+                        <label for="email">Email <span class="gw-user-req">required</span></label>
+                        <input type="email" id="email" name="email" value="@email" maxlength="254" autocomplete="off" spellcheck="false" autocapitalize="off" aria-describedby="email-hint email-error" />
+                        <p class="gw-user-help" id="email-hint">For example name@school.edu.ph</p>
+                        <p class="gw-user-error" id="email-error" hidden></p>
+                    </div>
+                </fieldset>
+
+                @* The server receives these two values, the same as before. *@
+                <input type="hidden" name="fullName" id="fullName" value="@fullName" />
+                <input type="hidden" name="loginId" id="loginId" value="@loginId" />
+
+                <p class="gw-note">A temporary password is generated and shown once after you save.</p>
+                <div class="gw-form-buttons">
+                    <button type="submit" class="gw-btn" id="user-submit">Create account</button>
+                    @Html.ActionLink("Cancel", "Index", "Admin")
+                </div>
             </div>
         }
     </div>
 </section>
+
+@* Confirm before changing a chosen role (it clears the sign-in ID). *@
+<div id="role-confirm" class="gw-modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="role-confirm-title" aria-describedby="role-confirm-body" hidden>
+    <div class="gw-panel gw-card-raised gw-modal-card gw-user-modal">
+        <div class="gw-panel-head">
+            <h2 id="role-confirm-title" class="gw-panel-title">Change the role?</h2>
+        </div>
+        <div class="gw-panel-body" id="role-confirm-body">
+            <p>The sign-in ID depends on the role, so <strong id="role-confirm-id"></strong> will be cleared. The name and email stay.</p>
+        </div>
+        <div class="gw-modal-foot gw-user-modal-foot">
+            <button type="button" class="gw-btn gw-btn-outline gw-btn-small" data-modal-close>Keep this role</button>
+            <button type="button" class="gw-btn gw-btn-small" id="role-confirm-yes">Change role</button>
+        </div>
+    </div>
+</div>
+
+@section scripts {
+    <script>
+        (function () {
+            var form = document.getElementById("user-form");
+            if (!form) { return; }
+
+            // ---------- rules ----------
+            // Sign-in ID per role. The server accepts letters, numbers, dots, dashes and underscores (up to 50),
+            // and sign-in matches it without regard to case, so these all stay compatible.
+            var ID_RULES = {
+                "Student": {
+                    label: "Student number",
+                    prefix: "",
+                    placeholder: "26-0001",
+                    hint: "Format YY-0000: two-digit year, a dash, then four digits (e.g. 26-0001).",
+                    inputMode: "numeric",
+                    maxLength: 7
+                },
+                "Faculty": {
+                    label: "Faculty username",
+                    prefix: "fac_",
+                    placeholder: "juan",
+                    hint: "Starts with fac_. Use lowercase letters, numbers, dots or underscores (e.g. fac_juan).",
+                    inputMode: "text",
+                    maxLength: 40
+                },
+                "Administrator": {
+                    label: "Admin username",
+                    prefix: "adm_",
+                    placeholder: "juan",
+                    hint: "Starts with adm_. Use lowercase letters, numbers, dots or underscores (e.g. adm_juan).",
+                    inputMode: "text",
+                    maxLength: 40
+                }
+            };
+            var STUDENT_NO = /^\d{2}-\d{4}$/;
+            var USERNAME = /^[a-z0-9](?:[a-z0-9._]{0,38}[a-z0-9])?$/;
+            // letters (including accented ones), with spaces, dots, apostrophes and hyphens between them
+            var NAME = /^[A-Za-z\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u024F](?:[A-Za-z\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u024F .'-]*[A-Za-z\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u024F.])?$/;
+            // name@domain.ext: no spaces, no double dots, domain labels of letters / digits / hyphens,
+            // and a final extension of at least two letters (.com, .ph, .edu ...)
+            var EMAIL = /^[A-Za-z0-9!#$%&'*+\/=?^_`{|}~-]+(?:\.[A-Za-z0-9!#$%&'*+\/=?^_`{|}~-]+)*@@(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)+[A-Za-z]{2,24}$/;
+
+            // ---------- elements ----------
+            var radios = form.querySelectorAll('input[name="role"]');
+            var chooseBox = document.getElementById("role-choose");
+            var lockedBox = document.getElementById("role-locked");
+            var lockedName = document.getElementById("role-locked-name");
+            var roleError = document.getElementById("role-error");
+            var details = document.getElementById("user-details");
+            var first = document.getElementById("firstName");
+            var middle = document.getElementById("middleName");
+            var last = document.getElementById("lastName");
+            var suffix = document.getElementById("suffix");
+            var namePreview = document.getElementById("name-preview");
+            var nameError = document.getElementById("name-error");
+            var loginLabel = document.getElementById("login-label");
+            var loginPrefix = document.getElementById("login-prefix");
+            var loginPart = document.getElementById("login-part");
+            var loginHint = document.getElementById("login-hint");
+            var email = document.getElementById("email");
+            var fullNameOut = document.getElementById("fullName");
+            var loginIdOut = document.getElementById("loginId");
+            var submit = document.getElementById("user-submit");
+            var role = "";
+            var touched = {};
+            var tried = false;
+
+            function clean(value) { return (value || "").replace(/\s+/g, " ").trim(); }
+
+            function showError(input, errorEl, text) {
+                errorEl.textContent = text || "";
+                errorEl.hidden = !text;
+                if (input) {
+                    input.classList.toggle("gw-input-bad", !!text);
+                    input.setAttribute("aria-invalid", text ? "true" : "false");
+                }
+            }
+
+            // ---------- role ----------
+            function lockRole(value, focusNext) {
+                role = value;
+                for (var i = 0; i < radios.length; i++) {
+                    radios[i].checked = radios[i].value === value;
+                    radios[i].disabled = radios[i].value !== value;   // the chosen one is still posted
+                }
+                lockedName.textContent = value;
+                chooseBox.hidden = true;
+                lockedBox.hidden = false;
+                details.hidden = false;
+                showError(null, roleError, "");
+                applyIdRule();
+                if (focusNext) { first.focus(); }
+            }
+
+            function unlockRole() {
+                role = "";
+                for (var i = 0; i < radios.length; i++) {
+                    radios[i].checked = false;
+                    radios[i].disabled = false;
+                }
+                loginPart.value = "";
+                loginIdOut.value = "";
+                delete touched.login;
+                chooseBox.hidden = false;
+                lockedBox.hidden = true;
+                details.hidden = true;
+                radios[0].focus();
+            }
+
+            for (var r = 0; r < radios.length; r++) {
+                radios[r].addEventListener("change", function () { if (this.checked) { lockRole(this.value, true); } });
+            }
+
+            // ---------- change role (with confirmation) ----------
+            var confirmModal = document.getElementById("role-confirm");
+            var confirmId = document.getElementById("role-confirm-id");
+            var changeBtn = document.getElementById("role-change");
+
+            function closeConfirm(back) {
+                confirmModal.hidden = true;
+                document.body.classList.remove("gw-modal-open");
+                if (back) { changeBtn.focus(); }
+            }
+
+            changeBtn.addEventListener("click", function () {
+                if (!loginPart.value.trim()) { unlockRole(); return; }
+                confirmId.textContent = composedLoginId() || loginPart.value.trim();
+                confirmModal.hidden = false;
+                document.body.classList.add("gw-modal-open");
+                document.getElementById("role-confirm-yes").focus();
+            });
+            document.getElementById("role-confirm-yes").addEventListener("click", function () { closeConfirm(false); unlockRole(); });
+            confirmModal.addEventListener("click", function (e) {
+                if (e.target === confirmModal || e.target.closest("[data-modal-close]")) { closeConfirm(true); }
+            });
+            document.addEventListener("keydown", function (e) {
+                if (e.key === "Escape" && !confirmModal.hidden) { closeConfirm(true); }
+            });
+
+            // ---------- sign-in ID ----------
+            function applyIdRule() {
+                var rule = ID_RULES[role];
+                if (!rule) { return; }
+                loginLabel.firstChild.nodeValue = rule.label + " ";
+                loginPrefix.textContent = rule.prefix;
+                loginPrefix.hidden = !rule.prefix;
+                loginPart.placeholder = rule.placeholder;
+                loginPart.setAttribute("inputmode", rule.inputMode);
+                loginPart.maxLength = rule.maxLength;
+                loginHint.textContent = rule.hint;
+                normalizeLogin();
+                validateLogin();
+            }
+
+            function normalizeLogin() {
+                var v = loginPart.value;
+                if (role === "Student") {
+                    var digits = v.replace(/\D/g, "").slice(0, 6);
+                    v = digits.length > 2 ? digits.slice(0, 2) + "-" + digits.slice(2) : digits;
+                } else if (role) {
+                    v = v.toLowerCase().replace(/\s+/g, "");
+                    var prefix = ID_RULES[role].prefix;
+                    if (v.indexOf(prefix) === 0) { v = v.slice(prefix.length); }   // typed or pasted the prefix
+                }
+                if (v !== loginPart.value) { loginPart.value = v; }
+            }
+
+            function composedLoginId() {
+                var part = loginPart.value.trim();
+                if (!role || !part) { return ""; }
+                return ID_RULES[role].prefix + part;
+            }
+
+            function loginProblem() {
+                var part = loginPart.value.trim();
+                if (role === "Student") {
+                    if (!part) { return "Enter the student number."; }
+                    if (!STUDENT_NO.test(part)) { return "Use the format YY-0000, for example 26-0001."; }
+                    if (/-0000$/.test(part)) { return "The last four digits cannot all be zero."; }
+                    return "";
+                }
+                if (!part) { return "Enter the username after " + ID_RULES[role].prefix + "."; }
+                if (!USERNAME.test(part)) {
+                    return "Use lowercase letters, numbers, dots or underscores, starting and ending with a letter or number.";
+                }
+                return "";
+            }
+
+            function validateLogin() {
+                var problem = role ? loginProblem() : "";
+                loginIdOut.value = composedLoginId();
+                showError(loginPart, document.getElementById("login-error"), (touched.login || tried) ? problem : "");
+                return !problem;
+            }
+
+            loginPart.addEventListener("input", function () { normalizeLogin(); validateLogin(); });
+            loginPart.addEventListener("blur", function () { touched.login = true; validateLogin(); });
+
+            // ---------- name ----------
+            function composedName() {
+                return [clean(first.value), clean(middle.value), clean(last.value), suffix.value]
+                    .filter(function (p) { return p; }).join(" ");
+            }
+
+            function namePartProblem(input, required, label) {
+                var v = clean(input.value);
+                if (!v) { return required ? "Enter the " + label + "." : ""; }
+                if (!NAME.test(v)) { return "Use letters, spaces, hyphens, apostrophes or periods only."; }
+                return "";
+            }
+
+            function validateName() {
+                var ok = true;
+                [[first, true, "first name"], [middle, false, "middle name"], [last, true, "last name"]].forEach(function (f) {
+                    var problem = namePartProblem(f[0], f[1], f[2]);
+                    if (problem) { ok = false; }
+                    showError(f[0], document.getElementById(f[0].id + "-error"), (touched[f[0].id] || tried) ? problem : "");
+                });
+                var full = composedName();
+                var tooLong = full.length > 100;
+                if (tooLong) { ok = false; }
+                showError(null, nameError, tooLong ? "The full name must be 100 characters or fewer (now " + full.length + ")." : "");
+                namePreview.textContent = clean(first.value) || clean(last.value) ? full : "Enter a first and last name";
+                fullNameOut.value = full;
+                return ok;
+            }
+
+            [first, middle, last].forEach(function (input) {
+                input.addEventListener("input", validateName);
+                input.addEventListener("blur", function () { input.value = clean(input.value); touched[input.id] = true; validateName(); });
+            });
+            suffix.addEventListener("change", validateName);
+
+            // ---------- email ----------
+            function emailProblem() {
+                var v = email.value.trim();
+                if (!v) { return "Enter an email address."; }
+                if (/\s/.test(v)) { return "An email address cannot contain spaces."; }
+                if (v.indexOf("@@") === -1) { return "An email address needs an @@ sign, for example name@school.edu.ph."; }
+                var domain = v.slice(v.lastIndexOf("@@") + 1);
+                if (domain.indexOf(".") === -1) { return "Add the domain ending, for example .com or .edu.ph."; }
+                if (!/\.[A-Za-z]{2,24}$/.test(domain)) { return "The domain must end with an extension like .com or .ph."; }
+                if (!EMAIL.test(v) || v.length > 254) { return "Enter a valid email address, for example name@school.edu.ph."; }
+                return "";
+            }
+
+            function validateEmail() {
+                var problem = emailProblem();
+                showError(email, document.getElementById("email-error"), (touched.email || tried) ? problem : "");
+                return !problem;
+            }
+
+            email.addEventListener("input", validateEmail);
+            email.addEventListener("blur", function () {
+                email.value = email.value.trim().toLowerCase();
+                touched.email = true;
+                validateEmail();
+            });
+
+            // ---------- submit ----------
+            form.addEventListener("submit", function (e) {
+                tried = true;
+                if (!role) {
+                    e.preventDefault();
+                    showError(null, roleError, "Choose a role first.");
+                    radios[0].focus();
+                    return;
+                }
+                email.value = email.value.trim().toLowerCase();
+                var okName = validateName();
+                var okLogin = validateLogin();
+                var okEmail = validateEmail();
+                if (!(okName && okLogin && okEmail)) {
+                    e.preventDefault();
+                    var bad = form.querySelector('[aria-invalid="true"]');
+                    if (bad) { bad.focus(); }
+                    return;
+                }
+                submit.disabled = true;   // send once
+                submit.textContent = "Creating account...";
+            });
+
+            // ---------- start ----------
+            // After a failed save the role comes back locked, with the sign-in ID split back into its parts.
+            var locked = form.getAttribute("data-locked-role");
+            if (locked && ID_RULES[locked]) {
+                var savedId = form.getAttribute("data-login-id") || "";
+                var prefix = ID_RULES[locked].prefix;
+                loginPart.value = prefix && savedId.toLowerCase().indexOf(prefix) === 0 ? savedId.slice(prefix.length) : savedId;
+                lockRole(locked, false);
+                tried = true;   // show what still needs fixing
+                validateName();
+                validateLogin();
+                validateEmail();
+            } else {
+                radios[0].focus();
+            }
+        })();
+    </script>
+}

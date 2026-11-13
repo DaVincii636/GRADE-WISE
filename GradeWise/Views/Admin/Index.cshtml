@@ -36,10 +36,13 @@
         <p class="gw-sticky-title">Temporary password for <strong>@tempPasswordFor</strong></p>
         <div class="gw-sticky-row">
             <code class="gw-temp-password" id="temp-password">@tempPassword</code>
-            <button type="button" class="gw-iconbtn" id="copy-password" aria-label="Copy temporary password" title="Copy password">
-                <img src="@Url.Content("~/Content/img/icons/copy.svg")" alt="" width="24" height="24" />
+            <button type="button" class="gw-btn gw-btn-small gw-btn-outline gw-copy-btn" id="copy-password" aria-describedby="copy-status">
+                <img src="@Url.Content("~/Content/img/icons/copy.svg")" alt="" width="18" height="18" data-copy-icon="copy" />
+                <img src="@Url.Content("~/Content/img/icons/check.svg")" alt="" width="18" height="18" data-copy-icon="done" hidden />
+                <span data-copy-label>Copy</span>
             </button>
         </div>
+        <p class="gw-copy-status" id="copy-status" role="status" aria-live="polite"></p>
         <p class="gw-sticky-hint">Copy it now and give it to the user. It is not shown again.</p>
     </aside>
 }
@@ -367,32 +370,75 @@
 
 
         // Copy the one-time temporary password (the box is only shown once).
-        var copyBtn = document.getElementById("copy-password");
-        if (copyBtn) {
+        // Shows "Copied" on the button and a message under it; if copying is blocked,
+        // the password is selected so the admin can press Ctrl+C.
+        (function () {
+            var copyBtn = document.getElementById("copy-password");
+            var box = document.getElementById("temp-password");
+            if (!copyBtn || !box) { return; }
+            var label = copyBtn.querySelector("[data-copy-label]");
+            var iconCopy = copyBtn.querySelector('[data-copy-icon="copy"]');
+            var iconDone = copyBtn.querySelector('[data-copy-icon="done"]');
+            var status = document.getElementById("copy-status");
+            var resetTimer = null;
+
+            function setState(state, message) {
+                copyBtn.classList.toggle("gw-copy-done", state === "done");
+                label.textContent = state === "done" ? "Copied" : "Copy";
+                iconCopy.hidden = state === "done";
+                iconDone.hidden = state !== "done";
+                status.textContent = message || "";
+                status.classList.toggle("gw-copy-status-bad", state === "failed");
+            }
+
+            function selectPassword() {
+                var range = document.createRange();
+                range.selectNodeContents(box);
+                var sel = window.getSelection();
+                sel.removeAllRanges();
+                sel.addRange(range);
+            }
+
+            function copied() {
+                setState("done", "Password copied to the clipboard.");
+                clearTimeout(resetTimer);
+                resetTimer = setTimeout(function () { setState("idle", ""); }, 4000);
+            }
+
+            function failed() {
+                selectPassword();
+                setState("failed", "Could not copy automatically. The password is selected: press Ctrl+C (or Cmd+C) to copy it.");
+            }
+
+            function legacyCopy(text) {
+                var area = document.createElement("textarea");
+                area.value = text;
+                area.setAttribute("readonly", "readonly");
+                area.style.position = "fixed";
+                area.style.top = "0";
+                area.style.left = "-9999px";
+                document.body.appendChild(area);
+                area.select();
+                var ok = false;
+                try { ok = document.execCommand("copy"); } catch (err) { ok = false; }
+                document.body.removeChild(area);
+                copyBtn.focus();
+                return ok;
+            }
+
             copyBtn.addEventListener("click", function () {
-                var box = document.getElementById("temp-password");
-                var text = box ? box.textContent : "";
-                function done() {
-                    copyBtn.setAttribute("title", "Copied");
-                    copyBtn.setAttribute("aria-label", "Copied");
-                }
-                if (navigator.clipboard && navigator.clipboard.writeText) {
-                    navigator.clipboard.writeText(text).then(done, function () { fallback(); });
+                var text = (box.textContent || "").trim();   // only the password itself
+                if (!text) { failed(); return; }
+                if (navigator.clipboard && window.isSecureContext) {
+                    navigator.clipboard.writeText(text).then(copied, function () {
+                        if (legacyCopy(text)) { copied(); } else { failed(); }
+                    });
+                } else if (legacyCopy(text)) {
+                    copied();
                 } else {
-                    fallback();
-                }
-                function fallback() {
-                    var area = document.createElement("textarea");
-                    area.value = text;
-                    area.setAttribute("readonly", "readonly");
-                    area.style.position = "absolute";
-                    area.style.left = "-9999px";
-                    document.body.appendChild(area);
-                    area.select();
-                    try { document.execCommand("copy"); done(); } catch (err) { /* nothing else to do */ }
-                    document.body.removeChild(area);
+                    failed();
                 }
             });
-        }
+        })();
     </script>
 }
