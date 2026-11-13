@@ -1,4 +1,4 @@
-@using GradeWise.Data
+﻿@using GradeWise.Data
 @using MongoDB.Driver
 @{
     // Who is signed in? Look the account up in MongoDB so updates show right away.
@@ -94,5 +94,20 @@
         @Scripts.Render("~/bundles/gwnotifications")
     }
     @RenderSection("scripts", required: false)
+
+    @if (!string.IsNullOrEmpty(role))
+    {
+        <script>
+            // A page restored from the browser's back-forward cache keeps the DOM it had
+            // when the user left (including any signed-in state). Ask the server again so
+            // the page reflects the current session. Scoped to signed-in pages because the
+            // Login page already has its own, stronger back/forward recovery in main.
+            window.addEventListener("pageshow", function (event) {
+                if (event.persisted) {
+                    window.location.reload();
+                }
+            });
+        </script>
+    }
 </body>
 </html>
