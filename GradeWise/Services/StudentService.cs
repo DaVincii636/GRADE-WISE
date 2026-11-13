@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using System.Threading.Tasks;
 using GradeWise.Data;
 using GradeWise.Models;
 using MongoDB.Driver;
@@ -37,13 +38,21 @@ namespace GradeWise.Services
                 .ThenBy(c => c.Name)
                 .ToList();
 
-            model.Courses = CourseOptions(db, mine);
-            if (mine.Count == 0) return model;
+            if (mine.Count == 0)
+            {
+                model.Courses = CourseOptions(db, mine);
+                return model;
+            }
+
+            // The instructors' names are not needed to work out the grades, so they are fetched at the same
+            // time as the scores and the history instead of one after the other.
+            var optionsTask = Task.Run(() => CourseOptions(db, mine));
 
             var course = mine.FirstOrDefault(c => c.Id == requestedCourseId) ?? mine[0];
 
             FillCourse(db, model, course, studentId);
 
+            model.Courses = optionsTask.GetAwaiter().GetResult();
             return model;
         }
 
@@ -158,6 +167,15 @@ namespace GradeWise.Services
 
         private static void FillCourse(MongoDbContext db, StudentDashboardViewModel model, Course course, string studentId)
         {
+            // The progress history does not depend on the scores, so it is read at the same time as them.
+            var historyScope = GradeScopes.Normalize(course.ReflectedScope);
+            var historyTask = Task.Run(() =>
+            {
+                int hiddenCount;
+                var points = HistoryService.GetHistory(course, studentId, historyScope, out hiddenCount);
+                return Tuple.Create(points, hiddenCount);
+            });
+
             // One query for every enrolled student's scores (instead of one round trip per student).
             var courseId = course.Id;
             var enrolled = course.StudentIds;
@@ -192,9 +210,9 @@ namespace GradeWise.Services
             model.Earned = result.Earned;
             model.EarnedGrade = result.EarnedOrNull;
             model.RemainingWeight = result.RemainingWeight;
-            int historyHidden;
-            model.History = HistoryService.GetHistory(course, studentId, scope, out historyHidden);
-            model.HistoryHidden = historyHidden;
+            var history = historyTask.GetAwaiter().GetResult();
+            model.History = history.Item1;
+            model.HistoryHidden = history.Item2;
 
             // One list of scores per enrolled student (empty when a student has no record yet), same as before.
             var everyone = course.StudentIds.Select(id => ScoresFrom(byStudent, id)).ToList();

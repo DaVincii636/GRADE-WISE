@@ -29,16 +29,31 @@ namespace GradeWise
             // Our sign-in identity has no NameIdentifier claim, so tell the anti-forgery check to use the user name.
             AntiForgeryConfig.SuppressIdentityHeuristicChecks = true;
 
-            // Seed initial data into MongoDB Atlas if the database is empty
+            // Put a demo account's password back, but only when Web.config asks for it
+            // (the "RestoreDemoPasswords" setting). It does nothing when that setting is empty.
             try
             {
-                MongoDbSeeder.Initialize();
+                MongoDbSeeder.RestoreDemoPasswords();
             }
             catch (Exception ex)
             {
-                // Don't take the whole site down if Atlas is unreachable.
-                Trace.TraceError("MongoDB seeding failed: " + ex.Message);
+                Trace.TraceError("Restoring demo passwords failed: " + ex.Message);
             }
+
+            // Seed initial data and create the indexes in the background, so the first page
+            // does not have to wait for roughly a dozen round trips to Atlas.
+            System.Web.Hosting.HostingEnvironment.QueueBackgroundWorkItem(cancellationToken =>
+            {
+                try
+                {
+                    MongoDbSeeder.Initialize();
+                }
+                catch (Exception ex)
+                {
+                    // Don't take the whole site down if Atlas is unreachable.
+                    Trace.TraceError("MongoDB seeding failed: " + ex.Message);
+                }
+            });
         }
 
         protected void Application_PostAuthenticateRequest(object sender, EventArgs e)

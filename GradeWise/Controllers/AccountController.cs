@@ -83,11 +83,9 @@ namespace GradeWise.Controllers
                 return View();
             }
 
-            // Record the successful sign-in for the DB team's audit trail.
-            lock (SampleData.Sync)
-            {
-                user.LastLoginAt = DateTime.UtcNow;
-            }
+            // Note the sign-in time. (This used to lock on SampleData, which made the first sign-in after
+            // every start build all the demo data and hash its passwords first, and made it wait for no reason.)
+            user.LastLoginAt = DateTime.UtcNow;
 
             SignIn(user);
 

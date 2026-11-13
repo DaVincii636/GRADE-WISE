@@ -1,4 +1,8 @@
-﻿using System.Linq;
+﻿using System;
+using System.Collections.Generic;
+using System.Configuration;
+using System.Linq;
+using GradeWise.Helpers;
 using GradeWise.Models;
 using MongoDB.Driver;
 
@@ -6,6 +10,57 @@ namespace GradeWise.Data
 {
     public static class MongoDbSeeder
     {
+        // The demo accounts and their demo passwords (see SampleData).
+        private static readonly Dictionary<string, string> DemoPasswords =
+            new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                { "admin", "Admin@123" },
+                { "faculty", "Faculty@123" },
+                { "2026-0001", "Student@123" },
+                { "2026-0002", "Student@123" },
+                { "2026-0003", "Student@123" }
+            };
+
+        /// <summary>
+        /// Puts a demo account's password back to its demo password. It only runs for the sign-in names
+        /// listed in the "RestoreDemoPasswords" setting in Web.config (for example "faculty" or "faculty,admin"),
+        /// and does nothing when the setting is empty. The account is also switched on again and is not asked
+        /// to change its password.
+        /// </summary>
+        public static void RestoreDemoPasswords()
+        {
+            var wanted = ConfigurationManager.AppSettings["RestoreDemoPasswords"];
+            if (string.IsNullOrWhiteSpace(wanted)) return;
+
+            var db = new MongoDbContext();
+            var names = wanted.Split(new[] { ',', ';', ' ' }, StringSplitOptions.RemoveEmptyEntries);
+
+            foreach (var raw in names)
+            {
+                var loginId = raw.Trim();
+
+                string password;
+                if (!DemoPasswords.TryGetValue(loginId, out password)) continue;   // only the demo accounts
+
+                var lower = loginId.ToLower();
+                var user = db.Users.Find(u => u.StudentNo.ToLower() == lower).FirstOrDefault();
+                if (user == null) continue;
+
+                string salt;
+                int iterations;
+                var hash = PasswordHelper.CreateHash(password, out salt, out iterations);
+
+                db.Users.UpdateOne(
+                    u => u.Id == user.Id,
+                    Builders<User>.Update
+                        .Set(u => u.PasswordHash, hash)
+                        .Set(u => u.Salt, salt)
+                        .Set(u => u.PasswordIterations, iterations)
+                        .Set(u => u.MustChangePassword, false)
+                        .Set(u => u.IsActive, true));
+            }
+        }
+
         public static void Initialize()
         {
             var db = new MongoDbContext();
