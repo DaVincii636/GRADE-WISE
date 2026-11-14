@@ -31,15 +31,26 @@
     <div class="gw-panel-body">
         @if (errors != null && errors.Count > 0)
         {
-            <div class="gw-alert" role="alert">
-                <strong>Please fix the following:</strong>
-                <ul class="gw-error-list">
-                    @foreach (var e in errors)
-                    {
-                        <li>@e</li>
-                    }
-                </ul>
-            </div>
+            @* The server's reasons. The script shows them as a toast and under the matching fields;
+               the list itself stays in the page (hidden) because the accounts page's student import
+               reads it from here. Without JavaScript it is shown as a banner. *@
+            <ul class="gw-error-list" id="server-errors" hidden>
+                @foreach (var e in errors)
+                {
+                    <li>@e</li>
+                }
+            </ul>
+            <noscript>
+                <div class="gw-alert" role="alert">
+                    <strong>Please fix the following:</strong>
+                    <ul class="gw-error-list">
+                        @foreach (var e in errors)
+                        {
+                            <li>@e</li>
+                        }
+                    </ul>
+                </div>
+            </noscript>
         }
 
         <noscript>
@@ -146,7 +157,7 @@
                 <input type="hidden" name="fullName" id="fullName" value="@fullName" />
                 <input type="hidden" name="loginId" id="loginId" value="@loginId" />
 
-                <p class="gw-note">A temporary password is generated and shown once after you save.</p>
+                <p class="gw-note">A temporary password is generated and emailed to the user after you save.</p>
                 <div class="gw-form-buttons">
                     <button type="submit" class="gw-btn" id="user-submit">Create account</button>
                     @Html.ActionLink("Cancel", "Index", "Admin")
@@ -173,303 +184,6 @@
 </div>
 
 @section scripts {
-    <script>
-        (function () {
-            var form = document.getElementById("user-form");
-            if (!form) { return; }
-
-            // ---------- rules ----------
-            // Sign-in ID per role. The server accepts letters, numbers, dots, dashes and underscores (up to 50),
-            // and sign-in matches it without regard to case, so these all stay compatible.
-            var ID_RULES = {
-                "Student": {
-                    label: "Student number",
-                    prefix: "",
-                    placeholder: "26-0001",
-                    hint: "Format YY-0000: two-digit year, a dash, then four digits (e.g. 26-0001).",
-                    inputMode: "numeric",
-                    maxLength: 7
-                },
-                "Faculty": {
-                    label: "Faculty username",
-                    prefix: "fac_",
-                    placeholder: "juan",
-                    hint: "Starts with fac_. Use lowercase letters, numbers, dots or underscores (e.g. fac_juan).",
-                    inputMode: "text",
-                    maxLength: 40
-                },
-                "Administrator": {
-                    label: "Admin username",
-                    prefix: "adm_",
-                    placeholder: "juan",
-                    hint: "Starts with adm_. Use lowercase letters, numbers, dots or underscores (e.g. adm_juan).",
-                    inputMode: "text",
-                    maxLength: 40
-                }
-            };
-            var STUDENT_NO = /^\d{2}-\d{4}$/;
-            var USERNAME = /^[a-z0-9](?:[a-z0-9._]{0,38}[a-z0-9])?$/;
-            // letters (including accented ones), with spaces, dots, apostrophes and hyphens between them
-            var NAME = /^[A-Za-z\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u024F](?:[A-Za-z\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u024F .'-]*[A-Za-z\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u024F.])?$/;
-            // name@domain.ext: no spaces, no double dots, domain labels of letters / digits / hyphens,
-            // and a final extension of at least two letters (.com, .ph, .edu ...)
-            var EMAIL = /^[A-Za-z0-9!#$%&'*+\/=?^_`{|}~-]+(?:\.[A-Za-z0-9!#$%&'*+\/=?^_`{|}~-]+)*@@(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)+[A-Za-z]{2,24}$/;
-
-            // ---------- elements ----------
-            var radios = form.querySelectorAll('input[name="role"]');
-            var chooseBox = document.getElementById("role-choose");
-            var lockedBox = document.getElementById("role-locked");
-            var lockedName = document.getElementById("role-locked-name");
-            var roleError = document.getElementById("role-error");
-            var details = document.getElementById("user-details");
-            var first = document.getElementById("firstName");
-            var middle = document.getElementById("middleName");
-            var last = document.getElementById("lastName");
-            var suffix = document.getElementById("suffix");
-            var namePreview = document.getElementById("name-preview");
-            var nameError = document.getElementById("name-error");
-            var loginLabel = document.getElementById("login-label");
-            var loginPrefix = document.getElementById("login-prefix");
-            var loginPart = document.getElementById("login-part");
-            var loginHint = document.getElementById("login-hint");
-            var email = document.getElementById("email");
-            var fullNameOut = document.getElementById("fullName");
-            var loginIdOut = document.getElementById("loginId");
-            var submit = document.getElementById("user-submit");
-            var role = "";
-            var touched = {};
-            var tried = false;
-
-            function clean(value) { return (value || "").replace(/\s+/g, " ").trim(); }
-
-            function showError(input, errorEl, text) {
-                errorEl.textContent = text || "";
-                errorEl.hidden = !text;
-                if (input) {
-                    input.classList.toggle("gw-input-bad", !!text);
-                    input.setAttribute("aria-invalid", text ? "true" : "false");
-                }
-            }
-
-            // ---------- role ----------
-            function lockRole(value, focusNext) {
-                role = value;
-                for (var i = 0; i < radios.length; i++) {
-                    radios[i].checked = radios[i].value === value;
-                    radios[i].disabled = radios[i].value !== value;   // the chosen one is still posted
-                }
-                lockedName.textContent = value;
-                chooseBox.hidden = true;
-                lockedBox.hidden = false;
-                details.hidden = false;
-                showError(null, roleError, "");
-                applyIdRule();
-                if (focusNext) { first.focus(); }
-            }
-
-            function unlockRole() {
-                role = "";
-                for (var i = 0; i < radios.length; i++) {
-                    radios[i].checked = false;
-                    radios[i].disabled = false;
-                }
-                loginPart.value = "";
-                loginIdOut.value = "";
-                delete touched.login;
-                chooseBox.hidden = false;
-                lockedBox.hidden = true;
-                details.hidden = true;
-                radios[0].focus();
-            }
-
-            for (var r = 0; r < radios.length; r++) {
-                radios[r].addEventListener("change", function () { if (this.checked) { lockRole(this.value, true); } });
-            }
-
-            // ---------- change role (with confirmation) ----------
-            var confirmModal = document.getElementById("role-confirm");
-            var confirmId = document.getElementById("role-confirm-id");
-            var changeBtn = document.getElementById("role-change");
-
-            function closeConfirm(back) {
-                confirmModal.hidden = true;
-                document.body.classList.remove("gw-modal-open");
-                if (back) { changeBtn.focus(); }
-            }
-
-            changeBtn.addEventListener("click", function () {
-                if (!loginPart.value.trim()) { unlockRole(); return; }
-                confirmId.textContent = composedLoginId() || loginPart.value.trim();
-                confirmModal.hidden = false;
-                document.body.classList.add("gw-modal-open");
-                document.getElementById("role-confirm-yes").focus();
-            });
-            document.getElementById("role-confirm-yes").addEventListener("click", function () { closeConfirm(false); unlockRole(); });
-            confirmModal.addEventListener("click", function (e) {
-                if (e.target === confirmModal || e.target.closest("[data-modal-close]")) { closeConfirm(true); }
-            });
-            document.addEventListener("keydown", function (e) {
-                if (e.key === "Escape" && !confirmModal.hidden) { closeConfirm(true); }
-            });
-
-            // ---------- sign-in ID ----------
-            function applyIdRule() {
-                var rule = ID_RULES[role];
-                if (!rule) { return; }
-                loginLabel.firstChild.nodeValue = rule.label + " ";
-                loginPrefix.textContent = rule.prefix;
-                loginPrefix.hidden = !rule.prefix;
-                loginPart.placeholder = rule.placeholder;
-                loginPart.setAttribute("inputmode", rule.inputMode);
-                loginPart.maxLength = rule.maxLength;
-                loginHint.textContent = rule.hint;
-                normalizeLogin();
-                validateLogin();
-            }
-
-            function normalizeLogin() {
-                var v = loginPart.value;
-                if (role === "Student") {
-                    var digits = v.replace(/\D/g, "").slice(0, 6);
-                    v = digits.length > 2 ? digits.slice(0, 2) + "-" + digits.slice(2) : digits;
-                } else if (role) {
-                    v = v.toLowerCase().replace(/\s+/g, "");
-                    var prefix = ID_RULES[role].prefix;
-                    if (v.indexOf(prefix) === 0) { v = v.slice(prefix.length); }   // typed or pasted the prefix
-                }
-                if (v !== loginPart.value) { loginPart.value = v; }
-            }
-
-            function composedLoginId() {
-                var part = loginPart.value.trim();
-                if (!role || !part) { return ""; }
-                return ID_RULES[role].prefix + part;
-            }
-
-            function loginProblem() {
-                var part = loginPart.value.trim();
-                if (role === "Student") {
-                    if (!part) { return "Enter the student number."; }
-                    if (!STUDENT_NO.test(part)) { return "Use the format YY-0000, for example 26-0001."; }
-                    if (/-0000$/.test(part)) { return "The last four digits cannot all be zero."; }
-                    return "";
-                }
-                if (!part) { return "Enter the username after " + ID_RULES[role].prefix + "."; }
-                if (!USERNAME.test(part)) {
-                    return "Use lowercase letters, numbers, dots or underscores, starting and ending with a letter or number.";
-                }
-                return "";
-            }
-
-            function validateLogin() {
-                var problem = role ? loginProblem() : "";
-                loginIdOut.value = composedLoginId();
-                showError(loginPart, document.getElementById("login-error"), (touched.login || tried) ? problem : "");
-                return !problem;
-            }
-
-            loginPart.addEventListener("input", function () { normalizeLogin(); validateLogin(); });
-            loginPart.addEventListener("blur", function () { touched.login = true; validateLogin(); });
-
-            // ---------- name ----------
-            function composedName() {
-                return [clean(first.value), clean(middle.value), clean(last.value), suffix.value]
-                    .filter(function (p) { return p; }).join(" ");
-            }
-
-            function namePartProblem(input, required, label) {
-                var v = clean(input.value);
-                if (!v) { return required ? "Enter the " + label + "." : ""; }
-                if (!NAME.test(v)) { return "Use letters, spaces, hyphens, apostrophes or periods only."; }
-                return "";
-            }
-
-            function validateName() {
-                var ok = true;
-                [[first, true, "first name"], [middle, false, "middle name"], [last, true, "last name"]].forEach(function (f) {
-                    var problem = namePartProblem(f[0], f[1], f[2]);
-                    if (problem) { ok = false; }
-                    showError(f[0], document.getElementById(f[0].id + "-error"), (touched[f[0].id] || tried) ? problem : "");
-                });
-                var full = composedName();
-                var tooLong = full.length > 100;
-                if (tooLong) { ok = false; }
-                showError(null, nameError, tooLong ? "The full name must be 100 characters or fewer (now " + full.length + ")." : "");
-                namePreview.textContent = clean(first.value) || clean(last.value) ? full : "Enter a first and last name";
-                fullNameOut.value = full;
-                return ok;
-            }
-
-            [first, middle, last].forEach(function (input) {
-                input.addEventListener("input", validateName);
-                input.addEventListener("blur", function () { input.value = clean(input.value); touched[input.id] = true; validateName(); });
-            });
-            suffix.addEventListener("change", validateName);
-
-            // ---------- email ----------
-            function emailProblem() {
-                var v = email.value.trim();
-                if (!v) { return "Enter an email address."; }
-                if (/\s/.test(v)) { return "An email address cannot contain spaces."; }
-                if (v.indexOf("@@") === -1) { return "An email address needs an @@ sign, for example name@school.edu.ph."; }
-                var domain = v.slice(v.lastIndexOf("@@") + 1);
-                if (domain.indexOf(".") === -1) { return "Add the domain ending, for example .com or .edu.ph."; }
-                if (!/\.[A-Za-z]{2,24}$/.test(domain)) { return "The domain must end with an extension like .com or .ph."; }
-                if (!EMAIL.test(v) || v.length > 254) { return "Enter a valid email address, for example name@school.edu.ph."; }
-                return "";
-            }
-
-            function validateEmail() {
-                var problem = emailProblem();
-                showError(email, document.getElementById("email-error"), (touched.email || tried) ? problem : "");
-                return !problem;
-            }
-
-            email.addEventListener("input", validateEmail);
-            email.addEventListener("blur", function () {
-                email.value = email.value.trim().toLowerCase();
-                touched.email = true;
-                validateEmail();
-            });
-
-            // ---------- submit ----------
-            form.addEventListener("submit", function (e) {
-                tried = true;
-                if (!role) {
-                    e.preventDefault();
-                    showError(null, roleError, "Choose a role first.");
-                    radios[0].focus();
-                    return;
-                }
-                email.value = email.value.trim().toLowerCase();
-                var okName = validateName();
-                var okLogin = validateLogin();
-                var okEmail = validateEmail();
-                if (!(okName && okLogin && okEmail)) {
-                    e.preventDefault();
-                    var bad = form.querySelector('[aria-invalid="true"]');
-                    if (bad) { bad.focus(); }
-                    return;
-                }
-                submit.disabled = true;   // send once
-                submit.textContent = "Creating account...";
-            });
-
-            // ---------- start ----------
-            // After a failed save the role comes back locked, with the sign-in ID split back into its parts.
-            var locked = form.getAttribute("data-locked-role");
-            if (locked && ID_RULES[locked]) {
-                var savedId = form.getAttribute("data-login-id") || "";
-                var prefix = ID_RULES[locked].prefix;
-                loginPart.value = prefix && savedId.toLowerCase().indexOf(prefix) === 0 ? savedId.slice(prefix.length) : savedId;
-                lockRole(locked, false);
-                tried = true;   // show what still needs fixing
-                validateName();
-                validateLogin();
-                validateEmail();
-            } else {
-                radios[0].focus();
-            }
-        })();
-    </script>
+    @* The page script is in Scripts/admin-create-user.js. *@
+    <script src="@Url.Content("~/Scripts/admin-create-user.js")?v=@System.IO.File.GetLastWriteTimeUtc(Server.MapPath("~/Scripts/admin-create-user.js")).Ticks"></script>
 }

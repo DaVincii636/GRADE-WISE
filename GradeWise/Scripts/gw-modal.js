@@ -1,3 +1,4 @@
+/// <reference path="gw-globals.d.ts" />
 /*
  * GradeWise shared modal dialogs (Phase 2).
  *
@@ -17,52 +18,89 @@
  *
  * Esc and a click on the dark backdrop close the top modal; Tab stays inside it;
  * focus goes back to whatever opened it. ASCII only in this file.
+ * Types: Scripts/gw-globals.d.ts (editor only).
  */
-(function (root) {
+(/** @param {Window} root */ function (root) {
     "use strict";
 
     var doc = root.document;
     var FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), ' +
                     'select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
-    var stack = [];          // open modals, top is last: { el, opener, onClose }
-    var approved = [];       // elements the user already confirmed (so the replayed action passes through)
+    /** @typedef {{ el: HTMLElement, opener: Element | null, onClose: (() => void) | null }} ModalEntry */
 
+    /** @type {ModalEntry[]} open modals, top is last */
+    var stack = [];
+    /** @type {Element[]} elements the user already confirmed (so the replayed action passes through) */
+    var approved = [];
+
+    /** @param {Element} el */
     function isApproved(el) { return approved.indexOf(el) !== -1; }
+    /** @param {Element} el */
     function approve(el) { approved.push(el); }
+    /** @param {Element} el */
     function unapprove(el) {
         var i = approved.indexOf(el);
         if (i !== -1) approved.splice(i, 1);
     }
 
+    /**
+     * The focusable elements inside el that are shown (or already focused).
+     * @param {ParentNode} el
+     * @returns {HTMLElement[]}
+     */
     function visibleFocusables(el) {
-        return [].slice.call(el.querySelectorAll(FOCUSABLE)).filter(function (n) {
-            return n.offsetWidth > 0 || n.offsetHeight > 0 || n === doc.activeElement;
-        });
+        var found = el.querySelectorAll(FOCUSABLE);
+        /** @type {HTMLElement[]} */
+        var list = [];
+        for (var i = 0; i < found.length; i++) {
+            var n = found[i];
+            if (n instanceof HTMLElement && (n.offsetWidth > 0 || n.offsetHeight > 0 || n === doc.activeElement)) {
+                list.push(n);
+            }
+        }
+        return list;
     }
 
+    /** @returns {ModalEntry | null} */
     function topEntry() { return stack.length ? stack[stack.length - 1] : null; }
+
+    /**
+     * @param {string | HTMLElement | null} target  the modal or its id
+     * @returns {HTMLElement | null}
+     */
+    function modalElement(target) {
+        return typeof target === "string" ? doc.getElementById(target) : target;
+    }
 
     // ---------- open / close (any element with class gw-modal-backdrop) ----------
 
+    /**
+     * @param {string | HTMLElement | null} target
+     * @param {GWModalOpenOptions} [options]
+     * @returns {HTMLElement | null}
+     */
     function open(target, options) {
-        var el = typeof target === "string" ? doc.getElementById(target) : target;
+        var el = modalElement(target);
         if (!el) return null;
         options = options || {};
 
+        /** @type {ModalEntry} */
         var entry = { el: el, opener: doc.activeElement, onClose: options.onClose || null };
         stack.push(entry);
 
         el.hidden = false;
         doc.body.classList.add("gw-modal-open");
 
-        var first = options.focus || el.querySelector("[data-autofocus]") || visibleFocusables(el)[0];
+        var autofocus = el.querySelector("[data-autofocus]");
+        var first = options.focus || (autofocus instanceof HTMLElement ? autofocus : null) || visibleFocusables(el)[0];
         if (first) first.focus();
         return el;
     }
 
+    /** @param {string | HTMLElement | null} target */
     function close(target) {
-        var el = typeof target === "string" ? doc.getElementById(target) : target;
+        var el = modalElement(target);
         if (!el) return;
 
         var index = -1;
@@ -75,8 +113,9 @@
         el.hidden = true;
         if (!stack.length) doc.body.classList.remove("gw-modal-open");
 
-        if (entry.opener && typeof entry.opener.focus === "function" && doc.body.contains(entry.opener)) {
-            entry.opener.focus();
+        var opener = entry.opener;
+        if ((opener instanceof HTMLElement || opener instanceof SVGElement) && doc.body.contains(opener)) {
+            opener.focus();
         }
         if (entry.onClose) entry.onClose();
     }
@@ -118,9 +157,14 @@
 
     // ---------- the reusable confirm / alert dialog ----------
 
-    var dialog = null;     // { backdrop, title, message, ok, cancel, foot }
+    /** @typedef {{ backdrop: HTMLDivElement, title: HTMLHeadingElement, message: HTMLDivElement, ok: HTMLButtonElement, cancel: HTMLButtonElement, foot: HTMLDivElement }} Dialog */
+
+    /** @type {Dialog | null} */
+    var dialog = null;
+    /** @type {Promise<void>} */
     var queue = Promise.resolve();
 
+    /** @returns {Dialog} */
     function build() {
         if (dialog) return dialog;
 
@@ -169,7 +213,11 @@
         return dialog;
     }
 
-    // Fills the message box: one paragraph from "message", or several (with bold or muted pieces) from "paragraphs".
+    /**
+     * Fills the message box: one paragraph from "message", or several (with bold or muted pieces) from "paragraphs".
+     * @param {HTMLElement} box
+     * @param {GWDialogOptions} opts
+     */
     function fillMessage(box, opts) {
         while (box.firstChild) box.removeChild(box.firstChild);
 
@@ -192,7 +240,12 @@
         });
     }
 
-    // Shows the dialog once and resolves true (OK) or false (Cancel, Esc, backdrop click).
+    /**
+     * Shows the dialog once and resolves true (OK) or false (Cancel, Esc, backdrop click).
+     * @param {GWDialogOptions} opts
+     * @param {boolean} withCancel  false for a notice with only OK
+     * @returns {Promise<boolean>} true when OK was chosen
+     */
     function show(opts, withCancel) {
         return new Promise(function (resolve) {
             var d = build();
@@ -207,6 +260,7 @@
             d.ok.className = "gw-btn" + (danger ? " gw-btn-danger" : "");
             d.foot.className = "gw-modal-foot" + (danger ? " gw-modal-foot--danger" : "");
 
+            /** @param {boolean} result */
             function finish(result) {
                 if (settled) return;
                 settled = true;
@@ -229,24 +283,42 @@
         });
     }
 
+    /**
+     * Runs dialogs one after another.
+     * @template T
+     * @param {() => Promise<T>} fn
+     * @returns {Promise<T>}
+     */
     function enqueue(fn) {
         var next = queue.then(fn);
         queue = next.then(function () {}, function () {});
         return next;
     }
 
+    /**
+     * @param {GWDialogOptions} [opts]
+     * @returns {Promise<boolean>} resolves true when the user confirms
+     */
     function confirmDialog(opts) {
-        opts = opts || {};
-        return enqueue(function () { return show(opts, true); });
+        var options = opts || {};
+        return enqueue(function () { return show(options, true); });
     }
 
+    /**
+     * @param {GWDialogOptions} [opts]
+     * @returns {Promise<void>} resolves when the notice is closed
+     */
     function alertDialog(opts) {
-        opts = opts || {};
-        return enqueue(function () { return show(opts, false); }).then(function () {});
+        var options = opts || {};
+        return enqueue(function () { return show(options, false); }).then(function () {});
     }
 
     // ---------- declarative: data-confirm ----------
 
+    /**
+     * @param {Element} el  the form, button or link with data-confirm
+     * @returns {GWDialogOptions}
+     */
     function optionsFrom(el) {
         return {
             title: el.getAttribute("data-confirm-title") || "Please confirm",
@@ -257,10 +329,14 @@
         };
     }
 
-    // Submit a form after OK. A plain submit() skips the submit event, so the clicked button's
-    // name and value are copied into a hidden input first (the server often reads them).
+    /**
+     * Submit a form after OK. A plain submit() skips the submit event, so the clicked button's
+     * name and value are copied into a hidden input first (the server often reads them).
+     * @param {HTMLFormElement} form
+     * @param {HTMLElement | null} submitter
+     */
     function submitForm(form, submitter) {
-        if (submitter && submitter.name) {
+        if ((submitter instanceof HTMLButtonElement || submitter instanceof HTMLInputElement) && submitter.name) {
             var hidden = doc.createElement("input");
             hidden.type = "hidden";
             hidden.name = submitter.name;
@@ -271,64 +347,71 @@
     }
 
     doc.addEventListener("click", function (e) {
-        var el = e.target.closest ? e.target.closest("a[data-confirm], button[data-confirm]") : null;
-        if (!el) return;
+        var target = e.target;
+        if (!(target instanceof Element)) return;
+        // a link or a button
+        var el = target.closest("a[data-confirm], button[data-confirm]");
+        if (!(el instanceof HTMLAnchorElement || el instanceof HTMLButtonElement)) return;
+        var clicked = el;
 
-        if (isApproved(el)) { unapprove(el); return; }   // the replayed click after OK
+        if (isApproved(clicked)) { unapprove(clicked); return; }   // the replayed click after OK
 
-        var form = el.tagName === "BUTTON" ? el.form : null;
-        var isSubmit = el.tagName === "BUTTON" && form && (el.type === "submit" || !el.getAttribute("type"));
+        // the form a submit button sends, or null for a link or a plain button
+        var form = clicked instanceof HTMLButtonElement && clicked.form &&
+                   (clicked.type === "submit" || !clicked.getAttribute("type")) ? clicked.form : null;
 
         // Let the browser show its own "fill this in" hints before asking anything.
-        if (isSubmit && !form.checkValidity()) return;
+        if (form && !form.checkValidity()) return;
 
         e.preventDefault();
         e.stopImmediatePropagation();
 
-        confirmDialog(optionsFrom(el)).then(function (ok) {
+        confirmDialog(optionsFrom(clicked)).then(function (ok) {
             if (!ok) return;
-            if (isSubmit) {
+            if (form) {
                 approve(form);
-                submitForm(form, el);
+                submitForm(form, clicked);
             } else {
-                approve(el);
-                el.click();
+                approve(clicked);
+                clicked.click();
             }
         });
     }, true);
 
     doc.addEventListener("submit", function (e) {
         var form = e.target;
-        if (!form || !form.matches || !form.matches("form[data-confirm]")) return;
+        if (!(form instanceof HTMLFormElement) || !form.matches("form[data-confirm]")) return;
+        var confirmForm = form;
 
-        if (isApproved(form)) { unapprove(form); return; }
+        if (isApproved(confirmForm)) { unapprove(confirmForm); return; }
 
         e.preventDefault();
         var submitter = e.submitter || null;
 
-        confirmDialog(optionsFrom(form)).then(function (ok) {
+        confirmDialog(optionsFrom(confirmForm)).then(function (ok) {
             if (!ok) return;
-            approve(form);
-            submitForm(form, submitter);
+            approve(confirmForm);
+            submitForm(confirmForm, submitter);
         });
     }, true);
 
     // ---------- markup-defined modals: openers, closers, open-on-load ----------
 
     doc.addEventListener("click", function (e) {
-        if (!e.target.closest) return;
+        var target = e.target;
+        if (!(target instanceof Element)) return;
 
-        var opener = e.target.closest("[data-modal-open]");
+        var opener = target.closest("[data-modal-open]");
         if (opener) {
             e.preventDefault();
             open(opener.getAttribute("data-modal-open"));
             return;
         }
 
-        var closer = e.target.closest("[data-modal-close]");
+        var closer = target.closest("[data-modal-close]");
         if (closer) {
             var backdrop = closer.closest(".gw-modal-backdrop");
-            if (backdrop) {
+            if (backdrop instanceof HTMLElement) {
                 e.preventDefault();
                 close(backdrop);
             }
@@ -337,7 +420,7 @@
 
     function openOnLoad() {
         var el = doc.querySelector(".gw-modal-backdrop[data-open-on-load]");
-        if (el) open(el);
+        if (el instanceof HTMLElement) open(el);
     }
 
     if (doc.readyState === "loading") {
@@ -346,8 +429,164 @@
         openOnLoad();
     }
 
-    root.GW = root.GW || {};
-    root.GW.confirm = confirmDialog;
-    root.GW.alert = alertDialog;
-    root.GW.modal = { open: open, close: close };
+
+    // ---------- Toasts ----------
+    // GW.toast("success" | "warning" | "error", message, { title, lines, duration })
+    // Short notices in the top-right corner. They float above the page (no layout shift), close on
+    // their own after a few seconds (paused while hovered or focused) and have a close button.
+    /** @type {HTMLDivElement | null} */
+    var toastStack = null;
+    /** @type {Record<string, string>} */
+    var TOAST_TITLES = { success: "Done", warning: "Heads up", error: "Not done" };
+    /** @type {Record<string, number>} */
+    var TOAST_TIMES = { success: 4000, warning: 5000, error: 5000 };
+
+    /** @returns {HTMLDivElement} */
+    function toastHost() {
+        if (toastStack && doc.body.contains(toastStack)) return toastStack;
+        var host = doc.createElement("div");
+        host.className = "gw-toasts";
+        host.setAttribute("aria-label", "Notifications");
+        doc.body.appendChild(host);
+        toastStack = host;
+        return host;
+    }
+
+    /**
+     * @param {GWToastKind} kind  "success" | "warning" | "error"
+     * @param {string} message
+     * @param {GWToastOptions} [options]
+     * @returns {GWToastHandle}
+     */
+    function toast(kind, message, options) {
+        var opts = options || {};
+        if (!TOAST_TITLES[kind]) kind = "success";
+        var host = toastHost();
+        while (host.children.length >= 4 && host.firstElementChild) host.removeChild(host.firstElementChild);
+
+        var el = doc.createElement("div");
+        el.className = "gw-toast gw-toast-" + kind;
+        el.setAttribute("role", kind === "error" ? "alert" : "status");
+        el.setAttribute("aria-live", kind === "error" ? "assertive" : "polite");
+
+        var body = doc.createElement("div");
+        body.className = "gw-toast-body";
+        var title = doc.createElement("span");
+        title.className = "gw-toast-title";
+        title.textContent = opts.title || TOAST_TITLES[kind];
+        body.appendChild(title);
+        var text = doc.createElement("p");
+        text.className = "gw-toast-text";
+        text.textContent = message;
+        body.appendChild(text);
+        if (opts.lines && opts.lines.length) {
+            var list = doc.createElement("ul");
+            list.className = "gw-toast-list";
+            opts.lines.forEach(function (line) {
+                var li = doc.createElement("li");
+                li.textContent = line;
+                list.appendChild(li);
+            });
+            body.appendChild(list);
+        }
+        el.appendChild(body);
+
+        var closeBtn = doc.createElement("button");
+        closeBtn.type = "button";
+        closeBtn.className = "gw-toast-close";
+        closeBtn.setAttribute("aria-label", "Dismiss notification");
+        closeBtn.innerHTML = "<span aria-hidden=\"true\">&times;</span>";
+        el.appendChild(closeBtn);
+
+        var timer = doc.createElement("span");
+        timer.className = "gw-toast-timer";
+        el.appendChild(timer);
+
+        var duration = opts.duration || TOAST_TIMES[kind];
+        var left = duration, started = 0, gone = false;
+        /** @type {number | undefined} the running close timer, if any */
+        var handle;
+
+        function dismiss() {
+            if (gone) return;
+            gone = true;
+            clearTimeout(handle);
+            el.classList.add("gw-toast-leaving");
+            setTimeout(function () { if (el.parentNode) el.parentNode.removeChild(el); }, 200);
+        }
+        function run() {
+            started = Date.now();
+            timer.style.animationDuration = duration + "ms";
+            timer.style.animationPlayState = "running";
+            handle = setTimeout(dismiss, left);
+        }
+        function pause() {
+            if (gone || !handle) return;
+            clearTimeout(handle);
+            handle = undefined;
+            left -= Date.now() - started;
+            timer.style.animationPlayState = "paused";
+        }
+        function resume() {
+            if (gone || handle || el.contains(doc.activeElement)) return;
+            run();
+        }
+
+        closeBtn.addEventListener("click", dismiss);
+        el.addEventListener("mouseenter", pause);
+        el.addEventListener("mouseleave", resume);
+        el.addEventListener("focusin", pause);
+        el.addEventListener("focusout", function () { setTimeout(resume, 0); });
+
+        host.appendChild(el);
+        run();
+        return { close: dismiss };
+    }
+
+
+    // ---------- Server messages as toasts ----------
+    // Any element marked data-gw-flash="success" | "warning" | "error" (the banners pages render from
+    // TempData) is shown as a toast once and removed from the page. Without JavaScript the banner
+    // simply stays. GW.flashes() returns what was shown, for page scripts that need the text.
+    /** @type {GWFlash[] | null} */
+    var flashed = null;
+
+    /** @returns {GWFlash[]} */
+    function flashes() {
+        if (flashed) return flashed;
+        /** @type {GWFlash[]} */
+        var shown = [];
+        flashed = shown;
+        /** @type {Record<string, boolean>} */
+        var seen = {};
+        var items = doc.querySelectorAll("[data-gw-flash]");
+        for (var i = 0; i < items.length; i++) {
+            var item = items[i];
+            var kind = item.getAttribute("data-gw-flash") || "success";
+            var text = (item.textContent || "").replace(/\s+/g, " ").trim();
+            if (item.parentNode) item.parentNode.removeChild(item);
+            if (!text || seen[kind + "|" + text]) continue;   // never the same notice twice
+            seen[kind + "|" + text] = true;
+            shown.push({ kind: kind, text: text });
+            toast(kind, text);
+        }
+        return shown;
+    }
+
+    /** @type {GWApi} */
+    var api = {
+        confirm: confirmDialog,
+        alert: alertDialog,
+        modal: { open: open, close: close },
+        toast: toast,
+        flashes: flashes
+    };
+    // Keep anything another script already put on window.GW.
+    root.GW = Object.assign(root.GW || {}, api);
+
+    if (doc.readyState === "loading") {
+        doc.addEventListener("DOMContentLoaded", flashes);
+    } else {
+        flashes();
+    }
 })(window);
