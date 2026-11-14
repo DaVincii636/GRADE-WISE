@@ -14,26 +14,19 @@ namespace GradeWise.Controllers
 {
     public class AccountController : Controller
     {
-        private const int TimeoutMinutes = 30;   // keep in sync with <forms timeout> in Web.config
+        private const int TimeoutMinutes = 30;
 
-        // GET: /Account/Login
         [AllowAnonymous]
         public ActionResult Login(string returnUrl)
         {
             if (User.Identity.IsAuthenticated)
             {
-                if (string.IsNullOrEmpty(returnUrl))
-                {
-                    return RedirectToDashboard(CurrentRole());
-                }
-
-                ViewBag.Error = "Your account does not have access to that page. Sign in with a different account to continue.";
+                if (string.IsNullOrEmpty(returnUrl)) return RedirectToDashboard(CurrentRole());
+                ViewBag.Error = "Your account does not have access to that page.";
             }
-
             return View();
         }
 
-        // POST: /Account/Login
         [HttpPost]
         [AllowAnonymous]
         [ValidateAntiForgeryToken]
@@ -49,71 +42,92 @@ namespace GradeWise.Controllers
             }
 
             User user = null;
+            MongoDbContext db = null;
             try
             {
-                var db = new MongoDbContext();
+                db = new MongoDbContext();
                 var lowerLogin = loginId.ToLower();
                 user = db.Users.Find(u => u.StudentNo.ToLower() == lowerLogin || u.Email.ToLower() == lowerLogin).FirstOrDefault();
             }
-            catch (Exception)
+            catch (Exception) { }
+
+            var passwordOk = user != null && PasswordHelper.Verify(password, user.PasswordHash, user.Salt, user.PasswordIterations);
+
+            if (!passwordOk) { ViewBag.Error = "Incorrect ID/email or password."; return View(); }
+            if (!user.IsActive) { ViewBag.Error = "This account has been disabled."; return View(); }
+            if (!Roles.IsValid(user.Role)) { ViewBag.Error = "This account has an invalid role."; return View(); }
+
+            // NEW: Force password change
+            if (user.MustChangePassword)
             {
-                // Handle connection errors gracefully
+                SignIn(user);
+                return RedirectToAction("ForceChangePassword");
             }
 
-            // Same message for "no such user" and "wrong password".
-            // Use the per-user iteration count so upgraded hashes still verify.
-            var passwordOk = user != null &&
-                             PasswordHelper.Verify(password, user.PasswordHash, user.Salt, user.PasswordIterations);
-
-            if (!passwordOk)
+            var nowUtc = DateTime.UtcNow;
+            user.LastLoginAt = nowUtc;
+            if (db != null)
             {
-                ViewBag.Error = "Incorrect ID/email or password.";
-                return View();
+                try { db.Users.UpdateOne(u => u.Id == user.Id, Builders<User>.Update.Set(u => u.LastLoginAt, nowUtc)); } catch { }
             }
-
-            if (!user.IsActive)
-            {
-                ViewBag.Error = "This account has been disabled. Contact your administrator.";
-                return View();
-            }
-
-            if (!Roles.IsValid(user.Role))
-            {
-                ViewBag.Error = "This account has an invalid role. Contact your administrator.";
-                return View();
-            }
-
-            // Note the sign-in time. (This used to lock on SampleData, which made the first sign-in after
-            // every start build all the demo data and hash its passwords first, and made it wait for no reason.)
-            user.LastLoginAt = DateTime.UtcNow;
 
             SignIn(user);
-
-            // Honor returnUrl if it is a safe local URL.
-            if (Url.IsLocalUrl(Request.QueryString["ReturnUrl"]))
-            {
-                return Redirect(Request.QueryString["ReturnUrl"]);
-            }
-
+            if (Url.IsLocalUrl(Request.QueryString["ReturnUrl"])) return Redirect(Request.QueryString["ReturnUrl"]);
             return RedirectToDashboard(user.Role);
         }
 
-        // GET: /Account/Logout
+        [Authorize]
+        public ActionResult ForceChangePassword()
+        {
+            return View();
+        }
+
+        [Authorize]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public ActionResult ForceChangePassword(string newPassword, string confirmPassword)
+        {
+            var db = new MongoDbContext();
+            var identityName = User.Identity.Name.ToLower();
+            var user = db.Users.Find(u => u.StudentNo.ToLower() == identityName || u.Email.ToLower() == identityName).FirstOrDefault();
+
+            if (user == null) return RedirectToAction("Logout");
+
+            var errors = new List<string>();
+            var problem = ValidationHelper.PasswordProblem(newPassword);
+
+            if (problem != null) errors.Add(problem);
+            else if (newPassword != confirmPassword) errors.Add("The new password and its confirmation do not match.");
+
+            if (errors.Count > 0)
+            {
+                ViewBag.Errors = errors;
+                return View();
+            }
+
+            string salt;
+            int iterations;
+            var hash = PasswordHelper.CreateHash(newPassword, out salt, out iterations);
+
+            var update = Builders<User>.Update
+                .Set(u => u.PasswordHash, hash)
+                .Set(u => u.Salt, salt)
+                .Set(u => u.PasswordIterations, iterations)
+                .Set(u => u.MustChangePassword, false);
+
+            db.Users.UpdateOne(u => u.Id == user.Id, update);
+            TempData["Message"] = "Your new password has been saved. Welcome!";
+            return RedirectToDashboard(user.Role);
+        }
+
         public ActionResult Logout()
         {
             FormsAuthentication.SignOut();
             Session.Abandon();
-
-            // Ask the browser to throw away what it kept of this site, so pressing Back after signing out
-            // cannot bring a signed-in page back. (Browsers that do not know this header ignore it.)
             Response.AppendHeader("Clear-Site-Data", "\"cache\"");
-
             return RedirectToAction("Login", "Account");
         }
 
-        // POST: /Account/ChangeName
-        // The signed-in person's own display name. No password is asked (the name is low risk);
-        // the ID number is the sign-in name and cannot be changed here.
         [Authorize]
         [HttpPost]
         [ValidateAntiForgeryToken]
@@ -126,16 +140,9 @@ namespace GradeWise.Controllers
             var typed = (newName ?? string.Empty).Trim();
             var errors = new List<string>();
 
-            if (typed.Length == 0)
-            {
-                errors.Add("Enter your name.");
-            }
-            else if (typed.Any(char.IsControl))
-            {
-                errors.Add("Your name cannot contain control characters.");
-            }
+            if (typed.Length == 0) errors.Add("Enter your name.");
+            else if (typed.Any(char.IsControl)) errors.Add("Your name cannot contain control characters.");
 
-            // Collapse repeated spaces ("Ana   Cruz" becomes "Ana Cruz") before measuring and comparing.
             var saved = System.Text.RegularExpressions.Regex.Replace(typed, " {2,}", " ");
 
             if (errors.Count == 0)
@@ -151,14 +158,10 @@ namespace GradeWise.Controllers
             }
 
             db.Users.UpdateOne(u => u.Id == me.Id, Builders<User>.Update.Set(u => u.FullName, saved));
-
             TempData["Message"] = "Name updated.";
             return RedirectToDashboard(me.Role);
         }
 
-        // POST: /Account/ChangeEmail
-        // The student's own email only. The signed-in account is found from the sign-in cookie,
-        // never from the form, so nobody can change somebody else's details.
         [Authorize]
         [HttpPost]
         [ValidateAntiForgeryToken]
@@ -177,7 +180,6 @@ namespace GradeWise.Controllers
 
             AddPasswordError(errors, me, currentPassword);
 
-            // Only reveal that an address is taken once the password is right.
             if (errors.Count == 0)
             {
                 var lower = newEmail.ToLower();
@@ -191,15 +193,12 @@ namespace GradeWise.Controllers
                 return EditInfoFailed("email", errors, me);
             }
 
-            // Stored in lower case, the same way the Admin screen creates accounts.
             var saved = newEmail.ToLowerInvariant();
             db.Users.UpdateOne(u => u.Id == me.Id, Builders<User>.Update.Set(u => u.Email, saved));
-
             TempData["Message"] = "Email updated.";
             return RedirectToDashboard(me.Role);
         }
 
-        // POST: /Account/ChangePassword
         [Authorize]
         [HttpPost]
         [ValidateAntiForgeryToken]
@@ -210,14 +209,10 @@ namespace GradeWise.Controllers
             if (me == null || !me.IsActive) return RedirectToAction("Logout");
 
             var errors = new List<string>();
-
             AddPasswordError(errors, me, currentPassword);
 
             var problem = ValidationHelper.PasswordProblem(newPassword);
-            if (problem != null)
-            {
-                errors.Add(problem);
-            }
+            if (problem != null) errors.Add(problem);
             else
             {
                 if (newPassword == currentPassword) errors.Add("The new password must be different from your current password.");
@@ -241,9 +236,6 @@ namespace GradeWise.Controllers
             return RedirectToDashboard(me.Role);
         }
 
-        // ---------- helpers ----------
-
-        /// <summary>The account behind the sign-in cookie (its name is the StudentNo), or null.</summary>
         private User FindCurrentUser(MongoDbContext db)
         {
             try
@@ -251,25 +243,16 @@ namespace GradeWise.Controllers
                 var name = (User.Identity.Name ?? string.Empty).ToLower();
                 return db.Users.Find(u => u.StudentNo.ToLower() == name || u.Email.ToLower() == name).FirstOrDefault();
             }
-            catch (Exception)
-            {
-                return null;
-            }
+            catch (Exception) { return null; }
         }
 
         private static void AddPasswordError(List<string> errors, User me, string currentPassword)
         {
-            if (string.IsNullOrEmpty(currentPassword))
-            {
-                errors.Add("Enter your current password.");
-            }
+            if (string.IsNullOrEmpty(currentPassword)) errors.Add("Enter your current password.");
             else if (!PasswordHelper.Verify(currentPassword, me.PasswordHash, me.Salt, me.PasswordIterations))
-            {
                 errors.Add("Your current password is incorrect.");
-            }
         }
 
-        /// <summary>Keeps the problems for one request and sends the student back to the dashboard, where the layout reopens the modal.</summary>
         private ActionResult EditInfoFailed(string form, List<string> errors, User me)
         {
             TempData["EditInfoErrors"] = errors;
@@ -287,10 +270,7 @@ namespace GradeWise.Controllers
             }
         }
 
-        private ActionResult RedirectToDashboard(string role)
-        {
-            return RedirectToAction("Index", DashboardController(role));
-        }
+        private ActionResult RedirectToDashboard(string role) => RedirectToAction("Index", DashboardController(role));
 
         private string CurrentRole()
         {
@@ -302,18 +282,8 @@ namespace GradeWise.Controllers
         private void SignIn(User user)
         {
             var now = DateTime.Now;
-            var ticket = new FormsAuthenticationTicket(
-                1,
-                user.StudentNo,
-                now,
-                now.AddMinutes(TimeoutMinutes),
-                false,
-                user.Role + "|" + user.FullName);
-
-            var cookie = new HttpCookie(FormsAuthentication.FormsCookieName, FormsAuthentication.Encrypt(ticket))
-            {
-                HttpOnly = true
-            };
+            var ticket = new FormsAuthenticationTicket(1, user.StudentNo, now, now.AddMinutes(TimeoutMinutes), false, user.Role + "|" + user.FullName);
+            var cookie = new HttpCookie(FormsAuthentication.FormsCookieName, FormsAuthentication.Encrypt(ticket)) { HttpOnly = true };
             Response.Cookies.Add(cookie);
         }
     }

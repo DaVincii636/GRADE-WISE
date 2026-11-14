@@ -7,22 +7,12 @@ using MongoDB.Driver;
 
 namespace GradeWise.Services
 {
-    /// <summary>
-    /// Stored student notifications. Every read, update and delete filters by StudentId,
-    /// so a student can only ever reach their own notifications.
-    /// </summary>
     public static class NotificationService
     {
         public const int MaxPerStudent = 100;
         public const int DefaultListLimit = 50;
         public const int MaxNamesListed = 3;
 
-        // ---------- create (called from the faculty actions) ----------
-
-        /// <summary>
-        /// Adds one notification. Keeps only the newest MaxPerStudent. A failure here is swallowed
-        /// on purpose: a notification problem must never stop a faculty member from saving.
-        /// </summary>
         public static void Add(string studentId, string courseId, string courseCode, string kind, string title, string message)
         {
             if (string.IsNullOrEmpty(studentId)) return;
@@ -32,14 +22,14 @@ namespace GradeWise.Services
                 var db = new MongoDbContext();
                 db.Notifications.InsertOne(new Notification
                 {
-                    Id = "n-" + Guid.NewGuid().ToString("N"),
+                    Id = "n-" + Guid.NewGuid().ToString("N").Substring(0, 12), // FIX: Added prefix and length
                     StudentId = studentId,
                     CourseId = courseId,
                     CourseCode = courseCode,
                     Kind = kind,
                     Title = title,
                     Message = message,
-                    CreatedAtUtc = DateTime.UtcNow,
+                    CreatedAtUtc = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc), // FIX: Force UTC
                     IsRead = false
                 });
 
@@ -61,7 +51,6 @@ namespace GradeWise.Services
             }
         }
 
-        /// <summary>One notification per student per save: "IT101 scores updated".</summary>
         public static void NotifyScoresChanged(Course course, string studentId, IList<string> changedCategories)
         {
             if (course == null || changedCategories == null || changedCategories.Count == 0) return;
@@ -98,10 +87,6 @@ namespace GradeWise.Services
                 "You were removed from " + course.Code + ": " + course.Name + ".");
         }
 
-        /// <summary>
-        /// "Quizzes was updated." / "Quizzes and Midterm Exam were updated." /
-        /// "A, B and C were updated." / "A, B, C and 2 more were updated."
-        /// </summary>
         public static string DescribeChanged(IList<string> names)
         {
             var list = names.Where(n => !string.IsNullOrWhiteSpace(n)).Distinct().ToList();
@@ -117,9 +102,6 @@ namespace GradeWise.Services
             return string.Join(", ", list.Take(MaxNamesListed)) + " and " + extra + " more were updated.";
         }
 
-        // ---------- read ----------
-
-        /// <summary>Newest first.</summary>
         public static List<Notification> ListFor(string studentId, int limit = DefaultListLimit)
         {
             var db = new MongoDbContext();
@@ -135,8 +117,6 @@ namespace GradeWise.Services
             var db = new MongoDbContext();
             return (int)db.Notifications.CountDocuments(n => n.StudentId == studentId && n.IsRead == false);
         }
-
-        // ---------- change (each one is limited to the student's own notifications) ----------
 
         public static bool MarkRead(string id, string studentId)
         {

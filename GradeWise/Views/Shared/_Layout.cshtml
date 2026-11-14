@@ -41,9 +41,14 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>@ViewBag.Title - GradeWise</title>
+    <link rel="icon" type="image/svg+xml" href="@Url.Content("~/Content/img/stickers/stamp-ring.svg")" />
     @* Back button: a page that the browser puts back from its back-forward cache is hidden right away
-       (before it can be seen) and fetched again from the server, so a signed-out page is never shown. *@
-    <style>html.gw-checking body { visibility: hidden; }</style>
+        (before it can be seen) and fetched again from the server, so a signed-out page is never shown. *@
+    <style>
+        html.gw-checking body {
+            visibility: hidden;
+        }
+    </style>
     <script>
         (function () {
             var root = document.documentElement;

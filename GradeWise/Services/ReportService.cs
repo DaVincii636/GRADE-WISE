@@ -9,18 +9,8 @@ using MongoDB.Driver;
 
 namespace GradeWise.Services
 {
-    /// <summary>
-    /// Faculty reports: the class analytics page and the class record CSV backed by MongoDB Atlas.
-    /// </summary>
     public static class ReportService
     {
-        // ---------- analytics ----------
-
-        /// <summary>
-        /// Distribution, class summary and per-category averages for one course and one scope
-        /// ("midterm", "final-term" or "final-grade"; null or anything else means the course's own scope).
-        /// Null if it is not the faculty member's course.
-        /// </summary>
         public static AnalyticsViewModel GetAnalytics(string courseId, string facultyId, string scope = null)
         {
             var db = new MongoDbContext();
@@ -33,7 +23,6 @@ namespace GradeWise.Services
             var students = EnrolledStudents(db, course);
             var byStudent = ScoresByStudent(db, course);
 
-            // Earned Grade of the scope (points collected out of 100, ungraded work counts as 0). Null = nothing graded yet.
             var earned = students
                 .Select(s => GradeCalculator.CalculateScope(course.Categories, ScoresFrom(byStudent, s.Id), scope).EarnedOrNull)
                 .ToList();
@@ -50,7 +39,7 @@ namespace GradeWise.Services
                 {
                     StudentNo = student.StudentNo,
                     FullName = student.FullName,
-                    Average = avg // holds the student's Earned Grade
+                    Average = avg
                 };
 
                 if (!avg.HasValue)
@@ -60,14 +49,17 @@ namespace GradeWise.Services
                 }
 
                 var rounded = Math.Round(avg.Value, 2);
-                for (var i = bins.Count - 1; i >= 0; i--)
+                // FIX: Ensure students with exactly 100 or slight floating point errors above 100 go to the last bin.
+                var binIndex = bins.Count - 1;
+                for (var i = bins.Count - 2; i >= 0; i--)
                 {
-                    if (rounded >= bins[i].Min || i == 0)
+                    if (rounded >= bins[i].Min)
                     {
-                        bins[i].Students.Add(entry);
+                        binIndex = i;
                         break;
                     }
                 }
+                bins[binIndex].Students.Add(entry);
             }
 
             var totalStudents = Math.Max(1, students.Count);
@@ -119,16 +111,6 @@ namespace GradeWise.Services
             return model;
         }
 
-        // ---------- class record CSV ----------
-
-        /// <summary>
-        /// The class record as CSV text for one scope (null or anything else means the course's own scope).
-        /// Midterm or Final Term: the scope's categories, then that period's Earned Grade and Equivalent.
-        /// Final Grade: every category (headers name the period), the Midterm and Final Term Earned Grade and
-        /// Equivalent, the Final Grade and its Equivalent. Class average / highest / lowest rows follow.
-        /// Every number is the zero-based Earned Grade, as on the Course page.
-        /// Returns null if it is not the faculty member's course. The caller adds the UTF-8 marker Excel needs.
-        /// </summary>
         public static string BuildClassCsv(string courseId, string facultyId, string scope, out string fileName)
         {
             fileName = null;
@@ -151,7 +133,6 @@ namespace GradeWise.Services
             var width = 2 + cats.Count + gradeColumns * 2;
             var sb = new StringBuilder();
 
-            // Final Grade headers name each category's period, e.g. "Quiz (Midterm 15%)".
             var header = new List<string> { Text("Student No"), Text("Name") };
             header.AddRange(cats.Select(c => Text(wholeCourse
                 ? c.Name + " (" + GradePeriods.Normalize(c.Period) + " " + Whole(c.Weight) + "%)"
@@ -172,7 +153,6 @@ namespace GradeWise.Services
             }
             AppendRow(sb, header);
 
-            // one list of Earned Grades per grade column (Midterm, Final Term, Final Grade) or just the scope
             var columns = Enumerable.Range(0, gradeColumns).Select(i => new List<double?>()).ToList();
             var categoryScores = cats.Select(c => new List<double>()).ToList();
 
@@ -223,8 +203,6 @@ namespace GradeWise.Services
             return sb.ToString();
         }
 
-        // ---------- CSV helpers ----------
-
         public static string Text(string value)
         {
             if (string.IsNullOrEmpty(value)) return string.Empty;
@@ -253,7 +231,6 @@ namespace GradeWise.Services
             return name.Length == 0 ? "course" : name;
         }
 
-        // One class row (average, highest or lowest). Each Equivalent is worked out from the Earned Grade next to it.
         private static List<string> ClassRow(string label, IEnumerable<string> categoryCells, IEnumerable<double?> gradeValues)
         {
             var cells = new List<string> { string.Empty, Text(label) };
@@ -266,7 +243,6 @@ namespace GradeWise.Services
             return cells;
         }
 
-        // Two decimals, or an empty cell when there is no value (nothing graded in that scope).
         private static string Cell(double? value)
         {
             return value.HasValue ? Fixed(value.Value) : string.Empty;
@@ -288,8 +264,6 @@ namespace GradeWise.Services
             return value.ToString("0.##", CultureInfo.InvariantCulture);
         }
 
-        // ---------- helpers ----------
-
         private static Course FindOwned(MongoDbContext db, string courseId, string facultyId)
         {
             if (string.IsNullOrEmpty(courseId) || string.IsNullOrEmpty(facultyId)) return null;
@@ -303,7 +277,6 @@ namespace GradeWise.Services
                 .ToList();
         }
 
-        // One query for every enrolled student's scores (instead of one round trip per student).
         private static Dictionary<string, List<ScoreEntry>> ScoresByStudent(MongoDbContext db, Course course)
         {
             var courseId = course.Id;

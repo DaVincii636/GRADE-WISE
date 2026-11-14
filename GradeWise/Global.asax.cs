@@ -18,7 +18,6 @@ namespace GradeWise
     {
         protected void Application_Start()
         {
-            // Atlas requires TLS 1.2+. Set this before any MongoDB call.
             ServicePointManager.SecurityProtocol |= SecurityProtocolType.Tls12;
 
             AreaRegistration.RegisterAllAreas();
@@ -26,11 +25,8 @@ namespace GradeWise
             RouteConfig.RegisterRoutes(RouteTable.Routes);
             BundleConfig.RegisterBundles(BundleTable.Bundles);
 
-            // Our sign-in identity has no NameIdentifier claim, so tell the anti-forgery check to use the user name.
             AntiForgeryConfig.SuppressIdentityHeuristicChecks = true;
 
-            // Put a demo account's password back, but only when Web.config asks for it
-            // (the "RestoreDemoPasswords" setting). It does nothing when that setting is empty.
             try
             {
                 MongoDbSeeder.RestoreDemoPasswords();
@@ -40,8 +36,6 @@ namespace GradeWise
                 Trace.TraceError("Restoring demo passwords failed: " + ex.Message);
             }
 
-            // Seed initial data and create the indexes in the background, so the first page
-            // does not have to wait for roughly a dozen round trips to Atlas.
             System.Web.Hosting.HostingEnvironment.QueueBackgroundWorkItem(cancellationToken =>
             {
                 try
@@ -50,7 +44,6 @@ namespace GradeWise
                 }
                 catch (Exception ex)
                 {
-                    // Don't take the whole site down if Atlas is unreachable.
                     Trace.TraceError("MongoDB seeding failed: " + ex.Message);
                 }
             });
@@ -58,8 +51,6 @@ namespace GradeWise
 
         protected void Application_PostAuthenticateRequest(object sender, EventArgs e)
         {
-            // Styles, scripts, bundles and the icon do not need to know who is signed in,
-            // so do not spend a database round trip on them.
             var path = Request.AppRelativeCurrentExecutionFilePath ?? string.Empty;
             if (path.StartsWith("~/Content", StringComparison.OrdinalIgnoreCase) ||
                 path.StartsWith("~/Scripts", StringComparison.OrdinalIgnoreCase) ||
@@ -82,29 +73,30 @@ namespace GradeWise
             }
             catch (Exception)
             {
-                return;   // tampered or expired key: treat as signed out
+                // FIX: Safely reset the user instead of leaving a half-authenticated state
+                Context.User = new GenericPrincipal(new GenericIdentity(string.Empty), new string[0]);
+                return;
             }
 
             if (ticket == null || ticket.Expired)
             {
+                // FIX: Safely reset the user if the cookie is expired
+                Context.User = new GenericPrincipal(new GenericIdentity(string.Empty), new string[0]);
                 return;
             }
 
-            // Look up the account in MongoDB Atlas on every request
             User user = null;
             try
             {
                 var db = new MongoDbContext();
                 var signedInAs = ticket.Name;
 
-                // The sign-in name is saved exactly as stored, so this can use the StudentNo index.
-                // The case-insensitive search below is only a fallback for an unusual ticket.
                 user = db.Users.Find(u => u.StudentNo == signedInAs).FirstOrDefault()
                     ?? db.Users.Find(u => u.StudentNo.ToLower() == signedInAs.ToLower()).FirstOrDefault();
             }
             catch (Exception)
             {
-                // Fallback or handle connection issues gracefully if needed
+                // Ignore DB failure during auth, treat as unauthorized below
             }
 
             if (user == null || !user.IsActive)
@@ -113,9 +105,7 @@ namespace GradeWise
                 return;
             }
 
-            // Keep the account for the rest of this request, so the layout and controllers do not look it up again.
             Context.Items["gw.user"] = user;
-
             Context.User = new GenericPrincipal(new FormsIdentity(ticket), new[] { user.Role });
         }
     }

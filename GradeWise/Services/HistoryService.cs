@@ -9,28 +9,19 @@ using MongoDB.Driver;
 namespace GradeWise.Services
 {
     /// <summary>
-    /// Keeps and reads the progress history backed by MongoDB Atlas. One snapshot is kept per student per
-    /// faculty save, and only when something changed for that student. The snapshot says what changed.
+    /// Keeps and reads the progress history backed by MongoDB Atlas.
     /// </summary>
     public static class HistoryService
     {
-        /// <summary>Most snapshots kept for one student in one course. The oldest are dropped first.</summary>
         public const int MaxPerStudent = 100;
 
         public const string ReasonScores = "Scores updated";
         public const string ReasonCategories = "Categories changed";
 
-        /// <summary>How many changed scores the short summary names before it says "and N more".</summary>
         public const int MaxNamed = 3;
 
         private const double Same = 0.000000001;
 
-        // ---------- record ----------
-
-        /// <summary>
-        /// Faculty saved scores: keeps one snapshot for the student when at least one score changed.
-        /// The numbers are worked out from the saved scores (zero-based Earned Grade).
-        /// </summary>
         public static void RecordChange(Course course, string studentId, IEnumerable<ScoreEntry> savedScores,
             DateTime whenUtc, string reason, IList<ScoreChange> changes)
         {
@@ -46,10 +37,6 @@ namespace GradeWise.Services
             Insert(snapshot);
         }
 
-        /// <summary>
-        /// Faculty changed the grading categories or weights: keeps a snapshot only when this student's
-        /// Earned Grade really moved. The course must already hold the new categories.
-        /// </summary>
         public static void RecordCategoriesChanged(Course course, string studentId, IEnumerable<ScoreEntry> savedScores, DateTime whenUtc)
         {
             if (course == null || string.IsNullOrEmpty(studentId)) return;
@@ -65,11 +52,8 @@ namespace GradeWise.Services
                 .SortByDescending(s => s.TakenAt)
                 .FirstOrDefault();
 
-            // Nothing graded and nothing recorded before: there is no history to keep yet.
             if (last == null && !result.HasGrades) return;
 
-            // Kept only when one of the three numbers moved. An older snapshot with no period values
-            // counts as changed, so a categories save also gives it a first period-aware snapshot.
             if (last != null
                 && last.MidtermEarned.HasValue && last.FinalTermEarned.HasValue
                 && Math.Abs(last.Earned - result.Earned) <= Same
@@ -82,10 +66,6 @@ namespace GradeWise.Services
             Insert(snapshot);
         }
 
-        /// <summary>
-        /// Builds a snapshot from a calculated result. When the categories and scores are given, the Midterm and
-        /// Final Term numbers are stored too (so the history can be shown per scope).
-        /// </summary>
         public static ScoreSnapshot Make(string courseId, string studentId, DateTime when, GradeResult result,
             IEnumerable<GradeCategory> categories = null, IEnumerable<ScoreEntry> scores = null)
         {
@@ -119,7 +99,6 @@ namespace GradeWise.Services
             var db = new MongoDbContext();
             db.Snapshots.InsertOne(snapshot);
 
-            // Keep only the newest MaxPerStudent for this student in this course.
             var courseId = snapshot.CourseId;
             var studentId = snapshot.StudentId;
 
@@ -136,14 +115,6 @@ namespace GradeWise.Services
             }
         }
 
-        // ---------- read ----------
-
-        /// <summary>
-        /// The student's history in this course for one scope, oldest first.
-        /// Final Grade uses every snapshot. Midterm and Final Term use only snapshots that stored that period's
-        /// numbers, and keep a row only when that period's Earned Grade moved. hidden counts the older snapshots
-        /// that could not be used because they were saved before the periods were tracked separately.
-        /// </summary>
         public static List<HistoryPoint> GetHistory(Course course, string studentId, string scope, out int hidden)
         {
             hidden = 0;
@@ -154,7 +125,6 @@ namespace GradeWise.Services
             var period = GradeScopes.PeriodOf(scope);
             var courseId = course.Id;
 
-            // category name -> period, to keep only the changes that belong to this scope
             var periodOf = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             foreach (var c in course.Categories ?? new List<GradeCategory>())
             {
@@ -196,13 +166,11 @@ namespace GradeWise.Services
 
                 if (period != null)
                 {
-                    // Nothing graded in this period yet: no history to show.
                     if (!previous.HasValue && !hasGrades) continue;
-
-                    // Only this period's number counts, so skip saves that did not move it.
                     if (previous.HasValue && Math.Abs(earned - previous.Value) <= Same) continue;
                 }
 
+                // FIX: Force UTC safely so JS Date() doesn't misinterpret timezones.
                 var utc = ToUtc(s.TakenAt);
                 var point = new HistoryPoint
                 {
@@ -245,11 +213,6 @@ namespace GradeWise.Services
             return points;
         }
 
-        /// <summary>
-        /// "Quizzes 80 -> 85, Exam - -> 90" (an empty score is written as "-").
-        /// Old snapshots have no changes: they read "Scores updated". Category changes read "Categories changed".
-        /// More than maxNamed changes end with "and N more".
-        /// </summary>
         public static string Describe(ScoreSnapshot snapshot, int maxNamed)
         {
             if (snapshot.Changes == null || snapshot.Changes.Count == 0)
@@ -274,12 +237,12 @@ namespace GradeWise.Services
             return score.HasValue ? score.Value.ToString("0.##", CultureInfo.InvariantCulture) : "-";
         }
 
-        /// <summary>Snapshots come back from MongoDB as UTC; a value with no kind is treated as UTC too.</summary>
         private static DateTime ToUtc(DateTime value)
         {
-            return value.Kind == DateTimeKind.Unspecified
-                ? DateTime.SpecifyKind(value, DateTimeKind.Utc)
-                : value.ToUniversalTime();
+            // FIX: Ensure MongoDB dates are properly recognized as UTC.
+            if (value.Kind == DateTimeKind.Utc) return value;
+            if (value.Kind == DateTimeKind.Unspecified) return DateTime.SpecifyKind(value, DateTimeKind.Utc);
+            return value.ToUniversalTime();
         }
     }
 }
