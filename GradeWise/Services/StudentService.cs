@@ -2,30 +2,21 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
-using System.Threading.Tasks;
 using GradeWise.Data;
 using GradeWise.Models;
 using MongoDB.Driver;
 
 namespace GradeWise.Services
 {
-    /// <summary>
-    /// Builds the student dashboard backed by MongoDB Atlas.
-    /// </summary>
     public static class StudentService
     {
-        /// <summary>A class average needs at least this many students with scores.</summary>
         public const int MinClassSize = 3;
 
-        /// <summary>
-        /// Dashboard for one student.
-        /// </summary>
         public static StudentDashboardViewModel GetDashboard(string studentId, string requestedCourseId, User student = null)
         {
             var model = new StudentDashboardViewModel { MinClassSize = MinClassSize };
             var db = new MongoDbContext();
 
-            // The controller usually has the account already; only look it up when it was not passed in.
             var me = student != null && student.Id == studentId
                 ? student
                 : db.Users.Find(u => u.Id == studentId).FirstOrDefault();
@@ -44,21 +35,15 @@ namespace GradeWise.Services
                 return model;
             }
 
-            // The instructors' names are not needed to work out the grades, so they are fetched at the same
-            // time as the scores and the history instead of one after the other.
-            var optionsTask = Task.Run(() => CourseOptions(db, mine));
-
+            // FIX: Removed Task.Run. It's an anti-pattern in ASP.NET MVC.
             var course = mine.FirstOrDefault(c => c.Id == requestedCourseId) ?? mine[0];
 
             FillCourse(db, model, course, studentId);
 
-            model.Courses = optionsTask.GetAwaiter().GetResult();
+            model.Courses = CourseOptions(db, mine);
             return model;
         }
 
-        /// <summary>
-        /// Data for the What-If simulator backed by MongoDB Atlas.
-        /// </summary>
         public static WhatIfViewModel GetWhatIf(string studentId, string requestedCourseId)
         {
             var model = new WhatIfViewModel();
@@ -125,9 +110,6 @@ namespace GradeWise.Services
             return model;
         }
 
-        /// <summary>
-        /// Course picker entries. The instructors' names are loaded with one query for all the courses.
-        /// </summary>
         private static List<StudentCourseOption> CourseOptions(MongoDbContext db, List<Course> courses)
         {
             var facultyIds = courses
@@ -167,16 +149,12 @@ namespace GradeWise.Services
 
         private static void FillCourse(MongoDbContext db, StudentDashboardViewModel model, Course course, string studentId)
         {
-            // The progress history does not depend on the scores, so it is read at the same time as them.
             var historyScope = GradeScopes.Normalize(course.ReflectedScope);
-            var historyTask = Task.Run(() =>
-            {
-                int hiddenCount;
-                var points = HistoryService.GetHistory(course, studentId, historyScope, out hiddenCount);
-                return Tuple.Create(points, hiddenCount);
-            });
+            int hiddenCount;
 
-            // One query for every enrolled student's scores (instead of one round trip per student).
+            // FIX: Straight execution instead of background threads
+            var historyPoints = HistoryService.GetHistory(course, studentId, historyScope, out hiddenCount);
+
             var courseId = course.Id;
             var enrolled = course.StudentIds;
             var records = db.Grades.Find(g => g.CourseId == courseId && enrolled.Contains(g.StudentId)).ToList();
@@ -189,7 +167,6 @@ namespace GradeWise.Services
                 }
             }
 
-            // Everything below follows the scope the instructor chose for this course.
             var scope = GradeScopes.Normalize(course.ReflectedScope);
             var mine = ScoresFrom(byStudent, studentId);
             var result = GradeCalculator.CalculateScope(course.Categories, mine, scope);
@@ -210,14 +187,11 @@ namespace GradeWise.Services
             model.Earned = result.Earned;
             model.EarnedGrade = result.EarnedOrNull;
             model.RemainingWeight = result.RemainingWeight;
-            var history = historyTask.GetAwaiter().GetResult();
-            model.History = history.Item1;
-            model.HistoryHidden = history.Item2;
 
-            // One list of scores per enrolled student (empty when a student has no record yet), same as before.
+            model.History = historyPoints;
+            model.HistoryHidden = hiddenCount;
+
             var everyone = course.StudentIds.Select(id => ScoresFrom(byStudent, id)).ToList();
-
-            // The class benchmark is the average of every student's Earned Grade (null = nothing graded yet).
             var earned = everyone.Select(s => GradeCalculator.CalculateScope(course.Categories, s, scope).EarnedOrNull).ToList();
             var summary = GradeCalculator.Summarize(earned);
             model.ClassGraded = summary.Graded;
