@@ -74,11 +74,16 @@ interface GWApi {
 
 // ---------- Academic terms page (Scripts/admin-terms.js) ----------
 
-/** A term as the server sends it in data-terms (what the database stores today). */
+/** A term as the server sends it in data-terms (what the database stores). */
 interface GWTermRecord {
     id: string;
     name: string;
     isCurrent?: boolean;
+    /** Saved dates, yyyy-mm-dd; "" or missing for terms saved without dates. */
+    startDate?: string;
+    endDate?: string;
+    /** Why the server would refuse to delete the term ("" or missing = it can be deleted). */
+    deleteBlocked?: string;
 }
 
 /** A term as the Academic terms page works with it. */
@@ -89,23 +94,17 @@ interface GWTerm {
     semester: string;
     /** "2026-2027", or "" when the name has an old format. */
     academicYear: string;
-    /** yyyy-mm-dd, or "" (not stored in the database yet). */
+    /** yyyy-mm-dd from the database, or "" for terms saved without dates. */
     startDate: string;
     endDate: string;
     isCurrent: boolean;
     archived: boolean;
     archivedOn: string;
+    /** Why the term cannot be deleted (in use, or courses use it); "" when it can. From the server. */
+    deleteBlocked: string;
 }
 
-/** The fields the add / edit form changes. */
-interface GWTermChanges {
-    semester: string;
-    academicYear: string;
-    startDate: string;
-    endDate: string;
-}
-
-/** Temporary in-memory store for the terms on the page (nothing is saved to the database). */
+/** The terms on the page, loaded from the database. Archive / restore change only this copy (not saved). */
 interface GWTermStoreApi {
     parseName(name: string | null | undefined): { semester: string; academicYear: string };
     buildName(semester: string, academicYear: string): string;
@@ -113,15 +112,18 @@ interface GWTermStoreApi {
     list(): GWTerm[];
     get(id: string | null): GWTerm | null;
     hasChanges(): boolean;
-    update(id: string, changes: GWTermChanges): Promise<GWTerm>;
     archive(id: string, today: string): Promise<GWTerm>;
     restore(id: string): Promise<GWTerm>;
 }
 
-/** The existing server action the Academic terms page calls (saved to the database). */
+/** The server actions the Academic terms page calls (saved to the database). */
 interface GWTermServerApi {
     /** Posts to Admin/SetCurrentTerm/{id}; the page reloads. */
     setCurrent(id: string): void;
+    /** Posts to Admin/DeleteTerm/{id}; the page reloads with the server's result. */
+    deleteTerm(id: string): void;
+    /** The Admin/EditTerm/{id} address the edit form posts to (null if the page does not provide it). */
+    editUrl(id: string): string | null;
 }
 
 interface Window {

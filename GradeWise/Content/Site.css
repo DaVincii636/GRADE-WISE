@@ -3413,9 +3413,11 @@ body.gw-modal-open {
 }
 
 /* ---------- Add user form ----------
-   Scoped to .gw-user-form: labels sit above full-width inputs of one height. */
-.gw-user-form {
-    max-width: 640px;
+   Scoped to .gw-user-form: labels sit above full-width inputs of one height.
+   The heading and the form share one centred column (.gw-user-page). */
+.gw-user-page {
+    max-width: 1000px;
+    margin: 0 auto;
 }
 
     .gw-user-form .gw-user-step {
@@ -3564,7 +3566,8 @@ body.gw-modal-open {
     .gw-user-form .gw-user-grid {
         display: grid;
         grid-template-columns: 1fr 1fr;
-        gap: 14px 16px;
+        align-items: start;
+        gap: 16px 24px;
     }
 
     .gw-user-form .gw-user-step > .gw-user-control + .gw-user-control {
@@ -3669,6 +3672,22 @@ body.gw-modal-open {
         margin-top: 16px;
     }
 
+    /* the note and the buttons: a footer row under a dashed divider */
+    .gw-user-form .gw-user-actions {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px 24px;
+        padding-top: 16px;
+        border-top: 1.5px dashed var(--gw-ink);
+    }
+
+        .gw-user-form .gw-user-actions .gw-note,
+        .gw-user-form .gw-user-actions .gw-form-buttons {
+            margin: 0;
+        }
+
 .gw-user-modal {
     max-width: 440px;
 }
@@ -3685,6 +3704,18 @@ body.gw-modal-open {
     .gw-user-modal-foot .gw-btn {
         margin: 0;
     }
+
+/* one column for the fields on narrower screens */
+@media (max-width: 767.98px) {
+    .gw-user-form .gw-user-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .gw-user-form .gw-user-actions {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+}
 
 @media (max-width: 575.98px) {
     .gw-user-form .gw-user-roles,
@@ -4531,5 +4562,412 @@ html.gw-loading button {
         margin-top: 4px;
         color: var(--gw-muted);
         font-size: 0.85rem;
+    }
+}
+
+/* ---------- Academic terms: calendar for the Add term / Edit term dates ----------
+   Replaces the browser's date popup in the add / edit form (Scripts/admin-terms.js). The real date inputs
+   stay in the form, hidden. */
+.gw-terms .gw-terms-control input[hidden],
+.gw-terms .gw-terms-control .gw-terms-datebtn[hidden] {
+    display: none;
+}
+
+/* the field: looks like the other inputs, with the calendar icon at the end */
+.gw-terms .gw-terms-control .gw-terms-datebtn {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    width: 100%;
+    height: 44px;
+    font-size: 1rem;
+    text-align: left;
+    cursor: pointer;
+}
+
+    .gw-terms .gw-terms-datebtn::after {
+        content: "";
+        flex: 0 0 auto;
+        width: 20px;
+        height: 20px;
+        background: url("img/icons/calendar.svg") center / 20px 20px no-repeat;
+    }
+
+    .gw-terms .gw-terms-datebtn:hover {
+        background-color: var(--gw-lime-pale);
+    }
+
+    .gw-terms .gw-terms-datebtn:focus-visible,
+    .gw-terms .gw-terms-datebtn[aria-expanded="true"] {
+        outline: 3px solid var(--gw-ink);
+        outline-offset: 0;
+        box-shadow: 0 0 0 6px var(--gw-lime);
+    }
+
+    .gw-terms .gw-terms-datebtn-empty .gw-terms-datebtn-text {
+        color: var(--gw-muted);
+    }
+
+/* the popup: fixed to the window (so the scrolling form cannot clip it), above the modal card */
+.gw-terms .gw-terms-cal {
+    position: fixed;
+    z-index: 2;
+    width: 300px;
+    max-width: calc(100vw - 16px);
+    padding: 0 12px 12px;
+    border: var(--gw-outline);
+    background: var(--gw-paper);
+    color: var(--gw-ink);
+    box-shadow: var(--gw-shadow);
+}
+
+    .gw-terms .gw-terms-cal[hidden] {
+        display: none;
+    }
+
+.gw-terms .gw-terms-cal-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin: 0 -12px 8px;
+    padding: 8px 10px;
+    border-bottom: 1.5px dashed var(--gw-ink);
+    background: var(--gw-terms-blue-pale);
+}
+
+.gw-terms .gw-terms-cal-title {
+    font-weight: 700;
+}
+
+    /* the month name and the year: buttons that open the month list and the year list */
+    .gw-terms .gw-terms-cal-titlebtn {
+        padding: 3px 6px;
+        border: 1.5px solid transparent;
+        border-radius: 0;
+        background: transparent;
+        color: var(--gw-ink);
+        font: inherit;
+        font-weight: 700;
+        cursor: pointer;
+    }
+
+        .gw-terms .gw-terms-cal-titlebtn::after {
+            content: " \25BE";
+            font-size: 0.8em;
+        }
+
+        .gw-terms .gw-terms-cal-titlebtn:hover {
+            border-color: var(--gw-ink);
+            background: var(--gw-lime);
+        }
+
+        .gw-terms .gw-terms-cal-titlebtn:focus-visible {
+            outline: 3px solid var(--gw-ink);
+            outline-offset: 0;
+            box-shadow: 0 0 0 5px var(--gw-lime);
+        }
+
+/* the month list and the year list: 3 columns of larger cells (the day cell styles apply) */
+.gw-terms .gw-terms-cal-pick {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+    padding: 4px 0 2px;
+}
+
+    .gw-terms .gw-terms-cal-pick[hidden] {
+        display: none;
+    }
+
+    .gw-terms .gw-terms-cal-pick .gw-terms-cal-cell {
+        height: 52px;
+    }
+
+.gw-terms .gw-terms-cal-nav {
+    flex: 0 0 auto;
+    width: 34px;
+    height: 34px;
+    padding: 0;
+    border: var(--gw-outline);
+    border-radius: 0;
+    background: var(--gw-paper) url("img/icons/chevron-right.svg") center / 18px 18px no-repeat;
+    cursor: pointer;
+}
+
+    .gw-terms .gw-terms-cal-prev {
+        transform: scaleX(-1);
+    }
+
+    .gw-terms .gw-terms-cal-nav:hover:not(:disabled) {
+        background-color: var(--gw-lime);
+    }
+
+    .gw-terms .gw-terms-cal-nav:disabled {
+        opacity: 0.35;
+        cursor: not-allowed;
+    }
+
+/* the days */
+.gw-terms .gw-terms-cal-grid {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+}
+
+    .gw-terms .gw-terms-cal-grid th {
+        padding: 4px 0 6px;
+        color: var(--gw-muted);
+        font-size: 0.78rem;
+        font-weight: 700;
+        text-align: center;
+    }
+
+    .gw-terms .gw-terms-cal-grid td {
+        padding: 1px;
+        text-align: center;
+    }
+
+.gw-terms .gw-terms-cal-day {
+    width: 100%;
+    height: 36px;
+    padding: 0;
+    border: 1.5px solid transparent;
+    border-radius: 0;
+    background: transparent;
+    color: var(--gw-ink);
+    font: inherit;
+    font-size: 0.92rem;
+    cursor: pointer;
+}
+
+    .gw-terms .gw-terms-cal-day:hover {
+        border-color: var(--gw-ink);
+        background: var(--gw-lime);
+    }
+
+    /* days of the next / previous month */
+    .gw-terms .gw-terms-cal-outside {
+        color: #8a8984;
+    }
+
+    /* today: dashed outline (not colour alone) */
+    .gw-terms .gw-terms-cal-today {
+        border: 1.5px dashed var(--gw-ink);
+        font-weight: 700;
+    }
+
+    /* the other date of the term (the start date while picking the end date, and the reverse) */
+    .gw-terms .gw-terms-cal-other {
+        background: var(--gw-terms-blue);
+    }
+
+    /* outside the academic year, or not after the start date: struck through and not clickable */
+    .gw-terms .gw-terms-cal-off,
+    .gw-terms .gw-terms-cal-off:hover {
+        border-color: transparent;
+        background: transparent;
+        color: #b4b2ab;
+        text-decoration: line-through;
+        cursor: not-allowed;
+    }
+
+    /* the other date keeps its marker even when it cannot be picked itself */
+    .gw-terms .gw-terms-cal-off.gw-terms-cal-other {
+        background: var(--gw-terms-blue);
+        color: var(--gw-ink);
+    }
+
+    /* the chosen date: filled ink square, like the primary buttons */
+    .gw-terms .gw-terms-cal-selected,
+    .gw-terms .gw-terms-cal-selected:hover {
+        border-color: var(--gw-ink);
+        background: var(--gw-ink);
+        color: var(--gw-paper);
+        font-weight: 700;
+    }
+
+    .gw-terms .gw-terms-cal-day:focus-visible,
+    .gw-terms .gw-terms-cal-nav:focus-visible {
+        position: relative;
+        outline: 3px solid var(--gw-ink);
+        outline-offset: 0;
+        box-shadow: 0 0 0 5px var(--gw-lime);
+    }
+
+.gw-terms .gw-terms-cal-note {
+    margin: 8px 0 0;
+    color: var(--gw-muted);
+    font-size: 0.8rem;
+}
+
+.gw-terms .gw-terms-cal-foot {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1.5px dashed var(--gw-ink);
+}
+
+    .gw-terms .gw-terms-cal-foot .gw-btn:disabled:hover {
+        transform: none;
+        box-shadow: none;
+    }
+
+
+/* ---------- Change your password (after a temporary password) ----------
+   Views/Account/ForceChangePassword.cshtml. Uses the sign-in card and its fields / show-hide buttons;
+   adds the password rules, the "passwords match" line and the messages under the fields. */
+/* Compact enough to fit a 1366 x 768 screen without scrolling; on taller screens the content sits in the
+   middle of the space between the header and the footer. Nothing is clipped: short screens scroll as usual. */
+.gw-forcepw {
+    margin-top: 0;
+}
+
+@media (min-width: 768px) {
+    .gw-forcepw {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        /* the window minus the header, the page padding and the footer */
+        min-height: calc(100vh - 212px);
+    }
+}
+
+.gw-forcepw .gw-forcepw-intro {
+    max-width: 760px;
+    margin: 0 auto;
+    text-align: center;
+}
+
+    .gw-forcepw .gw-forcepw-intro .gw-login-headline {
+        margin-bottom: 4px;
+    }
+
+.gw-forcepw .gw-forcepw-card {
+    width: 100%;
+    max-width: 480px;
+    margin: 26px auto 0;   /* room for the card's title tab, which sits above its top edge */
+}
+
+    .gw-forcepw .gw-forcepw-card .gw-card-body {
+        padding-bottom: 12px;
+    }
+
+.gw-forcepw .gw-forcepw-alert-title {
+    display: block;
+    margin-bottom: 2px;
+}
+
+.gw-forcepw .gw-forcepw-alert .gw-error-list {
+    margin: 0;
+    padding-left: 18px;
+}
+
+/* message under a field */
+.gw-forcepw .gw-forcepw-error {
+    margin: 6px 0 0;
+    color: #b3470d;
+    font-size: 0.88rem;
+    font-weight: 700;
+}
+
+    .gw-forcepw .gw-forcepw-error[hidden],
+    .gw-forcepw .gw-pw-match[hidden] {
+        display: none;
+    }
+
+/* the password rules: a box per rule, ticked in lime when met (not colour alone: the tick shows).
+   In aligned columns where there is room (two on a desktop card), one per line on a phone. */
+.gw-forcepw .gw-pw-rules {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 4px 16px;
+    margin: 8px 0 0;
+    padding: 8px 10px;
+    border: 1.5px dashed var(--gw-ink);
+    background: var(--gw-head);
+    color: var(--gw-muted);
+    font-size: 0.88rem;
+    list-style: none;
+}
+
+    .gw-forcepw .gw-pw-rules li,
+    .gw-forcepw .gw-pw-match {
+        position: relative;
+        padding-left: 24px;
+        line-height: 1.4;
+    }
+
+        .gw-forcepw .gw-pw-rules li::before,
+        .gw-forcepw .gw-pw-match::before {
+            content: "";
+            position: absolute;
+            top: 1px;
+            left: 0;
+            box-sizing: border-box;
+            width: 17px;
+            height: 17px;
+            border: 1.5px solid var(--gw-ink);
+            background: var(--gw-paper);
+            color: var(--gw-ink);
+            font-size: 0.72rem;
+            font-weight: 700;
+            line-height: 14px;
+            text-align: center;
+        }
+
+        .gw-forcepw .gw-pw-rules li.gw-pw-rule-ok {
+            color: var(--gw-ink);
+        }
+
+            .gw-forcepw .gw-pw-rules li.gw-pw-rule-ok::before,
+            .gw-forcepw .gw-pw-match.gw-pw-match-ok::before {
+                content: "\2713";
+                background: var(--gw-lime);
+            }
+
+        /* still not met after Save */
+        .gw-forcepw .gw-pw-rules li.gw-pw-rule-bad {
+            color: #b3470d;
+            font-weight: 700;
+        }
+
+            .gw-forcepw .gw-pw-rules li.gw-pw-rule-bad::before,
+            .gw-forcepw .gw-pw-match.gw-pw-match-bad::before {
+                content: "\00D7";
+                border-style: dashed;
+                border-color: var(--gw-orange);
+                color: #b3470d;
+            }
+
+/* "Passwords match." / "Passwords do not match yet." */
+.gw-forcepw .gw-pw-match {
+    margin: 8px 0 0;
+    font-size: 0.88rem;
+    font-weight: 700;
+}
+
+    .gw-forcepw .gw-pw-match.gw-pw-match-bad {
+        color: #b3470d;
+    }
+
+.gw-forcepw .gw-forcepw-note {
+    margin: 8px 0 0;
+    color: var(--gw-muted);
+    font-size: 0.82rem;
+    line-height: 1.4;
+    text-align: center;
+}
+
+@media (max-width: 575.98px) {
+    .gw-forcepw {
+        margin-top: 16px;
+    }
+
+    .gw-forcepw .gw-forcepw-card {
+        margin-top: 24px;
     }
 }

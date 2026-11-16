@@ -292,6 +292,7 @@
     <Content Include="favicon.ico" />
     <Content Include="Global.asax" />
     <Content Include="Content\Site.css" />
+    <Content Include="Scripts\account-force-password.js" />
     <Content Include="Scripts\admin-accounts.js" />
     <Content Include="Scripts\admin-create-user.js" />
     <Content Include="Scripts\admin-terms.js" />

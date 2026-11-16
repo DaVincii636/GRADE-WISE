@@ -43,13 +43,26 @@
         .Union(rows.Where(x => x.AcademicYear != null).Select(x => x.AcademicYear))
         .Distinct().OrderBy(x => x).ToList();
 
-    // The real terms from the database, handed to the page script (id, name, isCurrent only).
-    var termsJson = System.Web.Helpers.Json.Encode(Model.Select(x => new { id = x.Id, name = x.Name, isCurrent = x.IsCurrent }).ToList());
+    // Why a term cannot be deleted (in use, or courses use it). AdminController.DeleteTerm enforces the same rules.
+    var deleteBlockers = ViewBag.TermDeleteBlockers as Dictionary<string, string> ?? new Dictionary<string, string>();
+
+    // The real terms from the database, handed to the page script: id, name, isCurrent, the saved dates
+    // (yyyy-MM-dd, or "" for terms saved without dates) and why the term cannot be deleted.
+    Func<DateTime?, string> isoDate = d => d.HasValue ? d.Value.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture) : "";
+    var termsJson = System.Web.Helpers.Json.Encode(Model.Select(x => new {
+        id = x.Id, name = x.Name, isCurrent = x.IsCurrent,
+        startDate = isoDate(x.StartDate), endDate = isoDate(x.EndDate),
+        deleteBlocked = deleteBlockers.ContainsKey(x.Id) ? deleteBlockers[x.Id] : ""
+    }).ToList());
+    // Dates in the table rendered by the server (before the script runs, or without JavaScript).
+    Func<DateTime?, string> shownDate = d => d.HasValue ? d.Value.ToString("MMM d, yyyy", System.Globalization.CultureInfo.InvariantCulture) : "Not set";
 }
 
 <div class="gw-terms"
      data-terms="@termsJson"
      data-set-current-url="@Url.Action("SetCurrentTerm", "Admin")"
+     data-delete-url="@Url.Action("DeleteTerm", "Admin")"
+     data-edit-url="@Url.Action("EditTerm", "Admin")"
      data-today="@DateTime.Now.ToString("yyyy-MM-dd")">
 
     <h1 class="gw-page-title">Academic terms</h1>
@@ -68,7 +81,7 @@
     @* Shown once the page script runs: explains which actions are saved and which are preview-only. *@
     <div class="gw-terms-preview-note" id="terms-preview-note" hidden>
         <span class="gw-terms-pending-tag">Preview</span>
-        <span><strong>Add term</strong> and <strong>Make current</strong> are saved. Dates, edits, archiving and restoring are kept on this page only and reset when the page reloads.</span>
+        <span><strong>Add term</strong>, <strong>Edit</strong> (dates included), <strong>Make current</strong> and <strong>Delete</strong> are saved. Archiving and restoring are kept on this page only and reset when the page reloads.</span>
     </div>
 
     @* Shown by the script when the term in use does not match today's date. *@
@@ -174,8 +187,8 @@
                             <tr class="@(t.IsCurrent ? "gw-term-current" : "")">
                                 <td><span class="gw-term-box">@(r.AcademicYear == null ? t.Name : "A.Y. " + r.AcademicYear)</span></td>
                                 <td class="gw-terms-col-sem">@(r.Semester ?? "-")</td>
-                                <td class="gw-terms-col-date gw-terms-unset">Not set</td>
-                                <td class="gw-terms-col-date gw-terms-unset">Not set</td>
+                                <td class="gw-terms-col-date@(t.StartDate.HasValue ? "" : " gw-terms-unset")">@shownDate(t.StartDate)</td>
+                                <td class="gw-terms-col-date@(t.EndDate.HasValue ? "" : " gw-terms-unset")">@shownDate(t.EndDate)</td>
                                 <td class="gw-terms-col-status">
                                     @if (t.IsCurrent)
                                     {
@@ -255,11 +268,11 @@
                         </div>
                         <div class="gw-terms-control">
                             <label for="term-start">Start date <span class="gw-terms-req">required</span></label>
-                            <input type="date" id="term-start" class="gw-inline-select" aria-required="true" aria-describedby="term-feedback term-dates-hint" />
+                            <input type="date" id="term-start" name="startDate" class="gw-inline-select" aria-required="true" aria-describedby="term-feedback term-dates-hint" />
                         </div>
                         <div class="gw-terms-control">
                             <label for="term-end">End date <span class="gw-terms-req">required</span></label>
-                            <input type="date" id="term-end" class="gw-inline-select" aria-required="true" aria-describedby="term-feedback term-dates-hint" />
+                            <input type="date" id="term-end" name="endDate" class="gw-inline-select" aria-required="true" aria-describedby="term-feedback term-dates-hint" />
                         </div>
 
                         <p class="gw-terms-hint" id="term-dates-hint">The end date must be after the start date. Both must fall within the academic year and must not overlap another active term.</p>
@@ -274,7 +287,8 @@
 
                     <div class="gw-alert gw-terms-feedback" id="term-feedback" role="alert" hidden></div>
 
-                    @* Only the name is sent to the existing AddTerm action. *@
+                    @* The name and the dates (startDate, endDate) are sent to AddTerm, or to EditTerm/{id} when editing
+                       (the script sets the form's action). The server checks the dates again before saving. *@
                     <input type="hidden" name="name" id="term-name" />
                 </div>
                 <div class="gw-modal-foot gw-terms-modal-foot">
@@ -317,6 +331,56 @@
             </div>
         </div>
     </div>
+
+    @* ---------- Manage (archive or delete one active term) ---------- *@
+    <div id="term-manage" class="gw-modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="term-manage-title" hidden>
+        <div class="gw-panel gw-card-raised gw-modal-card gw-terms-modal">
+            <div class="gw-panel-head">
+                <h2 id="term-manage-title" class="gw-panel-title">Manage term</h2>
+            </div>
+            <div class="gw-panel-body">
+                <p class="gw-terms-modal-name"><span class="gw-term-box" data-manage-slot="name"></span></p>
+
+                @* ----- Archive ----- *@
+                <section class="gw-editinfo-section" aria-labelledby="term-manage-archive-h">
+                    <h3 id="term-manage-archive-h" class="gw-editinfo-heading">Archive term</h3>
+                    <p class="gw-muted gw-editinfo-current">Moves the term to Archived terms. Its courses, grades and history are kept, and you can restore it at any time.</p>
+                    <div class="gw-alert gw-alert-info" role="note" data-manage-archive-blocked hidden>
+                        <strong>This term cannot be archived.</strong>
+                        <span>It is the term in use. Make another term current first.</span>
+                    </div>
+                    <div class="gw-form-buttons">
+                        <button type="button" class="gw-btn gw-btn-small gw-btn-outline gw-terms-btn-archive" data-manage-action="archive">Archive term</button>
+                    </div>
+                </section>
+
+                @* ----- Delete (only for terms without records) ----- *@
+                <section class="gw-editinfo-section" aria-labelledby="term-manage-delete-h">
+                    <h3 id="term-manage-delete-h" class="gw-editinfo-heading">Delete term</h3>
+                    @* Shown instead of the button when the term cannot be deleted; filled by the script. *@
+                    <div class="gw-alert gw-alert-info" role="note" data-manage-delete-blocked hidden>
+                        <strong>This term cannot be deleted.</strong>
+                        <span data-manage-slot="delete-reason"></span>
+                    </div>
+                    <div data-manage-delete-allowed>
+                        <p class="gw-muted gw-editinfo-current">No courses, grades or history use this term. Deleting removes it from the database permanently. This cannot be undone.</p>
+                        <div class="gw-form-buttons">
+                            <button type="button" class="gw-btn gw-btn-small gw-btn-danger" data-manage-action="delete">Delete term</button>
+                        </div>
+                    </div>
+                </section>
+            </div>
+            <div class="gw-modal-foot gw-terms-modal-foot">
+                <button type="button" class="gw-btn gw-btn-outline gw-btn-small" data-modal-close>Close</button>
+            </div>
+        </div>
+    </div>
+
+    @* Posts Delete to AdminController.DeleteTerm (the script sets the URL). *@
+    @using (Html.BeginForm("Terms", "Admin", FormMethod.Post, new { id = "term-delete-form", hidden = "hidden" }))
+    {
+        @Html.AntiForgeryToken()
+    }
 
     @* Posts "Make current" to the existing SetCurrentTerm action (the script sets the URL). *@
     @using (Html.BeginForm("Terms", "Admin", FormMethod.Post, new { id = "term-current-form", hidden = "hidden" }))

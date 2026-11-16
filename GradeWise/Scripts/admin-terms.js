@@ -5,12 +5,11 @@
 // Types for the term store, the server helper and window.GW: Scripts/gw-globals.d.ts.
 
 // =====================================================================
-// 1) TEMPORARY TERM STORE (in memory only)
-// Holds the terms for this page view. Nothing is written to the database, localStorage
-// or sessionStorage; a reload starts again from the real terms the server sent.
-// To connect the database later, replace the bodies of update / archive / restore
-// (and load start / end dates) with calls to new Admin actions. Every method already
-// returns a Promise, so the page code below does not need to change.
+// 1) TERM STORE FOR THIS PAGE VIEW
+// Starts from the real terms the server sent (names, current flag and saved dates).
+// Adding, editing, Make current and Delete go to the server (section 2) and reload the page.
+// Archive / restore are still kept in memory only: nothing is written to the database,
+// localStorage or sessionStorage, and a reload starts again from the database.
 // =====================================================================
 
 window.GradeWiseTermStore = (function () {
@@ -61,7 +60,7 @@ window.GradeWiseTermStore = (function () {
         parseName: parseName,
         buildName: buildName,
 
-        // initial: [{ id, name, isCurrent }] as stored in the database today
+        // initial: [{ id, name, isCurrent, startDate, endDate, deleteBlocked }] from the database
         load: function (initial) {
             terms = (initial || []).map(function (t) {
                 var p = parseName(t.name);
@@ -70,11 +69,12 @@ window.GradeWiseTermStore = (function () {
                     name: t.name,
                     semester: p.semester,
                     academicYear: p.academicYear,
-                    startDate: "",       // not stored in the database yet
-                    endDate: "",         // not stored in the database yet
+                    startDate: t.startDate || "",   // saved dates (yyyy-mm-dd); "" for terms saved without dates
+                    endDate: t.endDate || "",
                     isCurrent: !!t.isCurrent,
                     archived: false,     // not stored in the database yet
-                    archivedOn: ""
+                    archivedOn: "",
+                    deleteBlocked: t.deleteBlocked || ""   // from the server: why it cannot be deleted ("" = it can)
                 };
             });
             changed = false;
@@ -85,19 +85,6 @@ window.GradeWiseTermStore = (function () {
         get: function (id) { var t = find(id); return t ? copy(t) : null; },
 
         hasChanges: function () { return changed; },
-
-        // changes: { semester, academicYear, startDate, endDate } (already checked by the page)
-        update: function (id, changes) {
-            var t = find(id);
-            if (!t) { return fail("That term no longer exists."); }
-            t.semester = changes.semester;
-            t.academicYear = changes.academicYear;
-            t.name = buildName(changes.semester, changes.academicYear);
-            t.startDate = changes.startDate;
-            t.endDate = changes.endDate;
-            changed = true;
-            return Promise.resolve(copy(t));
-        },
 
         archive: function (id, today) {
             var t = find(id);
@@ -123,8 +110,12 @@ window.GradeWiseTermStore = (function () {
 
 // =====================================================================
 // 2) EXISTING SERVER ACTIONS (saved to the database)
-// Add term -> POST /Admin/AddTerm (name)       Make current -> POST /Admin/SetCurrentTerm/{id}
-// Both reload the page, which also clears the temporary store above.
+// Add term -> POST /Admin/AddTerm (name, startDate, endDate)
+// Edit     -> POST /Admin/EditTerm/{id} (name, startDate, endDate; the name cannot change once courses use the term)
+// Make current -> POST /Admin/SetCurrentTerm/{id}
+// Delete   -> POST /Admin/DeleteTerm/{id} (refused by the server if the term is in use or has courses)
+// The server checks the dates again with the same rules as this page.
+// All reload the page, which also clears the temporary store above.
 // =====================================================================
 
 window.GradeWiseTermServer = (function () {
@@ -137,8 +128,19 @@ window.GradeWiseTermServer = (function () {
             if (!(form instanceof HTMLFormElement) || !setUrl) { return; }
             form.action = setUrl.replace(/\/$/, "") + "/" + encodeURIComponent(id);
             form.submit();
+        },
+        deleteTerm: function (id) {
+            var form = document.getElementById("term-delete-form");
+            var deleteUrl = root ? root.getAttribute("data-delete-url") : null;
+            if (!(form instanceof HTMLFormElement) || !deleteUrl) { return; }
+            form.action = deleteUrl.replace(/\/$/, "") + "/" + encodeURIComponent(id);
+            form.submit();
+        },
+        editUrl: function (id) {
+            var editUrl = root ? root.getAttribute("data-edit-url") : null;
+            return editUrl ? editUrl.replace(/\/$/, "") + "/" + encodeURIComponent(id) : null;
         }
-        // Add term submits the add / edit form itself (see "add / edit form" below).
+        // Add and Edit submit the add / edit form itself (see "add / edit form" below).
     };
     return api;
 })();
@@ -447,8 +449,7 @@ window.GradeWiseTermServer = (function () {
         if (t.archived) {
             actions.appendChild(button("Restore", "restore", "gw-btn-gold"));
         } else {
-            actions.appendChild(button("Archive", "archive", "gw-btn-outline gw-terms-btn-archive",
-                t.isCurrent ? "This term is in use. Make another term current before archiving it." : null));
+            actions.appendChild(button("Manage", "manage", "gw-btn-outline gw-terms-btn-archive"));
             if (!t.isCurrent) {
                 actions.appendChild(button("Make current", "current", "", makeCurrentBlocker(t) || null));
             }
@@ -589,7 +590,7 @@ window.GradeWiseTermServer = (function () {
         if (inUse) { paragraphs.push([{ text: inUse.name + " will no longer be current.", muted: true }]); }
         paragraphs.push([{ text: "New courses will use the current term by default.", muted: true }]);
         if (store.hasChanges()) {
-            paragraphs.push([{ text: "The page will reload, so preview changes made here (dates, edits, archiving) will be cleared.", muted: true }]);
+            paragraphs.push([{ text: "The page will reload, so archiving and restoring done on this page will be cleared.", muted: true }]);
         }
         askConfirm({
             title: "Change the current term?",
@@ -599,8 +600,11 @@ window.GradeWiseTermServer = (function () {
         });
     }
 
-    /** @param {GWTerm} t */
-    function askArchive(t) {
+    /**
+     * @param {GWTerm} t
+     * @param {() => void} [onConfirmed]  runs once the user confirms, before archiving
+     */
+    function askArchive(t, onConfirmed) {
         if (t.isCurrent) { toast("warning", "This term is in use. Make another term current before archiving it."); return; }
         askConfirm({
             title: "Archive this term?",
@@ -611,6 +615,7 @@ window.GradeWiseTermServer = (function () {
             yes: "Archive term",
             tone: "danger",
             action: function () {
+                if (onConfirmed) { onConfirmed(); }
                 store.archive(t.id, today).then(function (saved) {
                     render();
                     toast("success", saved.name + " was archived (preview only; resets on reload).");
@@ -648,6 +653,30 @@ window.GradeWiseTermServer = (function () {
     }
 
     /**
+     * Permanent delete. Only offered when the server reported no records for the term;
+     * the server checks again and refuses if anything uses it now.
+     * @param {GWTerm} t
+     */
+    function askDelete(t) {
+        if (t.deleteBlocked) { toast("warning", t.name + " cannot be deleted. " + t.deleteBlocked); return; }
+        /** @type {GWDialogPiece[][]} */
+        var paragraphs = [
+            [{ text: t.name, bold: true }, { text: " will be removed from the database permanently." }],
+            [{ text: "This cannot be undone. To keep the term but hide it, archive it instead.", muted: true }]
+        ];
+        if (store.hasChanges()) {
+            paragraphs.push([{ text: "The page will reload, so archiving and restoring done on this page will be cleared.", muted: true }]);
+        }
+        askConfirm({
+            title: "Delete this term permanently?",
+            paragraphs: paragraphs,
+            yes: "Delete term",
+            tone: "danger",
+            action: function () { server.deleteTerm(t.id); }
+        });
+    }
+
+    /**
      * After a row moves lists, put focus somewhere sensible.
      * @param {string} id  the term
      * @param {string} action  the data-action button to focus
@@ -677,8 +706,11 @@ window.GradeWiseTermServer = (function () {
     var nameInput = requireById("term-name", HTMLInputElement);
     var preview = requireById("term-preview", HTMLElement);
     var feedback = requireById("term-feedback", HTMLElement);
+    var datesHint = requireById("term-dates-hint", HTMLElement);
+    var DEFAULT_DATES_HINT = datesHint.textContent || "";
     /** @type {Record<string, HTMLSelectElement | HTMLInputElement>} problem field -> form control */
     var FIELDS = { year: yearSel, semester: semSel, start: startIn, end: endIn };
+    var addAction = form.getAttribute("action") || form.action;   // AdminController.AddTerm
     /** @type {GWTerm | null} the term being edited, null while adding */
     var editing = null;
     var tried = false;     // "missing" messages only after a first submit
@@ -705,6 +737,11 @@ window.GradeWiseTermServer = (function () {
         startIn.min = endIn.min = range ? range.min : "";
         startIn.max = endIn.max = range ? range.max : "";
         if (startIn.value) { endIn.min = startIn.value; }
+        // Both dates may fall in either calendar year of the chosen academic year.
+        datesHint.textContent = range
+            ? "For A.Y. " + c.academicYear + ", both dates must fall between " + formatDate(range.min) + " and " + formatDate(range.max) +
+              " (either year is fine). The end date must be after the start date and must not overlap another active term."
+            : DEFAULT_DATES_HINT;
 
         var problems = checkTerm(c).filter(function (p) { return tried || !p.missing; });
         Object.keys(FIELDS).forEach(function (k) {
@@ -715,6 +752,7 @@ window.GradeWiseTermServer = (function () {
         var texts = problems.map(function (p) { return p.text; }).filter(function (t, i, a) { return t && a.indexOf(t) === i; });
         feedback.textContent = texts.join(" ");
         feedback.hidden = texts.length === 0;
+        if (dateFields) { syncDateFields(); }
         return problems;
     }
 
@@ -735,16 +773,590 @@ window.GradeWiseTermServer = (function () {
         yearSel.appendChild(opt);
     }
 
+    // ========== date picker (Add term and Edit term) ==========
+    // In the add / edit form the browser's own date popup is replaced by a calendar in the GradeWise style.
+    // The real <input type="date"> fields stay in the form (hidden): they still hold the value that is
+    // posted, the academic-year min / max set by renderForm and the checks above. The calendar only writes
+    // to them (and fires "input" / "change", so the checks run as before).
+    var MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+    var DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+    var DAY_SHORT = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
+
+    /** @param {number} n */
+    function pad2(n) { return (n < 10 ? "0" : "") + n; }
+
+    /**
+     * yyyy-mm-dd -> a Date at UTC midnight (UTC, so the day never shifts with the time zone).
+     * @param {string} iso
+     * @returns {Date | null}
+     */
+    function parseIso(iso) {
+        var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso || "");
+        return m ? new Date(Date.UTC(parseInt(m[1], 10), parseInt(m[2], 10) - 1, parseInt(m[3], 10))) : null;
+    }
+
+    /** @param {Date} d */
+    function toIso(d) { return d.getUTCFullYear() + "-" + pad2(d.getUTCMonth() + 1) + "-" + pad2(d.getUTCDate()); }
+
+    /**
+     * @param {string} iso
+     * @param {number} days
+     */
+    function addDays(iso, days) {
+        var d = parseIso(iso);
+        if (!d) { return ""; }
+        d.setUTCDate(d.getUTCDate() + days);
+        return toIso(d);
+    }
+
+    /**
+     * The dates that may be picked for a field ("" = no limit): the chosen academic year (both of its
+     * calendar years, the same range as the checks above), and the end date strictly after the start date
+     * (the start date before the end date). The other date only counts while it is inside the academic
+     * year, so changing the academic year never leaves a field with nothing to pick.
+     * @param {HTMLInputElement} input
+     * @returns {{ lo: string, hi: string }}
+     */
+    function dateLimits(input) {
+        var ay = yearSel.value ? academicYearRange(yearSel.value) : null;
+        var lo = ay ? ay.min : "", hi = ay ? ay.max : "";
+        var other = input === startIn ? endIn.value : startIn.value;
+        if (other && (!ay || (other >= ay.min && other <= ay.max))) {
+            if (input === endIn) {
+                var after = addDays(other, 1);
+                if (!lo || after > lo) { lo = after; }
+            } else {
+                var before = addDays(other, -1);
+                if (!hi || before < hi) { hi = before; }
+            }
+        }
+        return { lo: lo, hi: hi };
+    }
+
+    /**
+     * @param {string} iso
+     * @param {{ lo: string, hi: string }} lim
+     */
+    function dateAllowed(iso, lim) { return !!iso && (!lim.lo || iso >= lim.lo) && (!lim.hi || iso <= lim.hi); }
+
+    /** @typedef {{ input: HTMLInputElement, button: HTMLButtonElement, text: HTMLElement, name: string }} DateField */
+
+    /**
+     * Adds the calendar button next to a date input (hidden until the Edit form uses it).
+     * @param {HTMLInputElement} input
+     * @returns {DateField}
+     */
+    function makeDateField(input) {
+        var label = form.querySelector('label[for="' + input.id + '"]');
+        var name = label && label.firstChild ? (label.firstChild.textContent || "").trim() : "Date";
+        var button = el("button", "gw-inline-select gw-terms-datebtn");
+        button.type = "button";
+        button.hidden = true;
+        button.setAttribute("aria-haspopup", "dialog");
+        button.setAttribute("aria-expanded", "false");
+        button.setAttribute("aria-describedby", input.getAttribute("aria-describedby") || "");
+        var text = el("span", "gw-terms-datebtn-text");
+        button.appendChild(text);
+        input.insertAdjacentElement("afterend", button);
+
+        /** @type {DateField} */
+        var field = { input: input, button: button, text: text, name: name };
+        if (label) {
+            // the label points at the hidden input; send its click to the calendar button
+            label.addEventListener("click", function (e) {
+                if (!button.hidden) { e.preventDefault(); button.focus(); }
+            });
+        }
+        button.addEventListener("click", function () {
+            if (calField === field) { closeCalendar(true); } else { openCalendar(field); }
+        });
+        button.addEventListener("keydown", function (e) {
+            if (e.key === "ArrowDown" && calField !== field) { e.preventDefault(); openCalendar(field); }
+            else if (e.key === "Escape" && calField === field) { e.preventDefault(); closeCalendar(true); }
+        });
+        return field;
+    }
+
+    var dateFields = [makeDateField(startIn), makeDateField(endIn)];
+
+    /** The buttons show the input's value and its highlighted (bad) state. */
+    function syncDateFields() {
+        dateFields.forEach(function (f) {
+            var value = f.input.value;
+            f.text.textContent = value ? formatDate(value) : "Choose a date";
+            f.button.classList.toggle("gw-terms-datebtn-empty", !value);
+            f.button.classList.toggle("gw-input-bad", f.input.classList.contains("gw-input-bad"));
+            f.button.setAttribute("aria-invalid", f.input.getAttribute("aria-invalid") || "false");
+            f.button.setAttribute("aria-label", f.name + ": " + (value ? formatDate(value) : "not set") + ". Opens a calendar.");
+        });
+    }
+
+    /** @param {boolean} on  true: calendar buttons; false: the browser's date inputs */
+    function useDatePicker(on) {
+        closeCalendar(false);
+        dateFields.forEach(function (f) {
+            f.input.hidden = on;
+            f.button.hidden = !on;
+        });
+    }
+
+    /**
+     * Focuses a form field, or its calendar button when the date input is hidden.
+     * @param {HTMLElement} control
+     */
+    function focusControl(control) {
+        var f = dateFields.filter(function (d) { return d.input === control; })[0];
+        (f && !f.button.hidden ? f.button : control).focus();
+    }
+
+    // ----- the calendar popup (one, shared by both fields) -----
+    // It sits inside the modal (so it stays above it and inside its focus) with fixed position, so the
+    // scrolling form body cannot clip it.
+    var cal = el("div", "gw-terms-cal");
+    cal.hidden = true;
+    cal.setAttribute("role", "dialog");
+    cal.setAttribute("aria-modal", "false");
+    var calHead = el("div", "gw-terms-cal-head");
+    var calPrev = el("button", "gw-terms-cal-nav gw-terms-cal-prev");
+    calPrev.type = "button";
+    calPrev.setAttribute("aria-label", "Previous month");
+    var calTitle = el("span", "gw-terms-cal-title");
+    calTitle.id = "gw-terms-cal-title";
+    calTitle.setAttribute("aria-live", "polite");
+    var calNext = el("button", "gw-terms-cal-nav gw-terms-cal-next");
+    calNext.type = "button";
+    calNext.setAttribute("aria-label", "Next month");
+    calHead.appendChild(calPrev);
+    calHead.appendChild(calTitle);
+    calHead.appendChild(calNext);
+    // the month name and the year in the title are buttons: they open the month list and the year list
+    var calMonthBtn = el("button", "gw-terms-cal-titlebtn");
+    calMonthBtn.type = "button";
+    var calYearBtn = el("button", "gw-terms-cal-titlebtn");
+    calYearBtn.type = "button";
+    var calGrid = el("table", "gw-terms-cal-grid");
+    calGrid.setAttribute("role", "grid");
+    calGrid.setAttribute("aria-labelledby", calTitle.id);
+    var calHeadRow = el("tr");
+    DAY_SHORT.forEach(function (d, i) {
+        var th = el("th", null, d);
+        th.scope = "col";
+        th.abbr = DAY_NAMES[i];
+        calHeadRow.appendChild(th);
+    });
+    var calThead = el("thead");
+    calThead.appendChild(calHeadRow);
+    var calBody = el("tbody");
+    calGrid.appendChild(calThead);
+    calGrid.appendChild(calBody);
+    // the month list (12 months) and the year list (12 years per page) share this 3-column grid
+    var calPick = el("div", "gw-terms-cal-pick");
+    calPick.hidden = true;
+    var calNote = el("p", "gw-terms-cal-note");
+    var calFoot = el("div", "gw-terms-cal-foot");
+    var calClear = el("button", "gw-btn gw-btn-small gw-btn-outline", "Clear");
+    calClear.type = "button";
+    var calToday = el("button", "gw-btn gw-btn-small", "Today");
+    calToday.type = "button";
+    calFoot.appendChild(calClear);
+    calFoot.appendChild(calToday);
+    cal.appendChild(calHead);
+    cal.appendChild(calGrid);
+    cal.appendChild(calPick);
+    cal.appendChild(calNote);
+    cal.appendChild(calFoot);
+    formModal.appendChild(cal);
+
+    /** @type {DateField | null} the field the calendar is open for */
+    var calField = null;
+    var viewYear = 0, viewMonth = 0;   // the month shown (month 0-11)
+    var focusIso = "";                 // the day that has keyboard focus in the grid
+    var calView = "days";              // "days" | "months" | "years"
+    var yearPageStart = 0;             // the first year on the year list's page
+
+    /**
+     * Whether any day of the month can be picked.
+     * @param {number} year
+     * @param {number} month  0-11
+     * @param {{ lo: string, hi: string }} lim
+     */
+    function monthAllowed(year, month, lim) {
+        var first = toIso(new Date(Date.UTC(year, month, 1)));
+        var last = toIso(new Date(Date.UTC(year, month + 1, 0)));
+        return (!lim.hi || first <= lim.hi) && (!lim.lo || last >= lim.lo);
+    }
+
+    /**
+     * Whether any day of the year can be picked.
+     * @param {number} year
+     * @param {{ lo: string, hi: string }} lim
+     */
+    function yearAllowed(year, lim) {
+        return (!lim.hi || year + "-01-01" <= lim.hi) && (!lim.lo || year + "-12-31" >= lim.lo);
+    }
+
+    /**
+     * A cell of the month / year list (styled like the day cells).
+     * @param {string} text
+     * @param {string} label  read by screen readers
+     * @param {boolean} selected  holds the field's date
+     * @param {boolean} current  holds today
+     * @param {boolean} allowed  has a day that can be picked
+     * @param {boolean} focused  gets keyboard focus
+     */
+    function pickCell(text, label, selected, current, allowed, focused) {
+        var b = el("button", "gw-terms-cal-day gw-terms-cal-cell", text);
+        b.type = "button";
+        b.tabIndex = focused ? 0 : -1;
+        b.setAttribute("aria-label", label);
+        b.setAttribute("aria-pressed", selected ? "true" : "false");
+        if (selected) { b.classList.add("gw-terms-cal-selected"); }
+        if (current) { b.classList.add("gw-terms-cal-today"); }
+        if (!allowed) {
+            b.classList.add("gw-terms-cal-off");
+            b.setAttribute("aria-disabled", "true");
+        }
+        return b;
+    }
+
+    function renderCalendar() {
+        var field = calField;
+        if (!field) { return; }
+        var lim = dateLimits(field.input);
+        var value = field.input.value;
+        var other = field.input === startIn ? endIn.value : startIn.value;
+        cal.setAttribute("aria-label", "Choose the " + field.name.toLowerCase());
+        renderFoot(lim);
+        if (calView !== "days") { renderPick(lim, value); return; }
+
+        calGrid.hidden = false;
+        calPick.hidden = true;
+        calPick.innerHTML = "";
+        calTitle.innerHTML = "";
+        calMonthBtn.textContent = MONTH_NAMES[viewMonth];
+        calMonthBtn.setAttribute("aria-label", MONTH_NAMES[viewMonth] + ". Choose a month");
+        calYearBtn.textContent = String(viewYear);
+        calYearBtn.setAttribute("aria-label", viewYear + ". Choose a year");
+        calTitle.appendChild(calMonthBtn);
+        calTitle.appendChild(document.createTextNode(" "));
+        calTitle.appendChild(calYearBtn);
+        calPrev.setAttribute("aria-label", "Previous month");
+        calNext.setAttribute("aria-label", "Next month");
+
+        var first = new Date(Date.UTC(viewYear, viewMonth, 1));
+        var day = new Date(first.getTime());
+        day.setUTCDate(1 - first.getUTCDay());   // the Sunday on or before the 1st
+        calBody.innerHTML = "";
+        for (var week = 0; week < 6; week++) {
+            var tr = el("tr");
+            for (var i = 0; i < 7; i++) {
+                var iso = toIso(day);
+                var td = el("td");
+                var b = el("button", "gw-terms-cal-day", String(day.getUTCDate()));
+                b.type = "button";
+                b.tabIndex = iso === focusIso ? 0 : -1;
+                b.setAttribute("data-date", iso);
+                b.setAttribute("aria-label", DAY_NAMES[day.getUTCDay()] + ", " + MONTH_NAMES[day.getUTCMonth()] + " " + day.getUTCDate() + ", " + day.getUTCFullYear());
+                if (day.getUTCMonth() !== viewMonth) { b.classList.add("gw-terms-cal-outside"); }
+                if (iso === today) { b.classList.add("gw-terms-cal-today"); b.setAttribute("aria-current", "date"); }
+                if (iso === value) { b.classList.add("gw-terms-cal-selected"); b.setAttribute("aria-pressed", "true"); }
+                else { b.setAttribute("aria-pressed", "false"); }
+                if (other && iso === other) {
+                    b.classList.add("gw-terms-cal-other");
+                    b.title = field.input === startIn ? "End date" : "Start date";
+                }
+                if (!dateAllowed(iso, lim)) {
+                    b.classList.add("gw-terms-cal-off");
+                    b.setAttribute("aria-disabled", "true");
+                }
+                td.appendChild(b);
+                tr.appendChild(td);
+                day.setUTCDate(day.getUTCDate() + 1);
+            }
+            calBody.appendChild(tr);
+        }
+
+        // no paging into months where nothing can be picked
+        var lastOfPrev = toIso(new Date(Date.UTC(viewYear, viewMonth, 0)));
+        var firstOfNext = toIso(new Date(Date.UTC(viewYear, viewMonth + 1, 1)));
+        calPrev.disabled = !!lim.lo && lastOfPrev < lim.lo;
+        calNext.disabled = !!lim.hi && firstOfNext > lim.hi;
+        placeCalendar();
+    }
+
+    /**
+     * The month list or the year list.
+     * @param {{ lo: string, hi: string }} lim
+     * @param {string} value  the field's date
+     */
+    function renderPick(lim, value) {
+        var chosen = parseIso(value);
+        var now = parseIso(today);
+        calGrid.hidden = true;
+        calPick.hidden = false;
+        calBody.innerHTML = "";
+        calPick.innerHTML = "";
+        calTitle.innerHTML = "";
+        if (calView === "months") {
+            calYearBtn.textContent = String(viewYear);
+            calYearBtn.setAttribute("aria-label", viewYear + ". Choose a year");
+            calTitle.appendChild(calYearBtn);
+            calPick.setAttribute("aria-label", "Months of " + viewYear);
+            calPrev.setAttribute("aria-label", "Previous year");
+            calNext.setAttribute("aria-label", "Next year");
+            calPrev.disabled = !yearAllowed(viewYear - 1, lim);
+            calNext.disabled = !yearAllowed(viewYear + 1, lim);
+            for (var m = 0; m < 12; m++) {
+                var cell = pickCell(MONTHS[m], MONTH_NAMES[m] + " " + viewYear,
+                    !!chosen && chosen.getUTCFullYear() === viewYear && chosen.getUTCMonth() === m,
+                    !!now && now.getUTCFullYear() === viewYear && now.getUTCMonth() === m,
+                    monthAllowed(viewYear, m, lim), m === viewMonth);
+                cell.setAttribute("data-month", String(m));
+                calPick.appendChild(cell);
+            }
+        } else {
+            var last = yearPageStart + 11;
+            calTitle.appendChild(document.createTextNode(yearPageStart + " - " + last));
+            calPick.setAttribute("aria-label", "Years " + yearPageStart + " to " + last);
+            calPrev.setAttribute("aria-label", "Earlier years");
+            calNext.setAttribute("aria-label", "Later years");
+            calPrev.disabled = !!lim.lo && String(yearPageStart - 1) + "-12-31" < lim.lo;
+            calNext.disabled = !!lim.hi && String(last + 1) + "-01-01" > lim.hi;
+            for (var y = yearPageStart; y <= last; y++) {
+                var yearCell = pickCell(String(y), String(y),
+                    !!chosen && chosen.getUTCFullYear() === y,
+                    !!now && now.getUTCFullYear() === y,
+                    yearAllowed(y, lim), y === viewYear);
+                yearCell.setAttribute("data-year", String(y));
+                calPick.appendChild(yearCell);
+            }
+            if (!calPick.querySelector('[tabindex="0"]') && calPick.firstElementChild instanceof HTMLElement) {
+                calPick.firstElementChild.tabIndex = 0;   // the shown year is on another page
+            }
+        }
+        placeCalendar();
+    }
+
+    /** @param {{ lo: string, hi: string }} lim */
+    function renderFoot(lim) {
+        calToday.disabled = !dateAllowed(today, lim);
+        calToday.title = calToday.disabled ? "Today (" + formatDate(today) + ") cannot be picked for this term." : "";
+        calNote.textContent = lim.lo && lim.hi ? "Pick a date from " + formatDate(lim.lo) + " to " + formatDate(lim.hi) + "."
+            : lim.lo ? "Pick a date on or after " + formatDate(lim.lo) + "."
+            : lim.hi ? "Pick a date on or before " + formatDate(lim.hi) + "."
+            : "";
+        calNote.hidden = !calNote.textContent;
+    }
+
+    /** Focuses the month / year cell that has keyboard focus. */
+    function focusPick() {
+        var cell = calPick.querySelector('[tabindex="0"]');
+        if (cell instanceof HTMLElement) { cell.focus(); }
+    }
+
+    /**
+     * @param {string} view  "months" or "years"
+     */
+    function showPick(view) {
+        calView = view;
+        if (view === "years") { yearPageStart = viewYear - 4; }
+        renderCalendar();
+        focusPick();
+    }
+
+    /**
+     * The day to focus after choosing a month: the same day of the month (or the month's last day),
+     * moved to the nearest day that can be picked.
+     */
+    function dayInViewMonth() {
+        var keep = parseIso(focusIso);
+        var last = new Date(Date.UTC(viewYear, viewMonth + 1, 0)).getUTCDate();
+        var iso = toIso(new Date(Date.UTC(viewYear, viewMonth, Math.min(keep ? keep.getUTCDate() : 1, last))));
+        var lim = calField ? dateLimits(calField.input) : { lo: "", hi: "" };
+        return lim.lo && iso < lim.lo ? lim.lo : lim.hi && iso > lim.hi ? lim.hi : iso;
+    }
+
+    function placeCalendar() {
+        if (!calField) { return; }
+        var r = calField.button.getBoundingClientRect();
+        var w = cal.offsetWidth, h = cal.offsetHeight, gap = 6;
+        var vw = document.documentElement.clientWidth, vh = window.innerHeight;
+        var left = Math.min(Math.max(8, r.left), Math.max(8, vw - w - 8));
+        var top = r.bottom + gap;
+        if (top + h > vh - 8) {
+            top = r.top - gap - h >= 8 ? r.top - gap - h : Math.max(8, vh - h - 8);
+        }
+        cal.style.left = left + "px";
+        cal.style.top = top + "px";
+    }
+
+    /** @param {string} iso  shows its month and gives that day keyboard focus */
+    function showDay(iso) {
+        var d = parseIso(iso);
+        if (!d) { return; }
+        focusIso = iso;
+        viewYear = d.getUTCFullYear();
+        viewMonth = d.getUTCMonth();
+        calView = "days";
+        renderCalendar();
+        var b = calBody.querySelector('[data-date="' + iso + '"]');
+        if (b instanceof HTMLElement) { b.focus(); }
+    }
+
+    /** @param {DateField} field */
+    function openCalendar(field) {
+        closeCalendar(false);
+        calField = field;
+        var lim = dateLimits(field.input);
+        var value = field.input.value;
+        /** @param {string} iso  the nearest day that can be picked */
+        function nearest(iso) { return lim.lo && iso < lim.lo ? lim.lo : lim.hi && iso > lim.hi ? lim.hi : iso; }
+        // the saved date when it can be picked (otherwise the nearest allowed day, e.g. after the academic
+        // year was changed); with no date, today or the nearest allowed day
+        var start = value ? nearest(value) : nearest(today);
+        if (!parseIso(start)) { start = toIso(new Date()); }
+        field.button.setAttribute("aria-expanded", "true");
+        cal.hidden = false;
+        showDay(start);
+        placeCalendar();
+    }
+
+    /** @param {boolean} returnFocus  move focus back to the field's button */
+    function closeCalendar(returnFocus) {
+        var field = calField;
+        if (!field) { return; }
+        calField = null;
+        cal.hidden = true;
+        field.button.setAttribute("aria-expanded", "false");
+        if (returnFocus) { field.button.focus(); }
+    }
+
+    /**
+     * Writes the picked day (or "" for Clear) into the real date input; the checks run on its events.
+     * @param {string} iso
+     */
+    function pickDate(iso) {
+        var field = calField;
+        if (!field) { return; }
+        field.input.value = iso;
+        field.input.dispatchEvent(new Event("input", { bubbles: true }));
+        field.input.dispatchEvent(new Event("change", { bubbles: true }));
+        closeCalendar(true);
+    }
+
+    /** @param {number} months */
+    function stepMonth(months) {
+        var d = new Date(Date.UTC(viewYear, viewMonth + months, 1));
+        var keepDay = parseIso(focusIso);
+        var dayOfMonth = keepDay ? keepDay.getUTCDate() : 1;
+        var last = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0)).getUTCDate();
+        d.setUTCDate(Math.min(dayOfMonth, last));
+        showDay(toIso(d));
+    }
+
+    /** @param {number} dir  -1 or 1: a month (days), a year (months) or 12 years (years) */
+    function stepView(dir) {
+        if (calView === "days") { stepMonth(dir); return; }
+        if (calView === "months") { viewYear += dir; } else { yearPageStart += 12 * dir; }
+        renderCalendar();
+        focusPick();
+    }
+
+    calPrev.addEventListener("click", function () { stepView(-1); });
+    calNext.addEventListener("click", function () { stepView(1); });
+    calMonthBtn.addEventListener("click", function () { showPick("months"); });
+    calYearBtn.addEventListener("click", function () { showPick("years"); });
+    calPick.addEventListener("click", function (e) {
+        var target = e.target;
+        if (!(target instanceof Element)) { return; }
+        var cell = target.closest(".gw-terms-cal-cell");
+        if (!cell || cell.getAttribute("aria-disabled") === "true") { return; }
+        var month = cell.getAttribute("data-month");
+        var year = cell.getAttribute("data-year");
+        if (month !== null) {
+            // a month: back to its days
+            viewMonth = parseInt(month, 10);
+            showDay(dayInViewMonth());
+        } else if (year !== null) {
+            // a year: then choose its month
+            viewYear = parseInt(year, 10);
+            calView = "months";
+            renderCalendar();
+            focusPick();
+        }
+    });
+    calClear.addEventListener("click", function () { pickDate(""); });
+    calToday.addEventListener("click", function () {
+        if (calField && dateAllowed(today, dateLimits(calField.input))) { pickDate(today); }
+    });
+    calBody.addEventListener("click", function (e) {
+        var target = e.target;
+        if (!(target instanceof Element)) { return; }
+        var b = target.closest(".gw-terms-cal-day");
+        if (!b || b.getAttribute("aria-disabled") === "true") { return; }
+        pickDate(b.getAttribute("data-date") || "");
+    });
+    cal.addEventListener("keydown", function (e) {
+        if (e.key === "Escape") {
+            e.preventDefault();          // the page's Esc handler skips handled keys, so the form stays open
+            e.stopPropagation();
+            if (calView !== "days") { showDay(focusIso); }   // from the month / year list back to the days
+            else { closeCalendar(true); }
+            return;
+        }
+        if (e.target instanceof Element && e.target.classList.contains("gw-terms-cal-cell")) {
+            // the month / year list: 3 columns
+            /** @type {Record<string, number>} */
+            var CELL_STEPS = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -3, ArrowDown: 3 };
+            var cells = Array.prototype.slice.call(calPick.children);
+            var at = cells.indexOf(e.target);
+            var to = CELL_STEPS[e.key] ? at + CELL_STEPS[e.key] : e.key === "Home" ? 0 : e.key === "End" ? cells.length - 1 : -1;
+            if (to < 0 || to >= cells.length) { return; }
+            e.preventDefault();
+            cells.forEach(function (c, i) { c.tabIndex = i === to ? 0 : -1; });
+            cells[to].focus();
+            return;
+        }
+        if (!(e.target instanceof Element) || !e.target.classList.contains("gw-terms-cal-day")) { return; }
+        // start from the day that has focus (it may have been reached with Tab or the mouse)
+        focusIso = e.target.getAttribute("data-date") || focusIso;
+        /** @type {Record<string, number>} */
+        var DAY_STEPS = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -7, ArrowDown: 7 };
+        var d = parseIso(focusIso);
+        if (!d) { return; }
+        if (DAY_STEPS[e.key]) { showDay(addDays(focusIso, DAY_STEPS[e.key])); }
+        else if (e.key === "PageUp") { stepMonth(e.shiftKey ? -12 : -1); }
+        else if (e.key === "PageDown") { stepMonth(e.shiftKey ? 12 : 1); }
+        else if (e.key === "Home") { showDay(addDays(focusIso, -d.getUTCDay())); }
+        else if (e.key === "End") { showDay(addDays(focusIso, 6 - d.getUTCDay())); }
+        else { return; }
+        e.preventDefault();
+    });
+    // close when the user clicks or tabs somewhere else
+    document.addEventListener("mousedown", function (e) {
+        var target = e.target;
+        if (calField && target instanceof Node && !cal.contains(target) && !calField.button.contains(target)) { closeCalendar(false); }
+    }, true);
+    cal.addEventListener("focusout", function (e) {
+        var next = e.relatedTarget;
+        if (calField && next instanceof Node && !cal.contains(next) && !calField.button.contains(next)) { closeCalendar(false); }
+    });
+    window.addEventListener("resize", placeCalendar);
+    document.addEventListener("scroll", placeCalendar, true);
+
     /** @param {GWTerm | null} t  the term to edit, or null to add one */
     function openForm(t) {
         editing = t || null;
         tried = false;
         form.reset();
+        useDatePicker(true);   // Add term and Edit term both use the GradeWise calendar
         if (t) {
             formTitle.textContent = "Edit term";
             submitBtn.textContent = "Save changes";
-            formNote.textContent = "Changes are kept on this page only (preview) and reset when the page reloads." +
-                (t.archived ? " This term is archived, so overlaps are checked when it is restored." : "");
+            form.action = server.editUrl(t.id) || "";
+            formNote.textContent = "Changes are saved to the database, and the page reloads." +
+                (t.archived ? " This term is archived, so overlaps are checked when it is restored." : "") +
+                (store.hasChanges() ? " Archiving and restoring done on this page will be cleared." : "");
             ensureYearOption(t.academicYear);
             yearSel.value = t.academicYear || "";
             semSel.value = t.semester || "";
@@ -753,7 +1365,8 @@ window.GradeWiseTermServer = (function () {
         } else {
             formTitle.textContent = "Add a term";
             submitBtn.textContent = "Add term";
-            formNote.textContent = "The term is saved to the database by name. Its dates are checked here but not stored yet.";
+            form.action = addAction;
+            formNote.textContent = "The term and its dates are saved to the database.";
         }
         submitBtn.disabled = false;
         renderForm();
@@ -766,26 +1379,18 @@ window.GradeWiseTermServer = (function () {
         if (problems.length) {
             e.preventDefault();
             var first = FIELDS[problems[0].field];
-            if (first) { first.focus(); }
+            if (first) { focusControl(first); }
             toast("error", editing ? "The changes were not saved. Please fix the highlighted fields." : "The term was not added. Please fix the highlighted fields.");
             return;
         }
-        if (!editing) {
-            // Add: let the form post to the existing AddTerm action (real save).
-            submitBtn.disabled = true;
+        if (editing && !form.getAttribute("action")) {
+            e.preventDefault();
+            toast("error", "The changes could not be sent. Reload the page and try again.");
             return;
         }
-        // Edit: temporary store only.
-        e.preventDefault();
-        var c = currentInput();
-        store.update(editing.id, c).then(function (saved) {
-            closeModal(formModal, true);
-            render();
-            toast("success", saved.name + " was updated (preview only; resets on reload).");
-            focusRow(saved.id, "view");
-        }, function (err) {
-            toast("error", errorText(err));
-        });
+        // Add posts to AddTerm, Edit to EditTerm/{id}: the name and both dates are saved, and the page
+        // reloads with the server's result (the server checks the dates again).
+        submitBtn.disabled = true;
     });
 
     var addBtn = requireIn(root, "[data-term-add]", HTMLButtonElement);
@@ -852,6 +1457,43 @@ window.GradeWiseTermServer = (function () {
         else { askMakeCurrent(t); }
     });
 
+    // ========== manage (archive or delete one active term) ==========
+    var manageModal = requireById("term-manage", HTMLElement);
+    var manageArchiveBtn = requireIn(manageModal, '[data-manage-action="archive"]', HTMLButtonElement);
+    var manageArchiveBlocked = requireIn(manageModal, "[data-manage-archive-blocked]", HTMLElement);
+    var manageDeleteBlocked = requireIn(manageModal, "[data-manage-delete-blocked]", HTMLElement);
+    var manageDeleteAllowed = requireIn(manageModal, "[data-manage-delete-allowed]", HTMLElement);
+    /** @type {GWTerm | null} */
+    var managing = null;
+
+    /** @param {string} name  data-manage-slot value */
+    function manageSlot(name) { return requireIn(manageModal, '[data-manage-slot="' + name + '"]', HTMLElement); }
+
+    /** @param {GWTerm} t */
+    function openManage(t) {
+        managing = t;
+        manageSlot("name").textContent = t.name;
+        manageArchiveBlocked.hidden = !t.isCurrent;
+        manageArchiveBtn.disabled = t.isCurrent;
+        manageDeleteBlocked.hidden = !t.deleteBlocked;
+        manageSlot("delete-reason").textContent = t.deleteBlocked;
+        manageDeleteAllowed.hidden = !!t.deleteBlocked;
+        openModal(manageModal);
+    }
+
+    manageModal.addEventListener("click", function (e) {
+        var target = e.target;
+        if (!(target instanceof Element)) { return; }
+        var b = target.closest("[data-manage-action]");
+        if (!(b instanceof HTMLButtonElement) || !managing || b.disabled) { return; }
+        var t = store.get(managing.id);
+        if (!t) { closeModal(manageModal); return; }
+        var a = b.getAttribute("data-manage-action");
+        // The confirmation opens above this popup; Cancel returns here.
+        if (a === "archive") { askArchive(t, function () { closeModal(manageModal, true); }); }
+        else if (a === "delete") { askDelete(t); }
+    });
+
     // ========== row buttons ==========
     root.addEventListener("click", function (e) {
         var target = e.target;
@@ -864,7 +1506,7 @@ window.GradeWiseTermServer = (function () {
         if (!t) { return; }
         var a = b.getAttribute("data-action");
         if (a === "view") { openView(t); }
-        else if (a === "archive") { askArchive(t); }
+        else if (a === "manage") { openManage(t); }
         else if (a === "restore") { askRestore(t); }
         else if (a === "current") { askMakeCurrent(t); }
     });

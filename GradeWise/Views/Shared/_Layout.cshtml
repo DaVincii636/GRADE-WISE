@@ -91,7 +91,13 @@
                             <img src="~/Content/img/icons/user.svg" alt="" width="24" height="24" />
                         </button>
                     }
-                    <a href="@Url.Action("Logout", "Account", new { area = "" })" class="gw-iconbtn gw-signout" aria-label="Sign out" title="Sign out">
+                    @* Logout asks first, using the shared confirm dialog in gw-modal.js (data-confirm). The link itself is
+                       unchanged: after "Yes, Logout" it goes to Account/Logout as before; without JavaScript it logs out directly. *@
+                    <a href="@Url.Action("Logout", "Account", new { area = "" })" class="gw-iconbtn gw-signout" aria-label="Sign out" title="Sign out"
+                       data-confirm="Are you sure you want to log out?"
+                       data-confirm-title="Log out?"
+                       data-confirm-ok="Yes, Logout"
+                       data-confirm-cancel="Cancel">
                         <img src="~/Content/img/icons/sign-out.svg" alt="" width="24" height="24" />
                     </a>
                 </div>
