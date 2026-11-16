@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Web.Mvc;
@@ -262,12 +263,21 @@ namespace GradeWise.Controllers
         public ActionResult Terms()
         {
             var db = new MongoDbContext();
-            return View(db.Terms.Find(_ => true).ToList());
+            var terms = db.Terms.Find(_ => true).ToList();
+
+            // Why a term cannot be deleted (in use, or courses use it). Terms not listed can be deleted.
+            // AdminController.DeleteTerm enforces the same rules on the server.
+            ViewBag.TermDeleteBlockers = FindTermDeleteBlockers(db, terms);
+            return View(terms);
         }
 
+        /// <summary>
+        /// Adds a term. startDate / endDate (yyyy-MM-dd) are saved with it; both may be left out
+        /// (the basic form used without JavaScript only sends the name), but not just one of them.
+        /// </summary>
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public ActionResult AddTerm(string name)
+        public ActionResult AddTerm(string name, string startDate, string endDate)
         {
             name = (name ?? string.Empty).Trim();
             if (name.Length == 0) TempData["Error"] = "Enter a term name.";
@@ -280,11 +290,141 @@ namespace GradeWise.Controllers
                 if (existingTerm != null) TempData["Error"] = "That term already exists.";
                 else
                 {
-                    db.Terms.InsertOne(new AcademicTerm { Id = "t-" + Guid.NewGuid().ToString("N").Substring(0, 8), Name = name, IsCurrent = false });
-                    TempData["Message"] = "Term added: " + name + ".";
+                    DateTime? start, end;
+                    var dateError = CheckTermDates(db, null, name, startDate, endDate, out start, out end);
+                    if (dateError != null) TempData["Error"] = "The term was not added. " + dateError;
+                    else
+                    {
+                        db.Terms.InsertOne(new AcademicTerm
+                        {
+                            Id = "t-" + Guid.NewGuid().ToString("N").Substring(0, 8),
+                            Name = name,
+                            IsCurrent = false,
+                            StartDate = start,
+                            EndDate = end
+                        });
+                        TempData["Message"] = "Term added: " + name + ".";
+                    }
                 }
             }
             return RedirectToAction("Terms");
+        }
+
+        /// <summary>
+        /// Saves an edited term: its name (semester and academic year) and its dates.
+        /// The name cannot change once courses use the term, because courses refer to their term by name.
+        /// </summary>
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public ActionResult EditTerm(string id, string name, string startDate, string endDate)
+        {
+            var db = new MongoDbContext();
+            try
+            {
+                var target = string.IsNullOrEmpty(id) ? null : db.Terms.Find(t => t.Id == id).FirstOrDefault();
+                if (target == null) { TempData["Error"] = "That term no longer exists."; return RedirectToAction("Terms"); }
+
+                name = (name ?? string.Empty).Trim();
+                if (name.Length == 0) { TempData["Error"] = "The changes were not saved. Choose an academic year and semester."; return RedirectToAction("Terms"); }
+                if (name.Length > 80) { TempData["Error"] = "The changes were not saved. Term name must be 80 characters or fewer."; return RedirectToAction("Terms"); }
+
+                var renamed = !string.Equals(name, target.Name, StringComparison.Ordinal);
+                if (renamed)
+                {
+                    var nameKey = name.ToLower();
+                    if (db.Terms.Find(t => t.Id != target.Id && t.Name.ToLower() == nameKey).Any())
+                    {
+                        TempData["Error"] = "The changes were not saved. " + name + " already exists.";
+                        return RedirectToAction("Terms");
+                    }
+                    var used = CoursesUsingTerm(db, target.Name);
+                    if (used.Count > 0)
+                    {
+                        TempData["Error"] = "The changes were not saved. " + target.Name + " is used by " + used.Count +
+                            (used.Count == 1 ? " course" : " courses") + " (" + CourseList(used.Select(c => c.Code)) +
+                            "), so its semester and academic year cannot change. You can still change its dates.";
+                        return RedirectToAction("Terms");
+                    }
+                }
+
+                DateTime? start, end;
+                var dateError = CheckTermDates(db, target.Id, name, startDate, endDate, out start, out end);
+                if (dateError != null) { TempData["Error"] = "The changes were not saved. " + dateError; return RedirectToAction("Terms"); }
+
+                var update = Builders<AcademicTerm>.Update.Set(t => t.Name, name);
+                update = start.HasValue ? update.Set(t => t.StartDate, start).Set(t => t.EndDate, end)
+                                        : update.Unset(t => t.StartDate).Unset(t => t.EndDate);
+                if (db.Terms.UpdateOne(t => t.Id == target.Id, update).MatchedCount != 1)
+                {
+                    TempData["Error"] = "That term no longer exists.";
+                    return RedirectToAction("Terms");
+                }
+                TempData["Message"] = "Term updated: " + name + (start.HasValue ? " (" + TermDate(start.Value) + " to " + TermDate(end.Value) + ")." : ".");
+            }
+            catch (Exception ex) when (ex is MongoException || ex is TimeoutException)
+            {
+                TempData["Error"] = "The database could not be reached, so the changes may not have been saved.";
+            }
+            return RedirectToAction("Terms");
+        }
+
+        private static readonly Regex TermNamePattern = new Regex(
+            @"^\s*(1st Semester|2nd Semester|Summer)(?: Term)?\s*,\s*[SA]\.?\s*Y\.?\s*(\d{4})\s*-\s*(\d{4})\s*$",
+            RegexOptions.IgnoreCase);
+
+        /// <summary>"Aug 9, 2027", the same date format the Academic terms page shows.</summary>
+        private static string TermDate(DateTime date) => date.ToString("MMM d, yyyy", CultureInfo.InvariantCulture);
+
+        /// <summary>
+        /// Checks a term's dates with the same rules as the Academic terms page, and returns the reason they
+        /// cannot be saved (null when they can). Both dates empty means "no dates" and is allowed.
+        /// Rules: real yyyy-MM-dd dates; the end date after the start date; when the name has an academic year
+        /// (S.Y. 2026-2027) both dates fall within its two calendar years (Jan 1, 2026 to Dec 31, 2027);
+        /// and the dates do not overlap another term's dates.
+        /// </summary>
+        private static string CheckTermDates(MongoDbContext db, string termId, string name, string startText, string endText,
+            out DateTime? start, out DateTime? end)
+        {
+            start = null; end = null;
+            startText = (startText ?? string.Empty).Trim();
+            endText = (endText ?? string.Empty).Trim();
+            if (startText.Length == 0 && endText.Length == 0) return null;
+            if (startText.Length == 0 || endText.Length == 0) return "Enter both a start date and an end date.";
+
+            DateTime s, e;
+            if (!DateTime.TryParseExact(startText, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out s) ||
+                !DateTime.TryParseExact(endText, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out e))
+                return "Enter the dates as calendar dates.";
+            if (e <= s) return "The end date must be later than the start date.";
+
+            var m = TermNamePattern.Match(name ?? string.Empty);
+            if (m.Success)
+            {
+                var min = new DateTime(int.Parse(m.Groups[2].Value), 1, 1);
+                var max = new DateTime(int.Parse(m.Groups[3].Value), 12, 31);
+                if (s < min || s > max || e < min || e > max)
+                    return "Both dates must fall within A.Y. " + m.Groups[2].Value + "-" + m.Groups[3].Value +
+                           " (" + TermDate(min) + " to " + TermDate(max) + ").";
+            }
+
+            var clash = db.Terms.Find(t => t.Id != termId && t.StartDate != null && t.EndDate != null).ToList()
+                .Where(t => s <= t.EndDate.Value && e >= t.StartDate.Value)
+                .OrderBy(t => t.StartDate.Value).FirstOrDefault();
+            if (clash != null)
+                return "These dates overlap " + clash.Name + " (" + TermDate(clash.StartDate.Value) + " to " + TermDate(clash.EndDate.Value) + ").";
+
+            start = s; end = e;
+            return null;
+        }
+
+        /// <summary>The courses that use a term (matched by name, case-insensitively); only each course's term and code are read.</summary>
+        private static List<Course> CoursesUsingTerm(MongoDbContext db, string termName)
+        {
+            var key = (termName ?? string.Empty).ToLower();
+            return db.Courses.Find(_ => true)
+                .Project<Course>(Builders<Course>.Projection.Include(c => c.Term).Include(c => c.Code)).ToList()
+                .Where(c => (c.Term ?? string.Empty).ToLower() == key)
+                .ToList();
         }
 
         [HttpPost]
@@ -302,6 +442,73 @@ namespace GradeWise.Controllers
                 TempData["Message"] = chosen.Name + " is now the current term.";
             }
             return RedirectToAction("Terms");
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public ActionResult DeleteTerm(string id)
+        {
+            var db = new MongoDbContext();
+            try
+            {
+                var target = string.IsNullOrEmpty(id) ? null : db.Terms.Find(t => t.Id == id).FirstOrDefault();
+                if (target == null) { TempData["Error"] = "That term no longer exists."; return RedirectToAction("Terms"); }
+
+                string reason;
+                if (FindTermDeleteBlockers(db, new List<AcademicTerm> { target }).TryGetValue(target.Id, out reason))
+                {
+                    TempData["Error"] = target.Name + " cannot be deleted. " + reason;
+                    return RedirectToAction("Terms");
+                }
+
+                var deleted = db.Terms.DeleteOne(t => t.Id == target.Id && !t.IsCurrent).DeletedCount;
+                if (deleted != 1) { TempData["Error"] = target.Name + " was not deleted. It may have just been made current or removed by someone else."; return RedirectToAction("Terms"); }
+
+                // A course could have been created for this term while it was being deleted: put the term back.
+                var termKey = (target.Name ?? string.Empty).ToLower();
+                if (db.Courses.CountDocuments(c => c.Term.ToLower() == termKey) > 0)
+                {
+                    db.Terms.InsertOne(target);
+                    TempData["Error"] = target.Name + " was not deleted because a course was just created for it.";
+                    return RedirectToAction("Terms");
+                }
+
+                TempData["Message"] = "Term deleted: " + target.Name + ".";
+            }
+            catch (Exception ex) when (ex is MongoException || ex is TimeoutException)
+            {
+                TempData["Error"] = "The database could not be reached, so the term may not have been deleted.";
+            }
+            return RedirectToAction("Terms");
+        }
+
+        /// <summary>
+        /// Terms that cannot be deleted, with the reason. Courses refer to a term by its name (case-insensitive),
+        /// and grades, grade history and notifications belong to courses, so a term without courses has no records.
+        /// </summary>
+        private static Dictionary<string, string> FindTermDeleteBlockers(MongoDbContext db, List<AcademicTerm> terms)
+        {
+            var reasons = new Dictionary<string, string>();
+            if (terms.Count == 0) return reasons;
+
+            // Only each course's term and code are read; matching is done here because names are compared case-insensitively.
+            var keys = new HashSet<string>(terms.Select(t => (t.Name ?? string.Empty).ToLower()));
+            var coursesByTerm = db.Courses.Find(_ => true)
+                .Project<Course>(Builders<Course>.Projection.Include(c => c.Term).Include(c => c.Code)).ToList()
+                .Where(c => keys.Contains((c.Term ?? string.Empty).ToLower()))
+                .GroupBy(c => (c.Term ?? string.Empty).ToLower())
+                .ToDictionary(g => g.Key, g => g.ToList());
+
+            foreach (var t in terms)
+            {
+                List<Course> used;
+                if (coursesByTerm.TryGetValue((t.Name ?? string.Empty).ToLower(), out used) && used.Count > 0)
+                    reasons[t.Id] = "It is used by " + used.Count + (used.Count == 1 ? " course" : " courses")
+                        + " (" + CourseList(used.Select(c => c.Code)) + "). Archive it instead.";
+                else if (t.IsCurrent)
+                    reasons[t.Id] = "It is the term in use. Make another term current first.";
+            }
+            return reasons;
         }
 
         private bool IsMe(User target) => string.Equals(target.StudentNo, User.Identity.Name, StringComparison.OrdinalIgnoreCase);
