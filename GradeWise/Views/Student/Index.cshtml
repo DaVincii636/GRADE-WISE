@@ -6,6 +6,8 @@
     ViewBag.Title = "My grades";
     // The Period column only makes sense when both periods are shown together (Final Grade).
     var showPeriod = Model.Scope == GradeScopes.FinalGrade;
+    // Final Grade shows INC (incomplete) while the Final Term exam is still blank, like the class record.
+    var equivalentText = Model.Incomplete ? "INC" : GradeCalculator.Format(Model.Equivalent);
 }
 
 @* Defined before any early return below, so it also runs when the student has no courses. *@
@@ -35,27 +37,6 @@
                 sessionStorage.removeItem("gwScroll");
             } catch (e) { }
 
-            // Restore the target selected in the What-If simulator for this course and grade period.
-            var goal = document.getElementById("gw-grade-goal");
-            if (goal) {
-                var goalKey = "gwWhatIfGoal:" + goal.getAttribute("data-course") + ":" + goal.getAttribute("data-scope");
-                try {
-                    var savedGoal = sessionStorage.getItem(goalKey);
-                    if (savedGoal) {
-                        var item = JSON.parse(savedGoal);
-                        if (item && item.grade && item.status) {
-                            var detail = "";
-                            if (item.status === "Reachable") detail = "Need " + item.required + "% average on remaining " + item.remaining + "%";
-                            else if (item.status === "Secured") detail = "Already secured";
-                            else if (item.status === "OutOfReach") detail = "Currently out of reach";
-                            goal.querySelector(".gw-grade-goal-grade").textContent = item.grade;
-                            goal.querySelector(".gw-grade-goal-detail").textContent = detail;
-                            goal.hidden = false;
-                        }
-                    }
-                } catch (e) { }
-            }
-
             var target = document.getElementById("course-summary");
             if (flag === "1" && target) {
                 var calm = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -80,19 +61,9 @@
             }
         </p>
     </div>
-    <div class="gw-page-head-right">
-        @if (Model.HasCourse)
-        {
-            <div id="gw-grade-goal" class="gw-grade-goal" data-course="@Model.SelectedId" data-scope="@Model.Scope" hidden aria-live="polite">
-                <span class="gw-grade-goal-kicker">TARGET GRADE</span>
-                <strong class="gw-grade-goal-grade"></strong>
-                <span class="gw-grade-goal-detail"></span>
-            </div>
-        }
-        <div class="gw-datebox" aria-live="off">
-            <span class="gw-datebox-day" id="gw-day">@DateTime.Now.ToString("dddd", CultureInfo.InvariantCulture)</span>
-            <span class="gw-datebox-date" id="gw-date">@DateTime.Now.ToString("MM/dd/yyyy", CultureInfo.InvariantCulture)</span>
-        </div>
+    <div class="gw-datebox" aria-live="off">
+        <span class="gw-datebox-day" id="gw-day">@DateTime.Now.ToString("dddd", CultureInfo.InvariantCulture)</span>
+        <span class="gw-datebox-date" id="gw-date">@DateTime.Now.ToString("MM/dd/yyyy", CultureInfo.InvariantCulture)</span>
     </div>
 </div>
 
@@ -161,16 +132,16 @@ else if (!Model.WeightsOk)
     <div class="gw-stat gw-stat-stamp" data-tab="Average">
         @if (Model.Equivalent.HasValue)
         {
-            <span class="gw-grade-stamp" aria-label="Equivalent grade @GradeCalculator.Format(Model.Equivalent)">
+            <span class="gw-grade-stamp" aria-label="Equivalent grade @equivalentText">
                 <img src="@Url.Content("~/Content/img/stickers/stamp-ring.svg")" alt="" class="gw-grade-stamp-ring" width="64" height="64" />
-                <span class="gw-grade-stamp-text">@GradeCalculator.Format(Model.Equivalent)</span>
+                <span class="gw-grade-stamp-text">@equivalentText</span>
             </span>
         }
         <div class="gw-stat-value">@(Model.Average.HasValue ? GradeCalculator.Format(Model.Average) + "%" : "\u2014")</div>
         <div class="gw-stat-label">Current average <span class="gw-th-sub">(@Model.ScopeLabel, graded work so far)</span></div>
     </div>
     <div class="gw-stat" data-tab="Equivalent">
-        <div class="gw-stat-value">@GradeCalculator.Format(Model.Equivalent)</div>
+        <div class="gw-stat-value">@equivalentText</div>
         <div class="gw-stat-label">Equivalent grade <span class="gw-th-sub">(@Model.ScopeLabel, based on points earned so far)</span></div>
     </div>
     <div class="gw-stat" data-tab="Remaining">

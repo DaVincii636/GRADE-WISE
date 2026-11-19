@@ -138,14 +138,10 @@ namespace GradeWise.Services
                 var entry = scoreList.FirstOrDefault(s =>
                     string.Equals(s.Category, category.Name, StringComparison.OrdinalIgnoreCase));
 
-                var categoryScore = entry == null ? (double?)null :
-                    (entry.AssessmentScores != null && entry.AssessmentScores.Any(a => a.Score.HasValue)
-                        ? (double?)entry.AssessmentScores.Where(a => a.Score.HasValue).Average(a => a.Score.Value)
-                        : entry.Score);
-                if (categoryScore.HasValue)
+                if (entry != null && entry.Score.HasValue)
                 {
                     result.GradedWeight += weight;
-                    result.Earned += weight * categoryScore.Value / 100.0;
+                    result.Earned += weight * entry.Score.Value / 100.0;
                 }
             }
 
@@ -333,24 +329,76 @@ namespace GradeWise.Services
         }
 
         // Lowest average (percent) for each equivalent grade, highest first. Anything below the last
-        // line (65) is 5.00 (failed). Lower bounds only, no rounding: 96.99 is 1.25 and 64.99 is 5.00.
-        // Change the numbers here if the registrar uses a different table; the What-If page reads this
-        // table from the server, so nothing else needs editing.
+        // line (64.5) is 5.00 (failed). Lower bounds only, no rounding before the lookup.
+        // This is the "INTERVAL RANGES" table of the class record (SBIT3D_CLASSRECORD_ZERO_BASED_GRADING),
+        // looked up with VLOOKUP on the unrounded average. The What-If page reads this table from the
+        // server, so nothing else needs editing.
         //
         // Boundary checks (average -> equivalent):
-        //   100 -> 1.00   97 -> 1.00   96.99 -> 1.25   93 -> 1.25   92.99 -> 1.50   89 -> 1.50
-        //   88.99 -> 1.75   85 -> 1.75   84.99 -> 2.00   81 -> 2.00   80.99 -> 2.25   77 -> 2.25
-        //   76.99 -> 2.50   73 -> 2.50   72.99 -> 2.75   69 -> 2.75   68.99 -> 3.00   65 -> 3.00
-        //   64.99 -> 5.00   0 -> 5.00
+        //   100 -> 1.00   96.5 -> 1.00   96.49 -> 1.25   92.5 -> 1.25   92.49 -> 1.50   88.5 -> 1.50
+        //   88.49 -> 1.75   84.5 -> 1.75   84.49 -> 2.00   80.5 -> 2.00   80.49 -> 2.25   76.5 -> 2.25
+        //   76.49 -> 2.50   72.5 -> 2.50   72.49 -> 2.75   68.5 -> 2.75   68.49 -> 3.00   64.5 -> 3.00
+        //   64.49 -> 5.00   0 -> 5.00
         private static readonly double[][] GradeScale =
         {
-            new[] { 97.0, 1.00 }, new[] { 93.0, 1.25 }, new[] { 89.0, 1.50 },
-            new[] { 85.0, 1.75 }, new[] { 81.0, 2.00 }, new[] { 77.0, 2.25 },
-            new[] { 73.0, 2.50 }, new[] { 69.0, 2.75 }, new[] { 65.0, 3.00 }
+            new[] { 96.5, 1.00 }, new[] { 92.5, 1.25 }, new[] { 88.5, 1.50 },
+            new[] { 84.5, 1.75 }, new[] { 80.5, 2.00 }, new[] { 76.5, 2.25 },
+            new[] { 72.5, 2.50 }, new[] { 68.5, 2.75 }, new[] { 64.5, 3.00 }
         };
 
-        /// <summary>Lowest average (percent) that passes.</summary>
-        public const double PassingAverage = 65.0;
+        /// <summary>Lowest average (percent) that passes (the "PASSED" line of the class record).</summary>
+        public const double PassingAverage = 64.5;
+
+        /// <summary>
+        /// The class record marks a Final Grade "INC" (incomplete) when the student passed the Midterm and the
+        /// Final Term class standing with at least this percent but the Final Term exam is still blank.
+        /// The class record uses 65 here, not the 64.5 passing line.
+        /// </summary>
+        public const double IncompleteThreshold = 65.0;
+
+        /// <summary>True for an exam category (the class record's exam columns). Matches by name, like the rest of the app.</summary>
+        public static bool IsExamCategory(GradeCategory category)
+        {
+            return category != null && category.Name != null
+                && category.Name.IndexOf("exam", StringComparison.OrdinalIgnoreCase) >= 0;
+        }
+
+        /// <summary>
+        /// Class record rule for the Final Grade: INC when the Midterm grade is at least 65, the Final Term class
+        /// standing (every Final Term category that is not an exam, ungraded counted as 0) is at least 65, and
+        /// no Final Term exam score has been entered yet. False when the Final Term has no exam category.
+        /// </summary>
+        public static bool IsIncomplete(IEnumerable<GradeCategory> categories, IEnumerable<ScoreEntry> scores)
+        {
+            var list = (categories ?? Enumerable.Empty<GradeCategory>()).ToList();
+            var scoreList = scores == null ? new List<ScoreEntry>() : scores.ToList();
+
+            var finalTerm = list.Where(c => GradePeriods.Normalize(c.Period) == GradePeriods.FinalTerm).ToList();
+            var exams = finalTerm.Where(c => IsExamCategory(c)).ToList();
+            if (exams.Count == 0) return false;
+
+            foreach (var exam in exams)
+            {
+                if (ScoreOf(scoreList, exam.Name).HasValue) return false;
+            }
+
+            var standing = finalTerm.Where(c => !IsExamCategory(c)).ToList();
+            var standingWeight = standing.Sum(c => c.Weight);
+            if (standingWeight <= 0) return false;
+
+            var standingEarned = standing.Sum(c => c.Weight * (ScoreOf(scoreList, c.Name) ?? 0) / 100.0);
+            var standingGrade = standingEarned / standingWeight * 100.0;
+            var midterm = CalculatePeriod(list, scoreList, GradePeriods.Midterm);
+
+            return Math.Round(midterm.Earned, 6) >= IncompleteThreshold
+                && Math.Round(standingGrade, 6) >= IncompleteThreshold;
+        }
+
+        private static double? ScoreOf(List<ScoreEntry> scores, string category)
+        {
+            var entry = scores.FirstOrDefault(s => string.Equals(s.Category, category, StringComparison.OrdinalIgnoreCase));
+            return entry == null ? null : entry.Score;
+        }
 
         /// <summary>True when the average is at least the passing average. No average means not passing.</summary>
         public static bool IsPassing(double? average)

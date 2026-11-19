@@ -78,8 +78,6 @@ else
     else
     {
         <div id="whatif"
-             data-course="@Model.SelectedId"
-             data-scope="@Model.Scope"
              data-earned="@GradeCalculator.Raw(Model.Earned)"
              data-remaining="@GradeCalculator.Raw(Model.RemainingWeight)"
              data-default="@GradeCalculator.Raw(Model.DefaultScore)"
@@ -164,7 +162,7 @@ else
                         {
                             <button type="button" class="gw-chip" aria-pressed="false"
                                     data-min="@GradeCalculator.Raw(step.MinAverage)" data-grade="@GradeCalculator.Raw(step.Grade)">
-                                @GradeCalculator.Format(step.Grade) <span class="gw-th-sub">@step.MinAverage.ToString("0")%</span>
+                                @GradeCalculator.Format(step.Grade) <span class="gw-th-sub">@GradeCalculator.Raw(step.MinAverage)%</span>
                             </button>
                         }
                     </div>

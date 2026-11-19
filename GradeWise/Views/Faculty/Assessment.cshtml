@@ -9,7 +9,7 @@
 <section class="gw-panel">
     <div class="gw-panel-head">
         <h1 class="gw-panel-title">@Model.CategoryName / @Model.AssessmentName</h1>
-        <p class="gw-muted">@Model.Period · Enter scores from 0 to 100 for this assessment only.</p>
+        <p class="gw-muted">@Model.Period &middot; Enter scores from 0 to 100 for this assessment only.</p>
     </div>
     @if (Model.Errors.Count > 0) { <div class="gw-alert" role="alert"><ul>@foreach (var error in Model.Errors) { <li>@error</li> }</ul></div> }
     @using (Html.BeginForm("SaveAssessment", "Faculty", new { id = Model.CourseId, category = Model.CategoryName, assessment = Model.AssessmentId }, FormMethod.Post))

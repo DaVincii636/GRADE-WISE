@@ -90,6 +90,17 @@
 
 @section scripts {
     <script>
+        // Clear What-If targets left in this tab by a previous sign-in. They are saved per course, not per
+        // student, so without this the next person to sign in would see the last student's target on My grades.
+        (function () {
+            try {
+                for (var i = sessionStorage.length - 1; i >= 0; i--) {
+                    var k = sessionStorage.key(i);
+                    if (k && k.indexOf("gwWhatIfGoal:") === 0) { sessionStorage.removeItem(k); }
+                }
+            } catch (e) { }
+        })();
+
         // Back / Forward protection and double-submit protection.
         // The form's security token belongs to whoever was signed in when this page was loaded.
         // If the page comes back from the browser's history after a sign-in, that token is stale,

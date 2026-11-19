@@ -16,7 +16,6 @@ namespace GradeWise.Models
     /// <summary>One line of the assessment breakdown. Only the student's own score is here.</summary>
     public class BreakdownRow
     {
-        public List<AssessmentBreakdownItem> Assessments { get; set; } = new List<AssessmentBreakdownItem>();
         public string Category { get; set; }
 
         /// <summary>"Midterm" or "Final Term".</summary>
@@ -33,12 +32,6 @@ namespace GradeWise.Models
 
         /// <summary>Anonymous class average for this category. Null when too few students have a score.</summary>
         public double? ClassAverage { get; set; }
-    }
-
-    public class AssessmentBreakdownItem
-    {
-        public string Name { get; set; }
-        public double? Score { get; set; }
     }
 
     /// <summary>Everything the student dashboard shows. It never contains another student's name or score.</summary>
@@ -82,9 +75,10 @@ namespace GradeWise.Models
 
         public double RemainingWeight { get; set; }
 
-        public List<BreakdownRow> Rows { get; set; } = new List<BreakdownRow>();
+        /// <summary>Final Grade scope only: the class record would mark this grade INC (Final Term exam still blank).</summary>
+        public bool Incomplete { get; set; }
 
-        public List<GradeCategory> CategoriesForDisplay { get; set; } = new List<GradeCategory>();
+        public List<BreakdownRow> Rows { get; set; } = new List<BreakdownRow>();
 
         /// <summary>Anonymous class average of Earned Grade. Null when too few students have scores to keep it anonymous.</summary>
         public double? ClassAverage { get; set; }

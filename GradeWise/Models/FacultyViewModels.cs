@@ -56,6 +56,9 @@ namespace GradeWise.Models
 
         /// <summary>Result for the course's reflected scope (what the boxes and the class numbers use).</summary>
         public GradeResult ScopeResult { get; set; }
+
+        /// <summary>The Final Grade is Incomplete (INC): see GradeCalculator.IsIncomplete.</summary>
+        public bool Incomplete { get; set; }
     }
 
     public class CourseDetailViewModel
@@ -122,25 +125,6 @@ namespace GradeWise.Models
         }
     }
 
-    public class AssessmentScoreViewModel
-    {
-        public string CourseId { get; set; }
-        public string CategoryName { get; set; }
-        public string Period { get; set; }
-        public string AssessmentId { get; set; }
-        public string AssessmentName { get; set; }
-        public List<AssessmentScoreRow> Rows { get; set; } = new List<AssessmentScoreRow>();
-        public List<string> Errors { get; set; } = new List<string>();
-    }
-
-    public class AssessmentScoreRow
-    {
-        public string StudentId { get; set; }
-        public string StudentNo { get; set; }
-        public string FullName { get; set; }
-        public string Score { get; set; }
-    }
-
     public class EnrollViewModel
     {
         public string CourseId { get; set; }
@@ -160,7 +144,6 @@ namespace GradeWise.Models
         public string Name { get; set; }
         public string Period { get; set; } = GradePeriods.Midterm;
         public string Weight { get; set; }
-        public string Group { get; set; } = "Class Standing";
     }
 
     public class CategoriesViewModel

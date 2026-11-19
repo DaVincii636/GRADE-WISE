@@ -47,7 +47,7 @@
         return { status: status, required: required };
     }
 
-    // scale: [{ min: 97, grade: 1 }, ...] highest first. Below the last line is 5.00.
+    // scale: [{ min: 96.5, grade: 1 }, ...] highest first. Below the last line is 5.00.
     function equivalentGrade(average, scale) {
         var value = Math.round(average * 1e6) / 1e6;
         for (var i = 0; i < scale.length; i++) {
@@ -90,9 +90,7 @@
         var remaining = parseFloat(host.getAttribute("data-remaining"));
         var defaultScore = parseFloat(host.getAttribute("data-default"));
         var targetAttr = parseFloat(host.getAttribute("data-target"));
-        var defaultTarget = isFinite(targetAttr) ? targetAttr : 65;   // 65 = GradeCalculator.PassingAverage
-        var goalKey = "gwWhatIfGoal:" + host.getAttribute("data-course") + ":" + host.getAttribute("data-scope");
-        var targetTouched = false;
+        var defaultTarget = isFinite(targetAttr) ? targetAttr : 64.5;   // 64.5 = GradeCalculator.PassingAverage
 
         var finalOut = document.getElementById("sim-final");
         var gradeOut = document.getElementById("sim-grade");
@@ -240,18 +238,6 @@
             var targetGrade = fmt(equivalentGrade(target, scale));
             var head = "Target " + fmt(target) + "% (grade " + targetGrade + "). ";
 
-            // Remember an intentional target so the dashboard can show it beside the date.
-            if (targetTouched) {
-                try {
-                    sessionStorage.setItem(goalKey, JSON.stringify({
-                        grade: targetGrade,
-                        status: result.status,
-                        required: result.required === null ? null : fmt(result.required),
-                        remaining: fmt(remaining)
-                    }));
-                } catch (e) { }
-            }
-
             if (result.status === "Secured") {
                 setMessage(targetMsg, "ok", head + "Already secured: your " + fmt(earned) +
                     " points meet it, even if the rest of your work scored 0.");
@@ -281,13 +267,11 @@
         function link(range, num, onChange) {
             range.addEventListener("input", function () {
                 num.value = range.value;
-                if (num === targetNum) targetTouched = true;
                 onChange();
             });
             num.addEventListener("input", function () {
                 var n = readNumber(num);
                 if (n !== null) range.value = String(n);
-                if (num === targetNum) targetTouched = true;
                 onChange();
             });
         }
@@ -300,7 +284,6 @@
                 var min = chip.getAttribute("data-min");
                 targetNum.value = min;
                 targetRange.value = min;
-                targetTouched = true;
                 update();
             });
         });
@@ -323,8 +306,6 @@
             });
             targetNum.value = String(defaultTarget);
             targetRange.value = String(defaultTarget);
-            targetTouched = false;
-            try { sessionStorage.removeItem(goalKey); } catch (e) { }
             update();
         });
 

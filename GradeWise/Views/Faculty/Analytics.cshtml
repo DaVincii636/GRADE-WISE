@@ -260,7 +260,8 @@
         <h2 class="gw-panel-title">@Model.ScopeLabel category averages</h2>
     </div>
     <div class="gw-table-wrap">
-        <table class="gw-table">
+        <table class="gw-table gw-table-grouped">
+            <colgroup><col style="width:38%" /><col style="width:16%" /><col style="width:28%" /><col style="width:18%" /></colgroup>
             <thead>
                 <tr>
                     <th>Category</th>
@@ -279,11 +280,17 @@
                         </td>
                     </tr>
                 }
-                @foreach (var group in new[] { "Class Standing", "Exam" })
+                @foreach (var group in Model.Categories.Count == 0 ? new string[0] : new[] { "Class Standing", "Exam" })
                 {
                     var groupRows = Model.Categories.Where(c => c.Group == group).ToList();
-                    <tr><td colspan="4"><details class="gw-student-major"><summary><strong>@group</strong><span>@(Model.Scope == GradeScopes.FinalGrade ? (group == "Class Standing" ? "30%" : "20%") : (group == "Class Standing" ? "60%" : "40%"))</span></summary>
-                        <table class="gw-table"><tbody>
+                    <tr><td colspan="4" class="gw-group-cell"><details class="gw-student-major" open><summary><strong>@group</strong><span>@(Model.Scope == GradeScopes.FinalGrade ? (group == "Class Standing" ? "30%" : "20%") : (group == "Class Standing" ? "60%" : "40%"))</span></summary>
+                        <table class="gw-table gw-table-grouped">
+                        <colgroup><col style="width:38%" /><col style="width:16%" /><col style="width:28%" /><col style="width:18%" /></colgroup>
+                        <tbody>
+                        @if (groupRows.Count == 0)
+                        {
+                            <tr><td colspan="4" class="gw-empty">No @group.ToLower() categories in this grading period.</td></tr>
+                        }
                         @foreach (var c in groupRows)
                         {
                             var gradedPct = Model.StudentCount > 0 ? Math.Round(c.Graded * 100.0 / Model.StudentCount, 2) : 0;
