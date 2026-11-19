@@ -292,6 +292,10 @@
     <Content Include="favicon.ico" />
     <Content Include="Global.asax" />
     <Content Include="Content\Site.css" />
+    <Content Include="Scripts\account-force-password.js" />
+    <Content Include="Scripts\admin-accounts.js" />
+    <Content Include="Scripts\admin-create-user.js" />
+    <Content Include="Scripts\admin-terms.js" />
     <Content Include="Scripts\gw-modal.js" />
     <Content Include="Scripts\gw-notifications.js" />
     <Content Include="Scripts\whatif.js" />
@@ -374,6 +378,12 @@
     <Content Include="Scripts\bootstrap.bundle.js.map" />
     <Content Include="Scripts\jquery-3.7.0.slim.min.map" />
     <Content Include="Scripts\jquery-3.7.0.min.map" />
+  </ItemGroup>
+  <ItemGroup>
+    <TypeScriptCompile Include="Scripts\gw-globals.d.ts" />
+  </ItemGroup>
+  <ItemGroup>
+    <Service Include="{4A0DDDB5-7A95-4FBF-97CC-616D07737A77}" />
   </ItemGroup>
   <PropertyGroup>
     <VisualStudioVersion Condition="'$(VisualStudioVersion)' == ''">10.0</VisualStudioVersion>

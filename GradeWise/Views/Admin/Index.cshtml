@@ -16,18 +16,22 @@
     // Why an account cannot be deleted (owns courses, has grades or grade history, last administrator).
     // Accounts not listed can be deleted. AdminController.DeleteUser enforces the same rules on the server.
     var deleteBlockers = ViewBag.DeleteBlockers as Dictionary<string, string> ?? new Dictionary<string, string>();
+
+    // Accounts per role, for the role tabs.
+    var byRole = roles.ToDictionary(r => r, r => users.Count(u => u.Role == r));
 }
 
 <h1 class="gw-page-title">Accounts and terms</h1>
 <p class="gw-page-sub">Manage user accounts and the academic term.</p>
 
+@* Results of the last action (TempData). gw-modal.js turns these into toasts; without JavaScript they stay as banners. *@
 @if (!string.IsNullOrEmpty(error))
 {
-    <div class="gw-alert" role="alert">@error</div>
+    <div class="gw-alert" role="alert" data-gw-flash="error">@error</div>
 }
 @if (!string.IsNullOrEmpty(message))
 {
-    <div class="gw-alert gw-alert-ok" role="status">@message</div>
+    <div class="gw-alert gw-alert-ok" role="status" data-gw-flash="success">@message</div>
 }
 @if (!string.IsNullOrEmpty(tempPassword))
 {
@@ -62,65 +66,141 @@
     </div>
 </section>
 
-<div class="gw-toolbar">
+<div class="gw-toolbar gw-acct-toolbar">
     @Html.ActionLink("Add user", "CreateUser", "Admin", null, new { @class = "gw-btn" })
-    @Html.ActionLink("Academic terms", "Terms", "Admin", null, new { @class = "gw-btn gw-btn-outline" })
+    <button type="button" class="gw-btn gw-btn-outline" data-import-open hidden>Import students</button>
+    @Html.ActionLink("Academic terms", "Terms", "Admin", null, new { @class = "gw-btn gw-btn-outline gw-acct-toolbar-end" })
 </div>
 
-<section class="gw-panel">
+<section class="gw-panel gw-accounts" aria-labelledby="gw-accounts-title">
     <div class="gw-panel-head">
-        <h2 class="gw-panel-title">Users</h2>
+        <h2 class="gw-panel-title" id="gw-accounts-title">Users</h2>
     </div>
+
+    @* Tabs, filters and paging work on the accounts already listed below (the real accounts from the
+       database). Each account's role comes from the server, so a new account shows up under its role
+       automatically. Hidden until the script runs; without JavaScript the full table is shown. *@
+    <div class="gw-panel-body gw-acct-controls" id="gw-acct-controls" hidden>
+        <div class="gw-acct-tabs" role="tablist" aria-label="Accounts by role">
+            <button type="button" class="gw-acct-tab" role="tab" aria-selected="true" aria-controls="gw-acct-table" data-role-tab="">
+                All <span class="gw-acct-tab-count">@users.Count</span>
+            </button>
+            <button type="button" class="gw-acct-tab" role="tab" aria-selected="false" aria-controls="gw-acct-table" data-role-tab="@GradeWise.Models.Roles.Administrator" tabindex="-1">
+                Administrators <span class="gw-acct-tab-count">@byRole[GradeWise.Models.Roles.Administrator]</span>
+            </button>
+            <button type="button" class="gw-acct-tab" role="tab" aria-selected="false" aria-controls="gw-acct-table" data-role-tab="@GradeWise.Models.Roles.Faculty" tabindex="-1">
+                Faculty <span class="gw-acct-tab-count">@byRole[GradeWise.Models.Roles.Faculty]</span>
+            </button>
+            <button type="button" class="gw-acct-tab" role="tab" aria-selected="false" aria-controls="gw-acct-table" data-role-tab="@GradeWise.Models.Roles.Student" tabindex="-1">
+                Students <span class="gw-acct-tab-count">@byRole[GradeWise.Models.Roles.Student]</span>
+            </button>
+        </div>
+
+        <div class="gw-acct-filters" role="search" aria-label="Filter accounts">
+            <div class="gw-acct-filter gw-acct-filter-search">
+                <label for="gw-acct-search">Search</label>
+                <input type="search" id="gw-acct-search" class="gw-inline-select" placeholder="Name, ID or email" autocomplete="off" spellcheck="false" />
+            </div>
+            <div class="gw-acct-filter">
+                <label for="gw-acct-status">Status</label>
+                <select id="gw-acct-status" class="gw-inline-select">
+                    <option value="">All statuses</option>
+                    <option value="active">Active</option>
+                    <option value="disabled">Disabled</option>
+                </select>
+            </div>
+            <button type="button" class="gw-btn gw-btn-small gw-btn-outline" id="gw-acct-clear">Clear filters</button>
+        </div>
+    </div>
+
+    <div class="gw-acct-resultbar" id="gw-acct-resultbar" hidden>
+        <div class="gw-acct-pager" aria-label="Pages">
+            <span class="gw-acct-range" id="gw-acct-range" aria-live="polite"></span>
+            <button type="button" class="gw-acct-pagebtn" data-page-step="-1" aria-label="Previous page" title="Previous page">
+                <span aria-hidden="true">&lsaquo;</span>
+            </button>
+            <button type="button" class="gw-acct-pagebtn" data-page-step="1" aria-label="Next page" title="Next page">
+                <span aria-hidden="true">&rsaquo;</span>
+            </button>
+        </div>
+        <div class="gw-acct-sortbox">
+            <label for="gw-acct-sort">Sort by</label>
+            <select id="gw-acct-sort" class="gw-inline-select">
+                <option value="role">Role, then name</option>
+                <option value="name-asc">Name, A to Z</option>
+                <option value="name-desc">Name, Z to A</option>
+                <option value="id-asc">ID, A to Z</option>
+                <option value="newest">Newest first</option>
+                <option value="oldest">Oldest first</option>
+            </select>
+            <label for="gw-acct-size">Show</label>
+            <select id="gw-acct-size" class="gw-inline-select">
+                <option value="10">10</option>
+                <option value="25">25</option>
+                <option value="50">50</option>
+            </select>
+        </div>
+    </div>
+
     <div class="gw-table-wrap">
-        <table class="gw-table">
+        <table class="gw-table gw-acct-table" id="gw-acct-table">
+            <colgroup>
+                <col class="gw-acct-col-name" />
+                <col class="gw-acct-col-id" />
+                <col class="gw-acct-col-email" />
+                <col class="gw-acct-col-role" />
+                <col class="gw-acct-col-status" />
+                <col class="gw-acct-col-actions" />
+            </colgroup>
             <thead>
                 <tr>
-                    <th>Name</th>
-                    <th>ID</th>
-                    <th>Email</th>
-                    <th>Role</th>
-                    <th>Status</th>
-                    <th>Actions</th>
+                    <th scope="col">Name</th>
+                    <th scope="col" class="gw-acct-cell-id">ID</th>
+                    <th scope="col" class="gw-acct-cell-email">Email</th>
+                    <th scope="col" class="gw-acct-cell-role">Role</th>
+                    <th scope="col">Status</th>
+                    <th scope="col" class="gw-acct-cell-actions">Actions</th>
                 </tr>
             </thead>
             <tbody>
                 @foreach (var u in users)
                 {
                     var isMe = string.Equals(u.StudentNo, meLogin, StringComparison.OrdinalIgnoreCase);
-                    <tr>
+                    var nameParts = (u.FullName ?? "").Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+                    var initials = nameParts.Length == 0 ? "?" : (nameParts[0].Substring(0, 1) + (nameParts.Length > 1 ? nameParts[nameParts.Length - 1].Substring(0, 1) : "")).ToUpperInvariant();
+                    var roleClass = u.Role == GradeWise.Models.Roles.Administrator ? "admin" : u.Role == GradeWise.Models.Roles.Faculty ? "faculty" : "student";
+                    <tr data-acct-row
+                        data-name="@u.FullName"
+                        data-login="@u.StudentNo"
+                        data-email="@u.Email"
+                        data-role="@u.Role"
+                        data-status="@(u.IsActive ? "active" : "disabled")"
+                        data-created="@u.CreatedAt.ToString("yyyy-MM-ddTHH:mm:ss")"
+                        data-role-order="@Array.IndexOf(roles, u.Role)">
                         <td>
-                            @u.FullName
-                            @if (isMe)
-                            {
-                                <span class="gw-muted">(you)</span>
-                            }
-                        </td>
-                        <td>@u.StudentNo</td>
-                        <td>@u.Email</td>
-                        <td>
-                            @if (isMe)
-                            {
-                                <span class="gw-badge">@u.Role</span>
-                            }
-                            else
-                            {
-                                using (Html.BeginForm("ChangeRole", "Admin", new { id = u.Id }, FormMethod.Post, new { @class = "gw-row-form" }))
-                                {
-                                    @Html.AntiForgeryToken()
-                                    <select name="role" class="gw-inline-select" aria-label="Role for @u.FullName">
-                                        @foreach (var r in roles)
+                            <div class="gw-acct-person">
+                                <span class="gw-acct-avatar gw-acct-avatar-@roleClass" aria-hidden="true">@initials</span>
+                                <span class="gw-acct-person-text">
+                                    <span class="gw-acct-name">
+                                        @u.FullName
+                                        @if (isMe)
                                         {
-                                            <option value="@r" selected="@(u.Role == r)">@r</option>
+                                            <span class="gw-muted">(you)</span>
                                         }
-                                    </select>
-                                    <button type="submit" class="gw-btn gw-btn-small gw-btn-outline">Save</button>
-                                }
-                            }
+                                    </span>
+                                    <span class="gw-acct-sub gw-acct-sub-id"><code class="gw-acct-id">@u.StudentNo</code></span>
+                                    <span class="gw-acct-sub gw-acct-sub-email">@u.Email</span>
+                                    <span class="gw-acct-sub gw-acct-sub-role"><span class="gw-badge gw-acct-role gw-acct-role-@roleClass">@u.Role</span></span>
+                                </span>
+                            </div>
                         </td>
+                        <td class="gw-acct-cell-id"><code class="gw-acct-id">@u.StudentNo</code></td>
+                        <td class="gw-acct-cell-email"><span class="gw-acct-email">@u.Email</span></td>
+                        <td class="gw-acct-cell-role"><span class="gw-badge gw-acct-role gw-acct-role-@roleClass">@u.Role</span></td>
                         <td>
                             <span class="gw-status @(u.IsActive ? "gw-status-active" : "gw-status-off")">@(u.IsActive ? "Active" : "Disabled")</span>
                         </td>
-                        <td>
+                        <td class="gw-acct-cell-actions">
                             <div class="gw-row-actions">
                                 @* All account actions live in the Edit modal below; the row only carries what it needs. *@
                                 <button type="button" class="gw-btn gw-btn-small gw-btn-outline"
@@ -140,8 +220,32 @@
                         </td>
                     </tr>
                 }
+                @if (users.Count == 0)
+                {
+                    <tr>
+                        <td colspan="6" class="gw-empty">No accounts yet. Use Add user to create one.</td>
+                    </tr>
+                }
+                <tr id="gw-acct-empty" hidden>
+                    <td colspan="6" class="gw-empty">
+                        <span id="gw-acct-empty-text">No accounts match these filters.</span>
+                        <button type="button" class="gw-acct-linkbtn" data-acct-clear>Clear filters</button>
+                    </td>
+                </tr>
             </tbody>
         </table>
+    </div>
+
+    <div class="gw-acct-footbar" id="gw-acct-footbar" hidden>
+        <span id="gw-acct-pageinfo"></span>
+        <div class="gw-acct-pager">
+            <button type="button" class="gw-acct-pagebtn" data-page-step="-1" aria-label="Previous page" title="Previous page">
+                <span aria-hidden="true">&lsaquo;</span>
+            </button>
+            <button type="button" class="gw-acct-pagebtn" data-page-step="1" aria-label="Next page" title="Next page">
+                <span aria-hidden="true">&rsaquo;</span>
+            </button>
+        </div>
     </div>
 </section>
 
@@ -159,7 +263,7 @@
             <div class="gw-modal-meta gw-modal-meta-stack" id="gw-acct-meta">
                 <strong class="gw-profile-name" data-acct-field="name"></strong>
                 <span>ID: <span data-acct-field="login"></span></span>
-                <span>Role: <span data-acct-field="role"></span></span>
+                <span>Role: <span class="gw-badge gw-acct-role" data-acct-role-badge></span> <span class="gw-acct-role-fixed">fixed</span></span>
                 <span>Status: <span class="gw-status" data-acct-field="status"></span></span>
             </div>
             <button type="button" class="gw-iconbtn gw-modal-close" data-modal-close aria-label="Close" title="Close">
@@ -168,6 +272,11 @@
         </div>
 
         <div class="gw-panel-body gw-editinfo-body">
+            @* The role is set when the account is created and cannot be changed here. *@
+            <p class="gw-muted gw-small gw-acct-role-note">
+                The role was set when this account was created and cannot be changed.
+            </p>
+
             @* ----- Disable / Enable ----- *@
             <section class="gw-editinfo-section" aria-labelledby="gw-acct-access-h">
                 <h3 id="gw-acct-access-h" class="gw-editinfo-heading">Account access</h3>
@@ -197,7 +306,7 @@
                 <h3 id="gw-acct-reset-h" class="gw-editinfo-heading">Reset password</h3>
                 <p class="gw-muted gw-editinfo-current">
                     Creates a new temporary password. The old password stops working right away.
-                    The new one is shown once on this page so you can give it to the user.
+                    The new one is emailed to the user, who must change it at the next sign-in.
                 </p>
                 <form method="post" action="" data-acct-form="reset">
                     @Html.AntiForgeryToken()
@@ -252,193 +361,104 @@
     </div>
 </div>
 
+@* ---------- Import students modal ----------
+   Reads a CSV or Excel (.xlsx) file in the browser, checks every row with the same rules as Add user,
+   then creates the valid rows one at a time through the existing CreateUser action (the same POST the
+   Add user form makes, so the server still validates each account, rejects duplicates and emails each
+   student a temporary password). Nothing is saved in the browser. *@
+<div id="gw-import-modal" class="gw-modal-backdrop" hidden>
+    <div class="gw-panel gw-card-raised gw-modal-card gw-import-card" role="dialog" aria-modal="true" aria-labelledby="gw-import-title" aria-describedby="gw-import-intro">
+        <div class="gw-panel-head">
+            <h2 id="gw-import-title" class="gw-panel-title">Import students</h2>
+        </div>
+        <div class="gw-modal-top">
+            <p class="gw-muted gw-import-intro" id="gw-import-intro">
+                Add a whole class section at once from a CSV or Excel file. Each valid row becomes a student
+                account, and each student is emailed a temporary password.
+            </p>
+            <button type="button" class="gw-iconbtn gw-modal-close" data-import-close aria-label="Close" title="Close">
+                <img src="@Url.Content("~/Content/img/icons/close.svg")" alt="" width="20" height="20" />
+            </button>
+        </div>
+
+        <div class="gw-panel-body gw-import-body">
+            <form id="gw-import-form" action="@Url.Action("CreateUser", "Admin")" method="post" novalidate>
+                @Html.AntiForgeryToken()
+
+                <div class="gw-import-pick">
+                    <div class="gw-import-field">
+                        <label for="gw-import-section">Section <span class="gw-import-opt">optional</span></label>
+                        <input type="text" id="gw-import-section" class="gw-inline-select" maxlength="40" placeholder="e.g. SBIT-3D" autocomplete="off" />
+                    </div>
+                    <div class="gw-import-field gw-import-field-file">
+                        <label for="gw-import-file">File <span class="gw-import-opt">.csv or .xlsx</span></label>
+                        <input type="file" id="gw-import-file" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" />
+                    </div>
+                </div>
+
+                <details class="gw-import-help">
+                    <summary>File format and template</summary>
+                    <p>The first row must be the column names. Columns can be in any order:</p>
+                    <ul>
+                        <li><strong>student_number</strong> (YY-0000, e.g. 26-0001), <strong>first_name</strong>, <strong>last_name</strong>, <strong>email</strong> are required.</li>
+                        <li><strong>middle_name</strong> and <strong>suffix</strong> (Jr., Sr., II, III, IV, V) are optional.</li>
+                    </ul>
+                    <button type="button" class="gw-btn gw-btn-small gw-btn-outline" data-import-template>Download CSV template</button>
+                </details>
+
+                <div class="gw-import-note">
+                    <span class="gw-import-tag">Note</span>
+                    The section name labels this import only. Accounts do not store a section yet.
+                </div>
+            </form>
+
+            <div class="gw-alert" role="alert" data-import-error hidden></div>
+
+            <div class="gw-import-results" data-import-results hidden>
+                <div class="gw-import-summary" aria-live="polite">
+                    <span class="gw-import-chip gw-import-chip-ok"><strong data-import-count="ready">0</strong> ready</span>
+                    <span class="gw-import-chip gw-import-chip-bad"><strong data-import-count="problem">0</strong> with problems</span>
+                    <span class="gw-import-chip gw-import-chip-done" data-import-done-chip hidden><strong data-import-count="created">0</strong> created</span>
+                    <span class="gw-import-chip gw-import-chip-bad" data-import-failed-chip hidden><strong data-import-count="failed">0</strong> failed</span>
+                </div>
+
+                <div class="gw-import-progress" data-import-progress hidden>
+                    <div class="gw-import-bar"><span data-import-bar></span></div>
+                    <p class="gw-import-progress-text" data-import-progress-text aria-live="polite"></p>
+                </div>
+
+                <div class="gw-import-filter">
+                    <label><input type="checkbox" data-import-only-problems /> Show only rows that need attention</label>
+                </div>
+
+                <div class="gw-table-wrap gw-import-tablewrap">
+                    <table class="gw-table gw-import-table">
+                        <thead>
+                            <tr>
+                                <th scope="col">Row</th>
+                                <th scope="col">Student no.</th>
+                                <th scope="col">Name</th>
+                                <th scope="col" class="gw-import-cell-email">Email</th>
+                                <th scope="col">Result</th>
+                            </tr>
+                        </thead>
+                        <tbody data-import-rows></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="gw-modal-foot gw-import-foot">
+            <button type="button" class="gw-btn gw-btn-outline gw-btn-small" data-import-close>Close</button>
+            <button type="button" class="gw-btn gw-btn-outline gw-btn-small" data-import-download hidden>Download rows to fix</button>
+            <button type="button" class="gw-btn gw-btn-outline gw-btn-small" data-import-stop hidden>Stop</button>
+            <button type="button" class="gw-btn gw-btn-small" data-import-run disabled>Import students</button>
+            <button type="button" class="gw-btn gw-btn-small" data-import-refresh hidden>Show new accounts</button>
+        </div>
+    </div>
+</div>
+
 @section scripts {
-    <script>
-        // Edit account modal: fill it from the clicked row, then open it with the shared GW.modal.
-        // Confirmations use the shared data-confirm dialog (gw-modal.js), which sits above this modal.
-        (function () {
-            var modal = document.getElementById("gw-account-modal");
-            if (!modal || !window.GW || !GW.modal) return;
-
-            function q(sel) { return modal.querySelector(sel); }
-            function setText(field, value) {
-                [].forEach.call(modal.querySelectorAll('[data-acct-field="' + field + '"]'), function (el) {
-                    el.textContent = value;
-                });
-            }
-
-            var accessText = q("[data-acct-access-text]");
-            var selfNote = q("[data-acct-self-note]");
-            var accessForm = q('[data-acct-form="access"]');
-            var activeInput = q("[data-acct-active-input]");
-            var disableBtn = q('[data-acct-btn="disable"]');
-            var enableBtn = q('[data-acct-btn="enable"]');
-            var resetForm = q('[data-acct-form="reset"]');
-            var resetBtn = q('[data-acct-btn="reset"]');
-            var deleteForm = q('[data-acct-form="delete"]');
-            var deleteBtn = q('[data-acct-btn="delete"]');
-            var deleteInput = q("[data-acct-delete-input]");
-            var deleteSection = q("[data-acct-delete-section]");
-            var deleteBlockedBox = q("[data-acct-delete-blocked]");
-            var deleteBlockedReason = q("[data-acct-delete-reason]");
-            var deleteAllowedBox = q("[data-acct-delete-allowed]");
-            var statusChip = q('[data-acct-field="status"]');
-
-            var current = null;   // the account the modal is showing
-
-            function deleteMatches() {
-                if (!current || !deleteInput || current.deleteBlocked) return false;
-                return deleteInput.value.trim().toLowerCase() === current.login.toLowerCase();
-            }
-
-            function syncDeleteButton() {
-                if (deleteBtn) deleteBtn.disabled = !deleteMatches();
-            }
-
-            function fill(btn) {
-                current = {
-                    name: btn.getAttribute("data-name") || "",
-                    login: btn.getAttribute("data-login") || "",
-                    role: btn.getAttribute("data-role") || "",
-                    active: btn.getAttribute("data-active") === "true",
-                    me: btn.getAttribute("data-me") === "true",
-                    setActiveUrl: btn.getAttribute("data-set-active-url") || "",
-                    resetUrl: btn.getAttribute("data-reset-url") || "",
-                    deleteUrl: btn.getAttribute("data-delete-url") || "",
-                    deleteBlocked: btn.getAttribute("data-delete-blocked") || ""
-                };
-                var c = current;
-
-                setText("name", c.name + (c.me ? " (you)" : ""));
-                setText("login", c.login);
-                setText("role", c.role);
-                statusChip.textContent = c.active ? "Active" : "Disabled";
-                statusChip.className = "gw-status " + (c.active ? "gw-status-active" : "gw-status-off");
-
-                // ----- access: the server also refuses to disable your own account -----
-                selfNote.hidden = !c.me;
-                accessForm.hidden = c.me;
-                accessText.hidden = c.me;
-                accessForm.action = c.setActiveUrl;
-                activeInput.value = c.active ? "false" : "true";
-                disableBtn.hidden = !c.active;
-                enableBtn.hidden = c.active;
-                accessText.textContent = c.active
-                    ? "This account is active. Disabling it stops " + c.name + " from signing in; their records are kept."
-                    : "This account is disabled. " + c.name + " cannot sign in until it is enabled again.";
-                disableBtn.setAttribute("data-confirm",
-                    "Disable " + c.name + " (" + c.login + ")? They are signed out and cannot sign in until you enable the account again.");
-                enableBtn.setAttribute("data-confirm",
-                    "Enable " + c.name + " (" + c.login + ")? They can sign in again with their current password.");
-
-                // ----- reset password -----
-                resetForm.action = c.resetUrl;
-                resetBtn.setAttribute("data-confirm",
-                    "Reset the password for " + c.name + " (" + c.login + ")? Their old password stops working right away.");
-
-                // ----- delete: never for your own account; explain up front when the server would refuse -----
-                deleteSection.hidden = c.me;
-                deleteBlockedBox.hidden = !c.deleteBlocked;
-                deleteBlockedReason.textContent = c.deleteBlocked;
-                deleteAllowedBox.hidden = !!c.deleteBlocked;
-                deleteForm.action = c.deleteBlocked ? "" : c.deleteUrl;
-                deleteInput.value = "";
-                deleteBtn.setAttribute("data-confirm",
-                    "Permanently delete " + c.name + " (" + c.login + ")? This cannot be undone.");
-                syncDeleteButton();
-            }
-
-            if (deleteInput) {
-                deleteInput.addEventListener("input", syncDeleteButton);
-                deleteInput.addEventListener("keydown", function (e) {
-                    // Enter must not bypass the confirmation when the ID does not match yet.
-                    if (e.key === "Enter" && !deleteMatches()) e.preventDefault();
-                });
-                deleteForm.addEventListener("submit", function (e) {
-                    if (!deleteMatches()) e.preventDefault();
-                }, true);
-            }
-
-            document.addEventListener("click", function (e) {
-                var btn = e.target.closest ? e.target.closest("[data-account-edit]") : null;
-                if (!btn) return;
-                e.preventDefault();
-                fill(btn);
-                GW.modal.open(modal, { focus: modal.querySelector(".gw-modal-close") });
-            });
-        })();
-
-
-        // Copy the one-time temporary password (the box is only shown once).
-        // Shows "Copied" on the button and a message under it; if copying is blocked,
-        // the password is selected so the admin can press Ctrl+C.
-        (function () {
-            var copyBtn = document.getElementById("copy-password");
-            var box = document.getElementById("temp-password");
-            if (!copyBtn || !box) { return; }
-            var label = copyBtn.querySelector("[data-copy-label]");
-            var iconCopy = copyBtn.querySelector('[data-copy-icon="copy"]');
-            var iconDone = copyBtn.querySelector('[data-copy-icon="done"]');
-            var status = document.getElementById("copy-status");
-            var resetTimer = null;
-
-            function setState(state, message) {
-                copyBtn.classList.toggle("gw-copy-done", state === "done");
-                label.textContent = state === "done" ? "Copied" : "Copy";
-                iconCopy.hidden = state === "done";
-                iconDone.hidden = state !== "done";
-                status.textContent = message || "";
-                status.classList.toggle("gw-copy-status-bad", state === "failed");
-            }
-
-            function selectPassword() {
-                var range = document.createRange();
-                range.selectNodeContents(box);
-                var sel = window.getSelection();
-                sel.removeAllRanges();
-                sel.addRange(range);
-            }
-
-            function copied() {
-                setState("done", "Password copied to the clipboard.");
-                clearTimeout(resetTimer);
-                resetTimer = setTimeout(function () { setState("idle", ""); }, 4000);
-            }
-
-            function failed() {
-                selectPassword();
-                setState("failed", "Could not copy automatically. The password is selected: press Ctrl+C (or Cmd+C) to copy it.");
-            }
-
-            function legacyCopy(text) {
-                var area = document.createElement("textarea");
-                area.value = text;
-                area.setAttribute("readonly", "readonly");
-                area.style.position = "fixed";
-                area.style.top = "0";
-                area.style.left = "-9999px";
-                document.body.appendChild(area);
-                area.select();
-                var ok = false;
-                try { ok = document.execCommand("copy"); } catch (err) { ok = false; }
-                document.body.removeChild(area);
-                copyBtn.focus();
-                return ok;
-            }
-
-            copyBtn.addEventListener("click", function () {
-                var text = (box.textContent || "").trim();   // only the password itself
-                if (!text) { failed(); return; }
-                if (navigator.clipboard && window.isSecureContext) {
-                    navigator.clipboard.writeText(text).then(copied, function () {
-                        if (legacyCopy(text)) { copied(); } else { failed(); }
-                    });
-                } else if (legacyCopy(text)) {
-                    copied();
-                } else {
-                    failed();
-                }
-            });
-        })();
-    </script>
+    @* The page script is in Scripts/admin-accounts.js. *@
+    <script src="@Url.Content("~/Scripts/admin-accounts.js")?v=@System.IO.File.GetLastWriteTimeUtc(Server.MapPath("~/Scripts/admin-accounts.js")).Ticks"></script>
 }
