@@ -87,6 +87,9 @@
                     @if (role == GradeWise.Models.Roles.Student)
                     {
                         @Html.Action("Bell", "Notifications")
+                    }
+                    @if (role == GradeWise.Models.Roles.Student || role == GradeWise.Models.Roles.Faculty)
+                    {
                         <button type="button" class="gw-iconbtn gw-edit-btn" data-modal-open="gw-editinfo-modal" aria-haspopup="dialog" aria-label="My profile" title="My profile">
                             <img src="~/Content/img/icons/user.svg" alt="" width="24" height="24" />
                         </button>
@@ -113,7 +116,7 @@
         &copy; @DateTime.Now.Year GradeWise
     </footer>
 
-    @if (role == GradeWise.Models.Roles.Student)
+    @if (role == GradeWise.Models.Roles.Student || role == GradeWise.Models.Roles.Faculty)
     {
         @Html.Partial("_EditInfoModal", new GradeWise.Models.ProfileInfo { FullName = userName, StudentNo = userNo, Email = userEmail })
     }

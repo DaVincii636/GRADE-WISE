@@ -1,8 +1,8 @@
-@model GradeWise.Models.ProfileInfo
+﻿@model GradeWise.Models.ProfileInfo
 @{
-    // The student's own profile. Opened by the profile button in the top bar (see _Layout).
+    // The signed-in student's or faculty member's own profile. Opened from the shared top bar (see _Layout).
     // After a failed save the controller redirects here with the problems in TempData, and the
-    // modal opens again by itself so the student can read them.
+    // modal opens again by itself so the account holder can read them.
     var errors = TempData["EditInfoErrors"] as List<string> ?? new List<string>();
     var which = TempData["EditInfoForm"] as string;
     var typedEmail = TempData["EditInfoEmail"] as string ?? string.Empty;
