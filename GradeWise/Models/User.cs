@@ -27,6 +27,12 @@ namespace GradeWise.Models
 
         public string FullName { get; set; }
 
+        // Name components mirror the Admin > Add user form. FullName remains the display name.
+        public string FirstName { get; set; }
+        public string MiddleName { get; set; }
+        public string LastName { get; set; }
+        public string Suffix { get; set; }
+
         public string Email { get; set; }
 
         /// <summary>PBKDF2 hash. Never store plain passwords.</summary>
@@ -69,5 +75,12 @@ namespace GradeWise.Models
         public string StudentNo { get; set; }
 
         public string Email { get; set; }
+
+        public string FirstName { get; set; }
+        public string MiddleName { get; set; }
+        public string LastName { get; set; }
+        public string Suffix { get; set; }
+
+        public string Role { get; set; }
     }
 }

@@ -35,6 +35,27 @@
                 sessionStorage.removeItem("gwScroll");
             } catch (e) { }
 
+            // Restore the target selected in the What-If simulator for this course and grade period.
+            var goal = document.getElementById("gw-grade-goal");
+            if (goal) {
+                var goalKey = "gwWhatIfGoal:" + goal.getAttribute("data-course") + ":" + goal.getAttribute("data-scope");
+                try {
+                    var savedGoal = sessionStorage.getItem(goalKey);
+                    if (savedGoal) {
+                        var item = JSON.parse(savedGoal);
+                        if (item && item.grade && item.status) {
+                            var detail = "";
+                            if (item.status === "Reachable") detail = "Need " + item.required + "% average on remaining " + item.remaining + "%";
+                            else if (item.status === "Secured") detail = "Already secured";
+                            else if (item.status === "OutOfReach") detail = "Currently out of reach";
+                            goal.querySelector(".gw-grade-goal-grade").textContent = item.grade;
+                            goal.querySelector(".gw-grade-goal-detail").textContent = detail;
+                            goal.hidden = false;
+                        }
+                    }
+                } catch (e) { }
+            }
+
             var target = document.getElementById("course-summary");
             if (flag === "1" && target) {
                 var calm = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -59,9 +80,19 @@
             }
         </p>
     </div>
-    <div class="gw-datebox" aria-live="off">
-        <span class="gw-datebox-day" id="gw-day">@DateTime.Now.ToString("dddd", CultureInfo.InvariantCulture)</span>
-        <span class="gw-datebox-date" id="gw-date">@DateTime.Now.ToString("MM/dd/yyyy", CultureInfo.InvariantCulture)</span>
+    <div class="gw-page-head-right">
+        @if (Model.HasCourse)
+        {
+            <div id="gw-grade-goal" class="gw-grade-goal" data-course="@Model.SelectedId" data-scope="@Model.Scope" hidden aria-live="polite">
+                <span class="gw-grade-goal-kicker">TARGET GRADE</span>
+                <strong class="gw-grade-goal-grade"></strong>
+                <span class="gw-grade-goal-detail"></span>
+            </div>
+        }
+        <div class="gw-datebox" aria-live="off">
+            <span class="gw-datebox-day" id="gw-day">@DateTime.Now.ToString("dddd", CultureInfo.InvariantCulture)</span>
+            <span class="gw-datebox-date" id="gw-date">@DateTime.Now.ToString("MM/dd/yyyy", CultureInfo.InvariantCulture)</span>
+        </div>
     </div>
 </div>
 
@@ -174,29 +205,37 @@ else if (!Model.WeightsOk)
                         <td colspan="@(showPeriod ? 6 : 5)" class="gw-empty">Your scores appear here once your instructor enters them.</td>
                     </tr>
                 }
-                @foreach (var group in new[] { "Class Standing", "Exam" })
+                @foreach (var r in Model.Rows)
                 {
-                    var groupRows = Model.Rows.Where(r => {
-                        var category = Model.CategoriesForDisplay == null ? null : Model.CategoriesForDisplay.FirstOrDefault(c => c.Name == r.Category);
-                        return category != null && category.Group == group;
-                    }).ToList();
-                    <tr class="gw-student-major-row"><td colspan="@(showPeriod ? 6 : 5)">
-                        <details class="gw-student-major"><summary><strong>@group</strong><span>@(Model.Scope == GradeScopes.FinalGrade ? (group == "Class Standing" ? "30%" : "20%") : (group == "Class Standing" ? "60%" : "40%"))</span></summary>
-                            <table class="gw-table"><tbody>
-                            @foreach (var r in groupRows)
+                    <tr>
+                        <td>@r.Category</td>
+                        @if (showPeriod)
+                        {
+                            <td>@r.Period</td>
+                        }
+                        <td class="gw-num">@GradeCalculator.Format(r.Weight)%</td>
+                        <td class="gw-num">
+                            @if (r.Score.HasValue)
                             {
-                                <tr>
-                                    <td><details class="gw-student-category"><summary>@r.Category</summary><ul class="gw-student-assessments">@foreach (var assessment in r.Assessments) { <li><span>@assessment.Name</span><strong>@(assessment.Score.HasValue ? GradeCalculator.Format(assessment.Score) : "Not graded yet")</strong></li> }</ul></details></td>
-                                    @if (showPeriod) { <td>@r.Period</td> }
-                                    <td class="gw-num">@GradeCalculator.Format(r.Weight)%</td>
-                                    <td class="gw-num">@(r.Score.HasValue ? GradeCalculator.Format(r.Score) : "Not graded yet")</td>
-                                    <td class="gw-num">@GradeCalculator.Format(r.WeightedPoints)</td>
-                                    <td class="gw-num">@(r.ClassAverage.HasValue ? GradeCalculator.Format(r.ClassAverage) : "—")</td>
-                                </tr>
+                                @GradeCalculator.Format(r.Score)
                             }
-                            </tbody></table>
-                        </details>
-                    </td></tr>
+                            else
+                            {
+                                <span class="gw-cell-empty">Not graded yet</span>
+                            }
+                        </td>
+                        <td class="gw-num">@GradeCalculator.Format(r.WeightedPoints)</td>
+                        <td class="gw-num">
+                            @if (r.ClassAverage.HasValue)
+                            {
+                                @GradeCalculator.Format(r.ClassAverage)
+                            }
+                            else
+                            {
+                                <span class="gw-muted">&mdash;</span>
+                            }
+                        </td>
+                    </tr>
                 }
             </tbody>
             @if (Model.Rows.Count > 0)

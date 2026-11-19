@@ -131,6 +131,109 @@ namespace GradeWise.Controllers
         [Authorize]
         [HttpPost]
         [ValidateAntiForgeryToken]
+        public ActionResult UpdateProfile(string firstName, string middleName, string lastName, string suffix,
+            string loginId, string email, string currentPassword)
+        {
+            var db = new MongoDbContext();
+            var me = FindCurrentUser(db);
+            if (me == null || !me.IsActive) return RedirectToAction("Logout");
+
+            firstName = NormalizeNamePart(firstName);
+            middleName = NormalizeNamePart(middleName);
+            lastName = NormalizeNamePart(lastName);
+            suffix = (suffix ?? string.Empty).Trim();
+            loginId = (loginId ?? string.Empty).Trim();
+            email = (email ?? string.Empty).Trim().ToLowerInvariant();
+
+            var errors = new List<string>();
+            var validSuffixes = new[] { "", "Jr.", "Sr.", "II", "III", "IV", "V" };
+            if (firstName.Length == 0) errors.Add("Enter your first name.");
+            if (lastName.Length == 0) errors.Add("Enter your last name.");
+            if (new[] { firstName, middleName, lastName }.Any(x => x.Length > 40)) errors.Add("Each name field must be 40 characters or fewer.");
+            if (new[] { firstName, middleName, lastName }.Any(x => x.Any(char.IsControl))) errors.Add("Name fields cannot contain control characters.");
+            if (!validSuffixes.Contains(suffix)) errors.Add("Choose a valid suffix.");
+
+            var fullName = string.Join(" ", new[] { firstName, middleName, lastName, suffix }.Where(x => !string.IsNullOrWhiteSpace(x)));
+            if (fullName.Length > 100) errors.Add("Your full name must be 100 characters or fewer.");
+
+            if (loginId.Length == 0) errors.Add("Enter your sign-in ID.");
+            else if (!System.Text.RegularExpressions.Regex.IsMatch(loginId, @"^[A-Za-z0-9._-]{1,50}$"))
+                errors.Add("Sign-in ID can only use letters, numbers, dots, dashes and underscores (up to 50 characters).");
+
+            if (email.Length == 0) errors.Add("Enter your email address.");
+            else if (!ValidationHelper.IsValidEmail(email)) errors.Add("Enter a valid email address.");
+
+            AddPasswordError(errors, me, currentPassword);
+
+            if (errors.Count == 0 && !string.Equals(loginId, me.StudentNo, StringComparison.OrdinalIgnoreCase))
+            {
+                var takenId = db.Users.Find(u => u.StudentNo.ToLower() == loginId.ToLower() && u.Id != me.Id).FirstOrDefault();
+                if (takenId != null) errors.Add("That sign-in ID is already used by another account.");
+            }
+            if (errors.Count == 0 && !string.Equals(email, me.Email, StringComparison.OrdinalIgnoreCase))
+            {
+                var takenEmail = db.Users.Find(u => u.Email.ToLower() == email && u.Id != me.Id).FirstOrDefault();
+                if (takenEmail != null) errors.Add("That email is already used by another account.");
+            }
+
+            if (errors.Count > 0)
+            {
+                TempData["EditInfoProfile"] = new Dictionary<string, string>
+                {
+                    { "FirstName", firstName }, { "MiddleName", middleName }, { "LastName", lastName },
+                    { "Suffix", suffix }, { "LoginId", loginId }, { "Email", email }
+                };
+                TempData["EditInfoErrors"] = errors;
+                TempData["EditInfoForm"] = "profile";
+                return RedirectToDashboard(me.Role);
+            }
+
+            var update = Builders<User>.Update
+                .Set(u => u.FirstName, firstName)
+                .Set(u => u.MiddleName, middleName)
+                .Set(u => u.LastName, lastName)
+                .Set(u => u.Suffix, suffix)
+                .Set(u => u.FullName, fullName)
+                .Set(u => u.StudentNo, loginId)
+                .Set(u => u.Email, email);
+            try
+            {
+                db.Users.UpdateOne(u => u.Id == me.Id, update);
+            }
+            catch (MongoWriteException ex) when (ex.WriteError.Category == ServerErrorCategory.DuplicateKey)
+            {
+                TempData["EditInfoProfile"] = new Dictionary<string, string>
+                {
+                    { "FirstName", firstName }, { "MiddleName", middleName }, { "LastName", lastName },
+                    { "Suffix", suffix }, { "LoginId", loginId }, { "Email", email }
+                };
+                TempData["EditInfoErrors"] = new List<string> { "That sign-in ID or email is already used by another account." };
+                TempData["EditInfoForm"] = "profile";
+                return RedirectToDashboard(me.Role);
+            }
+
+            me.FirstName = firstName;
+            me.MiddleName = middleName;
+            me.LastName = lastName;
+            me.Suffix = suffix;
+            me.FullName = fullName;
+            me.StudentNo = loginId;
+            me.Email = email;
+            SignIn(me); // Refresh the authentication ticket when the sign-in ID or display name changes.
+
+            TempData["Message"] = "Profile updated.";
+            return RedirectToDashboard(me.Role);
+        }
+
+        private static string NormalizeNamePart(string value)
+        {
+            var trimmed = (value ?? string.Empty).Trim();
+            return System.Text.RegularExpressions.Regex.Replace(trimmed, @"\s{2,}", " ");
+        }
+
+        [Authorize]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
         public ActionResult ChangeName(string newName)
         {
             var db = new MongoDbContext();

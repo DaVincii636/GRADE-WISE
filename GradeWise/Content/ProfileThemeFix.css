@@ -1,0 +1,202 @@
+/* GRADE-WISE profile modal theme correction.
+   Append this block to the END of Content/Site.css. It deliberately reuses
+   the system's paper/ink/lime tokens and hard-edge component language. */
+.gw-profile-modal {
+    width: min(540px, calc(100vw - 32px));
+    max-height: calc(100vh - 40px);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    background: var(--gw-paper);
+    color: var(--gw-ink);
+    border: var(--gw-outline);
+    border-radius: 0;
+    box-shadow: var(--gw-shadow);
+}
+.gw-profile-modal-head {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    margin: 0;
+    padding: 14px 18px;
+    background: var(--gw-lime);
+    border: 0;
+}
+.gw-profile-modal-head .gw-panel-title {
+    display: inline-block;
+    margin: 0;
+    padding: 2px 10px;
+    background: var(--gw-paper);
+    border: var(--gw-outline);
+    border-radius: 0;
+    color: var(--gw-ink);
+}
+.gw-profile-kicker,
+.gw-profile-name-preview > span {
+    color: var(--gw-ink);
+    font-family: var(--gw-font-pixel);
+    font-size: .65rem;
+    font-weight: 700;
+    letter-spacing: .06em;
+}
+.gw-profile-role {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 10px;
+    border: var(--gw-outline);
+    border-radius: 0;
+    background: var(--gw-paper);
+    color: var(--gw-ink);
+    font-size: .78rem;
+    font-weight: 700;
+}
+.gw-profile-modal-top {
+    flex: 0 0 auto;
+    padding: 14px 18px;
+    background: var(--gw-paper);
+    border-bottom: 1.5px dashed var(--gw-ink);
+}
+.gw-profile-modal-top .gw-modal-meta-stack {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 3px;
+}
+.gw-profile-name { font-size: 1.05rem; font-weight: 700; }
+.gw-profile-modal-body {
+    min-height: 0;
+    padding: 4px 18px 18px;
+    overflow-y: auto;
+    background: var(--gw-paper);
+}
+.gw-profile-section {
+    padding: 16px 0;
+    border-bottom: 1.5px dashed var(--gw-ink);
+}
+.gw-profile-section:last-child { border-bottom: 0; }
+.gw-profile-section-title {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    margin-bottom: 14px;
+}
+.gw-profile-section-title .gw-editinfo-heading { margin: 0 0 3px; }
+.gw-profile-section-title p { margin: 0; font-size: .82rem; }
+.gw-profile-section-number {
+    display: grid;
+    place-items: center;
+    flex: 0 0 32px;
+    height: 32px;
+    border: var(--gw-outline);
+    border-radius: 0;
+    background: var(--gw-lime);
+    color: var(--gw-ink);
+    font-family: var(--gw-font-pixel);
+    font-size: .72rem;
+    font-weight: 700;
+}
+.gw-profile-field-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+}
+.gw-profile-field-grid .gw-user-control { min-width: 0; }
+.gw-profile-field-grid .gw-user-control label {
+    display: block;
+    margin: 0 0 5px;
+    font-size: .82rem;
+    font-weight: 700;
+}
+.gw-profile-field-grid .gw-user-control input,
+.gw-profile-field-grid .gw-user-control select,
+.gw-profile-security-check input {
+    box-sizing: border-box;
+    width: 100%;
+    min-height: 42px;
+    padding: 9px 11px;
+    border: var(--gw-outline);
+    border-radius: 0;
+    background: #fff;
+    color: var(--gw-ink);
+    font: inherit;
+    font-size: .9rem;
+}
+.gw-profile-field-grid .gw-user-control input:focus,
+.gw-profile-field-grid .gw-user-control select:focus,
+.gw-profile-security-check input:focus {
+    outline: 3px solid var(--gw-lime);
+    outline-offset: 1px;
+}
+.gw-profile-field-grid .gw-user-control small {
+    display: block;
+    margin-top: 4px;
+    color: var(--gw-muted);
+    font-size: .73rem;
+    line-height: 1.35;
+}
+.gw-profile-name-preview {
+    margin: 13px 0 15px;
+    padding: 10px 12px;
+    border: var(--gw-outline);
+    border-radius: 0;
+    background: var(--gw-lime-pale);
+}
+.gw-profile-name-preview strong {
+    display: block;
+    margin-top: 3px;
+    color: var(--gw-ink);
+    font-size: .98rem;
+}
+.gw-profile-security-check {
+    display: grid;
+    grid-template-columns: 1fr minmax(150px, .8fr);
+    align-items: center;
+    gap: 10px;
+    margin-top: 16px;
+    padding: 12px;
+    border: var(--gw-outline);
+    border-radius: 0;
+    background: #fff8d9;
+}
+.gw-profile-security-check strong,
+.gw-profile-security-check span { display: block; }
+.gw-profile-security-check strong { font-size: .84rem; }
+.gw-profile-security-check span {
+    margin-top: 3px;
+    color: var(--gw-muted);
+    font-size: .74rem;
+}
+.gw-profile-security-check input { min-width: 0; }
+.gw-profile-save {
+    background: var(--gw-ink);
+    border: var(--gw-outline);
+    border-radius: 0;
+    color: var(--gw-paper);
+}
+.gw-profile-save:hover {
+    background: var(--gw-lime);
+    color: var(--gw-ink);
+}
+.gw-profile-modal .gw-modal-foot {
+    flex: 0 0 auto;
+    padding: 12px 18px;
+    background: var(--gw-head);
+    border-top: var(--gw-outline);
+}
+.gw-profile-modal .gw-modal-foot .gw-btn { border-radius: 0; }
+.gw-profile-modal .gw-user-req,
+.gw-profile-modal .gw-user-opt {
+    margin-left: 4px;
+    color: var(--gw-muted);
+    font-size: .7rem;
+    font-weight: 500;
+}
+@media (max-width: 600px) {
+    .gw-profile-field-grid,
+    .gw-profile-security-check { grid-template-columns: 1fr; }
+    .gw-profile-modal { width: calc(100vw - 24px); max-height: calc(100vh - 24px); }
+    .gw-profile-modal-top,
+    .gw-profile-modal-body { padding-left: 14px; padding-right: 14px; }
+}

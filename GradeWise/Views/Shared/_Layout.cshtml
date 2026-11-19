@@ -6,6 +6,7 @@
     string userName = null;
     string userEmail = null;
     string userNo = null;
+    GradeWise.Models.User profileUser = null;
     if (User.Identity.IsAuthenticated)
     {
         try
@@ -20,6 +21,7 @@
             }
             if (me != null)
             {
+                profileUser = me;
                 role = me.Role;
                 userName = me.FullName;
                 userEmail = me.Email;
@@ -32,6 +34,7 @@
             userName = null;
             userEmail = null;
             userNo = null;
+            profileUser = null;
         }
     }
 }
@@ -118,7 +121,7 @@
 
     @if (role == GradeWise.Models.Roles.Student || role == GradeWise.Models.Roles.Faculty)
     {
-        @Html.Partial("_EditInfoModal", new GradeWise.Models.ProfileInfo { FullName = userName, StudentNo = userNo, Email = userEmail })
+        @Html.Partial("_EditInfoModal", new GradeWise.Models.ProfileInfo { FullName = userName, StudentNo = userNo, Email = userEmail, Role = role, FirstName = profileUser == null ? null : profileUser.FirstName, MiddleName = profileUser == null ? null : profileUser.MiddleName, LastName = profileUser == null ? null : profileUser.LastName, Suffix = profileUser == null ? null : profileUser.Suffix })
     }
 
     @Scripts.Render("~/bundles/jquery")

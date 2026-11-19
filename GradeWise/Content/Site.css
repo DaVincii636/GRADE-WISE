@@ -4972,22 +4972,52 @@ html.gw-loading button {
     }
 }
 
-/* Expandable class-record grading hierarchy */
-.gw-hierarchy-major,.gw-hierarchy-category{border:1px solid var(--gw-line,#c9c6bd);margin:10px 0;padding:0;background:var(--gw-panel,#fff);}
-.gw-hierarchy-major>summary,.gw-hierarchy-category>summary{display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer;list-style:none;padding:13px 16px;font-weight:600;}
-.gw-hierarchy-major>summary::-webkit-details-marker,.gw-hierarchy-category>summary::-webkit-details-marker{display:none;}
-.gw-hierarchy-major>summary:before,.gw-hierarchy-category>summary:before{content:'+';font-weight:700;margin-right:8px;}
-.gw-hierarchy-major[open]>summary:before,.gw-hierarchy-category[open]>summary:before{content:'−';}
-.gw-hierarchy-major>summary{background:var(--gw-soft,#f2f0e9);}
-.gw-hierarchy-children{padding:8px 16px 14px 30px;}
-.gw-hierarchy-weight{font-variant-numeric:tabular-nums;color:var(--gw-muted,#666);}
-.gw-assessment-item{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:9px 12px;border-bottom:1px solid var(--gw-line,#ddd);}
-.gw-inline-add-assessment{display:flex;gap:8px;align-items:center;padding:12px;}
-.gw-inline-add-assessment input{max-width:280px;}
 
-.gw-student-category>summary{cursor:pointer;font-weight:600;}
-.gw-student-assessments{list-style:none;padding:6px 0 0 16px;margin:0;}
-.gw-student-assessments li{display:flex;justify-content:space-between;gap:12px;padding:4px 0;font-size:.92em;}
+/* ---------- Student What-If goal beside the dashboard date ---------- */
+.gw-page-head-right {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 18px;
+    flex: 0 0 auto;
+}
 
-.gw-assessment-actions{display:flex;gap:6px;align-items:center;}
-.gw-inline-form{display:inline-flex;margin:0;}
+.gw-grade-goal {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+    min-width: 170px;
+    max-width: 260px;
+    padding: 7px 11px;
+    border: 1px dashed var(--gw-ink, #222);
+    background: var(--gw-lime-pale);
+    line-height: 1.25;
+}
+
+.gw-grade-goal[hidden] { display: none !important; }
+.gw-grade-goal-kicker {
+    color: var(--gw-muted);
+    font-family: var(--gw-font-pixel);
+    font-size: .66rem;
+    letter-spacing: .08em;
+}
+.gw-grade-goal-grade {
+    font-size: 1.15rem;
+    font-weight: 700;
+}
+.gw-grade-goal-detail {
+    color: var(--gw-muted);
+    font-size: .78rem;
+}
+
+@media (max-width: 575.98px) {
+    .gw-page-head-right {
+        width: 100%;
+        justify-content: space-between;
+        gap: 10px;
+        margin: 8px 0 12px;
+    }
+    .gw-grade-goal { min-width: 0; flex: 1 1 auto; }
+    .gw-page-head-date { flex-direction: column; }
+}

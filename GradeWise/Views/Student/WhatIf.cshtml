@@ -78,6 +78,8 @@ else
     else
     {
         <div id="whatif"
+             data-course="@Model.SelectedId"
+             data-scope="@Model.Scope"
              data-earned="@GradeCalculator.Raw(Model.Earned)"
              data-remaining="@GradeCalculator.Raw(Model.RemainingWeight)"
              data-default="@GradeCalculator.Raw(Model.DefaultScore)"
