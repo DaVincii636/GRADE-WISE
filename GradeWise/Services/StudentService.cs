@@ -149,6 +149,17 @@ namespace GradeWise.Services
 
         private static void FillCourse(MongoDbContext db, StudentDashboardViewModel model, Course course, string studentId)
         {
+            var hierarchyChanged = false;
+            foreach (var category in course.Categories)
+            {
+                if (string.IsNullOrWhiteSpace(category.Group) || (string.Equals(category.Group, "Class Standing", StringComparison.OrdinalIgnoreCase) && category.Name != null && category.Name.IndexOf("exam", StringComparison.OrdinalIgnoreCase) >= 0))
+                { category.Group = category.Name != null && category.Name.IndexOf("exam", StringComparison.OrdinalIgnoreCase) >= 0 ? "Exam" : "Class Standing"; hierarchyChanged = true; }
+                if (category.Assessments == null) { category.Assessments = new List<GradeAssessment>(); hierarchyChanged = true; }
+                if (category.Assessments.Count == 0)
+                { category.Assessments.Add(new GradeAssessment { Id = "a-" + Guid.NewGuid().ToString("N").Substring(0, 10), Name = "Assessment 1", Order = 1 }); hierarchyChanged = true; }
+            }
+            if (hierarchyChanged) db.Courses.UpdateOne(c => c.Id == course.Id, Builders<Course>.Update.Set(c => c.Categories, course.Categories));
+            model.CategoriesForDisplay = course.Categories.Select(c => new GradeCategory { Name = c.Name, Group = c.Group }).ToList();
             var historyScope = GradeScopes.Normalize(course.ReflectedScope);
             int hiddenCount;
 
@@ -165,6 +176,26 @@ namespace GradeWise.Services
                 {
                     byStudent[record.StudentId] = record.Scores ?? new List<ScoreEntry>();
                 }
+            }
+
+            var migratedRecords = false;
+            foreach (var record in records)
+            {
+                foreach (var category in course.Categories)
+                {
+                    var entry = record.Scores.FirstOrDefault(x => string.Equals(x.Category, category.Name, StringComparison.OrdinalIgnoreCase));
+                    if (entry != null && entry.Score.HasValue && (entry.AssessmentScores == null || entry.AssessmentScores.Count == 0))
+                    {
+                        entry.AssessmentScores = new List<AssessmentScoreEntry> { new AssessmentScoreEntry { AssessmentId = category.Assessments[0].Id, Score = entry.Score } };
+                        migratedRecords = true;
+                    }
+                }
+                if (migratedRecords) db.Grades.UpdateOne(g => g.Id == record.Id, Builders<GradeRecord>.Update.Set(g => g.Scores, record.Scores));
+            }
+            if (migratedRecords)
+            {
+                byStudent.Clear();
+                foreach (var record in records) if (record.StudentId != null) byStudent[record.StudentId] = record.Scores ?? new List<ScoreEntry>();
             }
 
             var scope = GradeScopes.Normalize(course.ReflectedScope);
@@ -211,6 +242,11 @@ namespace GradeWise.Services
                 model.Rows.Add(new BreakdownRow
                 {
                     Category = category.Name,
+                    Assessments = (category.Assessments ?? new List<GradeAssessment>()).OrderBy(a => a.Order).Select(a => {
+                        var scoreEntry = mine.FirstOrDefault(x => string.Equals(x.Category, category.Name, StringComparison.OrdinalIgnoreCase));
+                        var assessmentScore = scoreEntry == null || scoreEntry.AssessmentScores == null ? null : scoreEntry.AssessmentScores.FirstOrDefault(x => x.AssessmentId == a.Id);
+                        return new AssessmentBreakdownItem { Name = a.Name, Score = assessmentScore == null ? (double?)null : assessmentScore.Score };
+                    }).ToList(),
                     Period = GradePeriods.Normalize(category.Period),
                     Weight = weight,
                     Score = own,
@@ -235,7 +271,7 @@ namespace GradeWise.Services
         private static double? FindScore(IEnumerable<ScoreEntry> scores, string category)
         {
             var entry = scores.FirstOrDefault(s => string.Equals(s.Category, category, StringComparison.OrdinalIgnoreCase));
-            return entry == null ? null : entry.Score;
+            return entry == null ? null : (entry.AssessmentScores != null && entry.AssessmentScores.Any(x => x.Score.HasValue) ? (double?)entry.AssessmentScores.Where(x => x.Score.HasValue).Average(x => x.Score.Value) : entry.Score);
         }
     }
 }

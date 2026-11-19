@@ -101,6 +101,7 @@ namespace GradeWise.Services
                 model.Categories.Add(new CategoryStat
                 {
                     Name = category.Name,
+                    Group = (string.Equals(category.Group, "Exam", StringComparison.OrdinalIgnoreCase) || (category.Name != null && category.Name.IndexOf("exam", StringComparison.OrdinalIgnoreCase) >= 0)) ? "Exam" : "Class Standing",
                     Period = GradePeriods.Normalize(category.Period),
                     Weight = GradeCalculator.ScopeWeight(category, scope),
                     Graded = scores.Count,
@@ -301,7 +302,7 @@ namespace GradeWise.Services
         private static double? FindScore(IEnumerable<ScoreEntry> scores, string category)
         {
             var entry = scores.FirstOrDefault(s => string.Equals(s.Category, category, StringComparison.OrdinalIgnoreCase));
-            return entry == null ? null : entry.Score;
+            return entry == null ? null : (entry.AssessmentScores != null && entry.AssessmentScores.Any(x => x.Score.HasValue) ? (double?)entry.AssessmentScores.Where(x => x.Score.HasValue).Average(x => x.Score.Value) : entry.Score);
         }
     }
 }

@@ -122,6 +122,8 @@ namespace GradeWise.Models
     {
         public string Name { get; set; }
 
+        public string Group { get; set; }
+
         /// <summary>"Midterm" or "Final Term".</summary>
         public string Period { get; set; }
 

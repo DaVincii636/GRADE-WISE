@@ -279,16 +279,24 @@
                         </td>
                     </tr>
                 }
-                @foreach (var c in Model.Categories)
+                @foreach (var group in new[] { "Class Standing", "Exam" })
                 {
-                    var gradedPct = Model.StudentCount > 0 ? Math.Round(c.Graded * 100.0 / Model.StudentCount, 2) : 0;
-                    var gradedPctText = gradedPct.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture) + "%";
-                    <tr title="@c.Name: @gradedPctText graded (@c.Graded of @Model.StudentCount)">
-                        <td>@c.Name <span class="gw-th-sub">(@c.Period)</span></td>
-                        <td class="gw-num">@GradeCalculator.Format(c.Weight)%</td>
-                        <td class="gw-num">@c.Graded of @Model.StudentCount <span class="gw-muted">(@gradedPctText)</span></td>
-                        <td class="gw-num">@(c.Average.HasValue ? GradeCalculator.Format(c.Average) + "%" : GradeCalculator.Format(c.Average))</td>
-                    </tr>
+                    var groupRows = Model.Categories.Where(c => c.Group == group).ToList();
+                    <tr><td colspan="4"><details class="gw-student-major"><summary><strong>@group</strong><span>@(Model.Scope == GradeScopes.FinalGrade ? (group == "Class Standing" ? "30%" : "20%") : (group == "Class Standing" ? "60%" : "40%"))</span></summary>
+                        <table class="gw-table"><tbody>
+                        @foreach (var c in groupRows)
+                        {
+                            var gradedPct = Model.StudentCount > 0 ? Math.Round(c.Graded * 100.0 / Model.StudentCount, 2) : 0;
+                            var gradedPctText = gradedPct.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture) + "%";
+                            <tr title="@c.Name: @gradedPctText graded (@c.Graded of @Model.StudentCount)">
+                                <td>@c.Name <span class="gw-th-sub">(@c.Period)</span></td>
+                                <td class="gw-num">@GradeCalculator.Format(c.Weight)%</td>
+                                <td class="gw-num">@c.Graded of @Model.StudentCount <span class="gw-muted">(@gradedPctText)</span></td>
+                                <td class="gw-num">@(c.Average.HasValue ? GradeCalculator.Format(c.Average) + "%" : GradeCalculator.Format(c.Average))</td>
+                            </tr>
+                        }
+                        </tbody></table>
+                    </details></td></tr>
                 }
             </tbody>
         </table>

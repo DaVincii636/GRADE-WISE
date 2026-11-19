@@ -15,6 +15,19 @@ namespace GradeWise.Models
 
         /// <summary>"Midterm" or "Final Term". Documents saved before periods existed have no value and load as Midterm.</summary>
         public string Period { get; set; } = GradePeriods.Midterm;
+
+        /// <summary>Top-level grading group: Class Standing or Exam.</summary>
+        public string Group { get; set; } = "Class Standing";
+
+        /// <summary>Individual assessment columns inside this category (Quiz 1, Quiz 2, etc.).</summary>
+        public List<GradeAssessment> Assessments { get; set; } = new List<GradeAssessment>();
+    }
+
+    public class GradeAssessment
+    {
+        public string Id { get; set; }
+        public string Name { get; set; }
+        public int Order { get; set; }
     }
 
     /// <summary>A course.</summary>

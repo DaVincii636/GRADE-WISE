@@ -1,0 +1,26 @@
+@model GradeWise.Models.AssessmentScoreViewModel
+@using GradeWise.Services
+@{
+    ViewBag.Title = "Assessment scores";
+}
+<div class="gw-toolbar">
+    @Html.ActionLink("Back to class record", "Course", "Faculty", new { id = Model.CourseId }, new { @class = "gw-btn gw-btn-outline" })
+</div>
+<section class="gw-panel">
+    <div class="gw-panel-head">
+        <h1 class="gw-panel-title">@Model.CategoryName / @Model.AssessmentName</h1>
+        <p class="gw-muted">@Model.Period · Enter scores from 0 to 100 for this assessment only.</p>
+    </div>
+    @if (Model.Errors.Count > 0) { <div class="gw-alert" role="alert"><ul>@foreach (var error in Model.Errors) { <li>@error</li> }</ul></div> }
+    @using (Html.BeginForm("SaveAssessment", "Faculty", new { id = Model.CourseId, category = Model.CategoryName, assessment = Model.AssessmentId }, FormMethod.Post))
+    {
+        @Html.AntiForgeryToken()
+        <div class="gw-table-wrap"><table class="gw-table gw-score-table">
+            <thead><tr><th>Student</th><th>Student number</th><th class="gw-num">@Model.AssessmentName score</th></tr></thead>
+            <tbody>@foreach (var row in Model.Rows) {
+                <tr><td>@row.FullName</td><td>@row.StudentNo</td><td class="gw-num"><input type="number" min="0" max="100" step="0.01" name="assessment__@row.StudentId" value="@row.Score" aria-label="@row.FullName @Model.AssessmentName score" /></td></tr>
+            }</tbody>
+        </table></div>
+        <div class="gw-panel-body"><button type="submit" class="gw-btn">Save assessment scores</button></div>
+    }
+</section>

@@ -47,7 +47,7 @@
     </div>
     <div class="gw-panel-body">
         <p class="gw-field-hint gw-hint-block">
-            Use the Midterm and Final Term buttons to switch lists. Inside each term the weights add up to exactly 100,
+            Use the Midterm and Final Term buttons to switch lists. Inside each term Class Standing must total 60% and Exam 40% (100% combined),
             and the final grade is half Midterm and half Final Term. Each name must be unique in the course, so the Final Term
             copy starts with "Final". Renaming a category keeps its scores; removing one deletes them.
         </p>
@@ -81,6 +81,7 @@
                         <thead>
                             <tr>
                                 <th>Category</th>
+                                <th>Major group</th>
                                 <th>Weight (%)</th>
                                 <th><span class="gw-sr-only">Remove</span></th>
                             </tr>
@@ -94,6 +95,7 @@
                                         <input type="hidden" name="periods" value="@p" />
                                         <input type="text" name="names" value="@r.Name" maxlength="40" aria-label="Category name" />
                                     </td>
+                                    <td><select name="groups" aria-label="Major grading group"><option value="Class Standing" selected="@(r.Group != "Exam")">Class Standing</option><option value="Exam" selected="@(r.Group == "Exam")">Exam</option></select></td>
                                     <td><input type="number" name="weights" value="@r.Weight" min="0.01" max="100" step="any" inputmode="decimal" aria-label="Weight in percent" /></td>
                                     <td><button type="button" class="gw-btn gw-btn-small gw-btn-outline" data-remove="1">Remove</button></td>
                                 </tr>
@@ -106,6 +108,7 @@
                                         <input type="hidden" name="periods" value="@p" />
                                         <input type="text" name="names" value="" maxlength="40" aria-label="Category name" />
                                     </td>
+                                    <td><select name="groups" aria-label="Major grading group"><option value="Class Standing">Class Standing</option><option value="Exam">Exam</option></select></td>
                                     <td><input type="number" name="weights" value="" min="0.01" max="100" step="any" inputmode="decimal" aria-label="Weight in percent" /></td>
                                     <td><button type="button" class="gw-btn gw-btn-small gw-btn-outline" data-remove="1">Remove</button></td>
                                 </tr>
@@ -134,6 +137,7 @@
                         <span class="gw-period-name">@p</span>
                         <span><strong class="gw-total-number" data-total>0</strong> / 100</span>
                         <span class="gw-muted" data-left>(100 left)</span>
+                        <span class="gw-muted">Class Standing <strong data-standing>0</strong>/60 · Exam <strong data-exam>0</strong>/40</span>
                     </div>
                 }
             </div>
@@ -179,6 +183,16 @@
                 return round2(total);
             }
 
+            function totalForGroup(period, groupName) {
+                var total = 0;
+                liveRows(period).forEach(function (tr) {
+                    var group = tr.querySelector("select[name=groups]");
+                    var weight = parseFloat(weightOf(tr).value);
+                    if (group && group.value === groupName && !isNaN(weight)) total += weight;
+                });
+                return round2(total);
+            }
+
             // A period can never go over 100: cut the typed value down to what is left.
             function clampRow(tr) {
                 var input = weightOf(tr);
@@ -196,6 +210,8 @@
                     var box = form.querySelector('.gw-period-total[data-period="' + p + '"]');
                     box.querySelector("[data-total]").textContent = total;
                     box.querySelector("[data-left]").textContent = "(" + (left > 0 ? left + " left" : "full") + ")";
+                    box.querySelector("[data-standing]").textContent = totalForGroup(p, "Class Standing");
+                    box.querySelector("[data-exam]").textContent = totalForGroup(p, "Exam");
                     form.querySelector('.gw-tab[data-period="' + p + '"] [data-tab-note]').textContent = total + " / 100";
                 });
                 if (finalNote) {
@@ -226,7 +242,7 @@
             });
 
             // ---------- rows ----------
-            function makeRow(period, name, weight) {
+            function makeRow(period, name, weight, majorGroup) {
                 var tr = document.createElement("tr");
 
                 var td1 = document.createElement("td");
@@ -238,6 +254,11 @@
                 nm.type = "text"; nm.name = "names"; nm.maxLength = 40; nm.value = name || "";
                 nm.setAttribute("aria-label", "Category name");
                 td1.appendChild(original); td1.appendChild(per); td1.appendChild(nm);
+
+                var tdGroup = document.createElement("td");
+                var group = document.createElement("select"); group.name = "groups";
+                group.innerHTML = '<option value="Class Standing">Class Standing</option><option value="Exam">Exam</option>'; group.value = majorGroup || "Class Standing";
+                tdGroup.appendChild(group);
 
                 var td2 = document.createElement("td");
                 var w = document.createElement("input");
@@ -252,7 +273,7 @@
                 rm.setAttribute("data-remove", "1"); rm.textContent = "Remove";
                 td3.appendChild(rm);
 
-                tr.appendChild(td1); tr.appendChild(td2); tr.appendChild(td3);
+                tr.appendChild(td1); tr.appendChild(tdGroup); tr.appendChild(td2); tr.appendChild(td3);
                 return tr;
             }
 
@@ -272,8 +293,9 @@
                 liveRows("Midterm").forEach(function (tr) {
                     var name = nameOf(tr).value.trim();
                     var weight = weightOf(tr).value;
+                    var majorGroup = tr.querySelector("select[name=groups]").value;
                     if (!name && !weight) { return; }
-                    body.appendChild(makeRow("Final Term", name ? finalName(name) : "", weight));
+                    body.appendChild(makeRow("Final Term", name ? finalName(name) : "", weight, majorGroup));
                 });
                 refresh();
             }
@@ -336,6 +358,10 @@
                 if (periodOfRow(tr) === "Final Term") { finalTouched = true; }
                 else { syncFinal(); }
                 refresh();
+            });
+
+            form.addEventListener("change", function (e) {
+                if (e.target.name === "groups") refresh();
             });
 
             // Warn before saving if a category that has scores is being removed.

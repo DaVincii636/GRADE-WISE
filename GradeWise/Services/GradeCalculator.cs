@@ -138,10 +138,14 @@ namespace GradeWise.Services
                 var entry = scoreList.FirstOrDefault(s =>
                     string.Equals(s.Category, category.Name, StringComparison.OrdinalIgnoreCase));
 
-                if (entry != null && entry.Score.HasValue)
+                var categoryScore = entry == null ? (double?)null :
+                    (entry.AssessmentScores != null && entry.AssessmentScores.Any(a => a.Score.HasValue)
+                        ? (double?)entry.AssessmentScores.Where(a => a.Score.HasValue).Average(a => a.Score.Value)
+                        : entry.Score);
+                if (categoryScore.HasValue)
                 {
                     result.GradedWeight += weight;
-                    result.Earned += weight * entry.Score.Value / 100.0;
+                    result.Earned += weight * categoryScore.Value / 100.0;
                 }
             }
 

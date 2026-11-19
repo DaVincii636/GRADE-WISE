@@ -148,6 +148,49 @@ namespace GradeWise.Controllers
             return RedirectToAction("Course", new { id = id, tab = CourseService.NormalizeTab(Request.Form["tab"]) });
         }
 
+        // ---------- Individual assessment score entry ----------
+        public ActionResult Assessment(string id, string category, string assessment)
+        {
+            var model = CourseService.GetAssessmentScores(id, CurrentFacultyId(), category, assessment);
+            if (model == null) return HttpNotFound();
+            return View(model);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public ActionResult SaveAssessment(string id, string category, string assessment)
+        {
+            List<string> errors;
+            if (!CourseService.SaveAssessmentScores(id, CurrentFacultyId(), category, assessment, key => Request.Form[key], out errors))
+            {
+                var model = CourseService.GetAssessmentScores(id, CurrentFacultyId(), category, assessment);
+                if (model == null) return HttpNotFound();
+                model.Errors = errors;
+                return View("Assessment", model);
+            }
+            TempData["Message"] = "Assessment scores saved.";
+            return RedirectToAction("Course", new { id = id, tab = "midterm" });
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public ActionResult AddAssessment(string id, string category, string name)
+        {
+            string error;
+            if (!CourseService.AddAssessment(id, CurrentFacultyId(), category, name, out error)) TempData["Message"] = error;
+            else TempData["Message"] = "Assessment added.";
+            return RedirectToAction("Course", new { id = id });
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public ActionResult RemoveAssessment(string id, string category, string assessment)
+        {
+            if (!CourseService.RemoveAssessment(id, CurrentFacultyId(), category, assessment)) TempData["Message"] = "The assessment could not be removed. Each category must keep at least one assessment.";
+            else TempData["Message"] = "Assessment removed.";
+            return RedirectToAction("Course", new { id = id });
+        }
+
         // ---------- Enrollment ----------
 
         // GET: /Faculty/Enroll/{id}
@@ -215,11 +258,12 @@ namespace GradeWise.Controllers
             var names = form.GetValues("names") ?? new string[0];
             var periods = form.GetValues("periods") ?? new string[0];
             var weights = form.GetValues("weights") ?? new string[0];
+            var groups = form.GetValues("groups") ?? new string[0];
 
             List<string> errors;
-            if (!CourseService.SaveCategories(id, facultyId, originals, names, periods, weights, out errors))
+            if (!CourseService.SaveCategories(id, facultyId, originals, names, periods, weights, groups, out errors))
             {
-                var model = CourseService.EchoCategories(id, facultyId, originals, names, periods, weights, errors);
+                var model = CourseService.EchoCategories(id, facultyId, originals, names, periods, weights, groups, errors);
                 if (model == null) return HttpNotFound();
                 return View(model);
             }

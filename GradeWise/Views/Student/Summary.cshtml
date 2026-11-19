@@ -99,27 +99,21 @@ else
                                 <td colspan="@(showPeriod ? 5 : 4)" class="gw-empty">No scores have been entered yet.</td>
                             </tr>
                         }
-                        @foreach (var r in Model.Rows)
+                        @foreach (var group in new[] { "Class Standing", "Exam" })
                         {
-                            <tr>
-                                <td>@r.Category</td>
-                                @if (showPeriod)
+                            var groupRows = Model.Rows.Where(r => Model.CategoriesForDisplay.Any(c => c.Name == r.Category && c.Group == group)).ToList();
+                            <tr><td colspan="@(showPeriod ? 5 : 4)"><details class="gw-student-major"><summary><strong>@group</strong><span>@(Model.Scope == GradeScopes.FinalGrade ? (group == "Class Standing" ? "30%" : "20%") : (group == "Class Standing" ? "60%" : "40%"))</span></summary>
+                                <table class="gw-table"><tbody>
+                                @foreach (var r in groupRows)
                                 {
-                                    <td>@r.Period</td>
+                                    <tr><td><details class="gw-student-category"><summary>@r.Category</summary><ul class="gw-student-assessments">@foreach (var assessment in r.Assessments) { <li><span>@assessment.Name</span><strong>@(assessment.Score.HasValue ? GradeCalculator.Format(assessment.Score) : "Not graded yet")</strong></li> }</ul></details></td>
+                                    @if (showPeriod) { <td>@r.Period</td> }
+                                    <td class="gw-num">@GradeCalculator.Format(r.Weight)%</td>
+                                    <td class="gw-num">@(r.Score.HasValue ? GradeCalculator.Format(r.Score) : "Not graded yet")</td>
+                                    <td class="gw-num">@GradeCalculator.Format(r.WeightedPoints)</td></tr>
                                 }
-                                <td class="gw-num">@GradeCalculator.Format(r.Weight)%</td>
-                                <td class="gw-num">
-                                    @if (r.Score.HasValue)
-                                    {
-                                        @GradeCalculator.Format(r.Score)
-                                    }
-                                    else
-                                    {
-                                        <span class="gw-cell-empty">Not graded yet</span>
-                                    }
-                                </td>
-                                <td class="gw-num">@GradeCalculator.Format(r.WeightedPoints)</td>
-                            </tr>
+                                </tbody></table>
+                            </details></td></tr>
                         }
                     </tbody>
                     @if (Model.Rows.Count > 0)

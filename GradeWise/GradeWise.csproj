@@ -337,6 +337,7 @@
     <Content Include="Views\Admin\Index.cshtml" />
     <Content Include="Views\Admin\Terms.cshtml" />
     <Content Include="Views\Faculty\Categories.cshtml" />
+    <Content Include="Views\Faculty\Assessment.cshtml" />
     <Content Include="Views\Faculty\Course.cshtml" />
     <Content Include="Views\Faculty\Analytics.cshtml" />
     <Content Include="Views\Faculty\CreateCourse.cshtml" />
