@@ -350,6 +350,7 @@
     <Content Include="Views\Notifications\Bell.cshtml" />
     <Content Include="Views\Student\Index.cshtml" />
     <Content Include="Views\Student\Summary.cshtml" />
+    <Content Include="Views\Student\_GradeTables.cshtml" />
     <Content Include="Views\Student\_History.cshtml" />
     <Content Include="Views\Student\WhatIf.cshtml" />
     <Content Include="Views\Account\ForceChangePassword.cshtml" />

@@ -11,7 +11,7 @@
     var tones = new[] { "lime", "blue", "gold", "lav", "orange" };
 }
 
-<div class="gw-faculty-courses gw-student-whatif">
+<div class="gw-faculty-courses gw-fcourse gw-student-whatif">
 <div class="gw-page-head">
     <div>
         <h1 class="gw-page-title">What-If simulator</h1>
@@ -98,7 +98,7 @@ else
             <section class="gw-stats" aria-label="Projection">
                 <div class="gw-stat gw-stat-lime" data-tab="Earned">
                     <div class="gw-stat-value">@GradeCalculator.Format(Model.Earned)</div>
-                    <div class="gw-stat-label">Points earned <span class="gw-th-sub">(out of @GradeCalculator.Format(Model.WeightTotal))</span></div>
+                    <div class="gw-stat-label">Earned so far <span class="gw-th-sub">(/@GradeCalculator.Format(Model.WeightTotal))</span></div>
                 </div>
                 <div class="gw-stat gw-stat-gold" data-tab="Remaining">
                     <div class="gw-stat-value">@GradeCalculator.Format(Model.RemainingWeight)%</div>
@@ -110,7 +110,7 @@ else
                 </div>
                 <div class="gw-stat gw-stat-live gw-stat-orange" data-tab="Grade">
                     <div class="gw-stat-value" id="sim-grade" aria-live="polite">&mdash;</div>
-                    <div class="gw-stat-label">Projected equivalent grade</div>
+                    <div class="gw-stat-label">Projected Eq.</div>
                 </div>
             </section>
 
@@ -120,15 +120,15 @@ else
                 </div>
                 <div class="gw-panel-body">
                     <div class="gw-fp-note gw-sw-note">
-                        <p>Drag a slider or type a score for each ungraded category. The projection updates as you go.</p>
+                        <p>Drag a slider or type a PS for each ungraded category. The projection updates as you go.</p>
                     </div>
                     <div class="gw-table-wrap">
                         <table class="gw-table gw-sim-table">
                             <thead>
                                 <tr>
                                     <th>Category</th>
-                                    <th class="gw-num">Weight</th>
-                                    <th>Score you might get</th>
+                                    <th class="gw-num">Weight <span class="gw-th-sub">(@(isFinalGrade ? "of final" : "of term"))</span></th>
+                                    <th>PS you might get</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -206,9 +206,9 @@ else
                         <thead>
                             <tr>
                                 <th>Category</th>
-                                <th class="gw-num">Weight</th>
-                                <th class="gw-num">Your score</th>
-                                <th class="gw-num">Weighted points</th>
+                                <th class="gw-num">Weight <span class="gw-th-sub">(@(isFinalGrade ? "of final" : "of term"))</span></th>
+                                <th class="gw-num">PS</th>
+                                <th class="gw-num">Earned</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -236,7 +236,7 @@ else
             </div>
             <div class="gw-panel-body">
                 <div class="gw-fp-note gw-sw-note">
-                    <p>Projected grade = points earned + <strong>weight &times; score &divide; 100</strong> for each remaining category. Updates as you move the sliders.</p>
+                    <p>Projected grade = <strong>Earned so far</strong> + <strong>weight &times; PS &divide; 100</strong> for each remaining category. Updates as you move the sliders.</p>
                 </div>
                 <div class="gw-table-wrap">
                     <table class="gw-table gw-calc-table">
@@ -270,7 +270,7 @@ else
                                 <td class="gw-num" id="calc-total">&mdash;</td>
                             </tr>
                             <tr>
-                                <th scope="row">Equivalent grade</th>
+                                <th scope="row">Equivalent grade (Eq.)</th>
                                 <td class="gw-calc-note">From the grade scale. Lowest pass: @GradeCalculator.Format(GradeCalculator.PassingAverage)%</td>
                                 <td class="gw-num" id="calc-grade">&mdash;</td>
                             </tr>
@@ -278,6 +278,12 @@ else
                     </table>
                 </div>
                 <p class="gw-note">Lines are rounded for display. The total uses exact values.</p>
+            </div>
+            <div class="gw-panel-body gw-sr-legend">
+                <dl class="gw-sr-legend-list">
+                    <div><dt>PS</dt><dd>Total &divide; highest possible &times; 100. Weights apply to PS.</dd></div>
+                    <div><dt>Earned</dt><dd>Points out of 100. Ungraded work counts as 0.</dd></div>
+                </dl>
             </div>
         </section>
     }

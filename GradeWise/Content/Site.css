@@ -7022,3 +7022,70 @@ button.gw-legend-btn:focus-visible { box-shadow: 3px 3px 0 var(--gw-ink); backgr
     padding-top: 10px;
     padding-bottom: 10px;
 }
+
+/* =====================================================================
+   Student score tables: the same table as the faculty Course page
+   (.gw-sr-table inside .gw-fcourse), read only. Scoped to the student pages.
+   ===================================================================== */
+.gw-student-grades .gw-sg-scores .gw-panel-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px 12px;
+}
+
+.gw-student-grades .gw-sg-termhead {
+    padding-top: 12px;
+    padding-bottom: 8px;
+    border-bottom: var(--gw-outline);
+    background: var(--gw-acct-blue-pale);
+}
+
+/* column names above the boxes are plain text here (faculty has links) */
+.gw-fcourse .gw-sr-grid-head .gw-sr-gi > .gw-sr-fit {
+    align-self: center;
+    margin: 0 auto;
+    padding: 3px 2px;
+}
+
+/* a score shown as a read-only box, same size and spacing as the faculty score boxes */
+.gw-fcourse .gw-sr-val {
+    display: block;
+    padding: 6px 2px;
+    background: var(--gw-paper);
+    border: 1.5px solid var(--gw-ink);
+    text-align: center;
+    font-size: clamp(0.62rem, calc(1.05rem - 0.07rem * var(--sr-n)), 0.9rem);
+}
+
+.gw-fcourse .gw-sr-val-empty {
+    color: var(--gw-muted);
+    border-style: dashed;
+    border-color: var(--gw-line);
+}
+
+.gw-fcourse .gw-sr-hps .gw-sr-gi {
+    font-size: clamp(0.62rem, calc(1.05rem - 0.07rem * var(--sr-n)), 0.9rem);
+}
+
+/* the printout lists every score under the table */
+.gw-student-grades .gw-sg-detail {
+    margin-top: 8px;
+}
+
+/* class PS per category, under the class comparison */
+.gw-student-grades .gw-sg-cat-avgs {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 8px;
+}
+
+.gw-student-grades .gw-sg-cat-avgs-label {
+    font-family: var(--gw-font-pixel);
+    font-size: 0.7rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
