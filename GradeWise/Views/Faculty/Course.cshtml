@@ -258,28 +258,68 @@ else if (!Model.PeriodsOk)
                     }
                     else
                     {
+                        // Class Standing columns first, then Exam. Index stays the category's place in the course.
                         var periodCategories = Model.Categories
                             .Select((c, index) => new { Category = c, Index = index })
                             .Where(x => GradePeriods.Normalize(x.Category.Period) == period)
+                            .OrderBy(x => GradeGroups.Normalize(x.Category.Group) == GradeGroups.Exam ? 1 : 0)
                             .ToList();
 
-                        @* Which category is open for typing. One category is open at a time, so the table
-                           always fits the page: the others show only their PS. All boxes are saved together. *@
+                        var groupBlocks = GradeGroups.All
+                            .Select(g => new
+                            {
+                                Name = g,
+                                Key = g == GradeGroups.Exam ? "ex" : "cs",
+                                Items = periodCategories.Where(x => GradeGroups.Normalize(x.Category.Group) == g).ToList()
+                            })
+                            .Where(b => b.Items.Count > 0)
+                            .ToList();
+
+                        @* Which category is open for typing, grouped as Class Standing and Exam. One category is open
+                           at a time, so the table always fits the page: the others show only their PS. All boxes are saved together. *@
                         <div class="gw-panel-body gw-sr-bar">
                             <span class="gw-sr-bar-label">Enter scores for</span>
-                            <div class="gw-sr-chips" role="group" aria-label="Category to enter">
-                                @for (var p = 0; p < periodCategories.Count; p++)
-                                {
-                                    var x = periodCategories[p];
-                                    <button type="button" class="gw-sr-chip gw-sr-chip-@tones[p % tones.Length]" data-sr-cat="@x.Index" aria-pressed="@(p == 0 ? "true" : "false")">
-                                        @x.Category.Name <span class="gw-sr-chip-w">@GradeCalculator.Format(x.Category.Weight)%</span>
-                                    </button>
-                                }
-                            </div>
+                            @foreach (var block in groupBlocks)
+                            {
+                                <div class="gw-sr-chipgroup gw-sr-chipgroup-@block.Key" role="group" aria-label="@block.Name categories">
+                                    <span class="gw-sr-chipgroup-name">@block.Name <span class="gw-sr-chip-w">@GradeCalculator.Format(block.Items.Sum(i => i.Category.Weight))%</span></span>
+                                    <div class="gw-sr-chips">
+                                        @foreach (var x in block.Items)
+                                        {
+                                            var p = periodCategories.IndexOf(x);
+                                            <button type="button" class="gw-sr-chip gw-sr-chip-@tones[p % tones.Length]" data-sr-cat="@x.Index" aria-pressed="@(p == 0 ? "true" : "false")">
+                                                @x.Category.Name <span class="gw-sr-chip-w">@GradeCalculator.Format(x.Category.Weight)%</span>
+                                            </button>
+                                        }
+                                    </div>
+                                </div>
+                            }
                         </div>
 
                         <table class="gw-table gw-sr-table" data-sr-table>
+                            @* The columns are sized here (not by the header cells) because the group row above spans several columns. *@
+                            <colgroup>
+                                <col class="gw-sr-student" />
+                                @for (var p = 0; p < periodCategories.Count; p++)
+                                {
+                                    <col class="gw-sr-cat @(p == 0 ? "is-open" : "")" data-cat="@periodCategories[p].Index" />
+                                }
+                                <col class="gw-sr-fin" />
+                                <col class="gw-sr-fin gw-sr-eq" />
+                            </colgroup>
                             <thead>
+                                <tr class="gw-sr-grouprow">
+                                    <th class="gw-sr-student gw-sr-groupblank" aria-hidden="true"></th>
+                                    @foreach (var block in groupBlocks)
+                                    {
+                                        <th scope="colgroup" colspan="@block.Items.Count" class="gw-sr-group gw-sr-group-@block.Key">
+                                            <span class="gw-sr-group-name">@block.Name</span>
+                                            <span class="gw-sr-group-w">@GradeCalculator.Format(block.Items.Sum(i => i.Category.Weight))%</span>
+                                        </th>
+                                    }
+                                    <th class="gw-sr-fin gw-sr-groupblank" aria-hidden="true"></th>
+                                    <th class="gw-sr-fin gw-sr-eq gw-sr-groupblank" aria-hidden="true"></th>
+                                </tr>
                                 <tr>
                                     <th scope="col" class="gw-sr-student">Student</th>
                                     @for (var p = 0; p < periodCategories.Count; p++)
@@ -389,7 +429,7 @@ else if (!Model.PeriodsOk)
                         </table>
 
                         <div class="gw-panel-body gw-sr-savebar">
-                            <span class="gw-sr-savehint">Scores in every category are saved together.</span>
+                            <span class="gw-sr-savehint">All categories are saved together.</span>
                             <div class="gw-form-buttons">
                                 <button type="submit" class="gw-btn"
                                         data-confirm="This saves every score and highest possible score typed in this class record, in all categories and tabs."
@@ -397,11 +437,24 @@ else if (!Model.PeriodsOk)
                                         data-confirm-ok="Save">Save scores</button>
                             </div>
                         </div>
+
+                        <div class="gw-panel-body gw-sr-legend">
+                            <p class="gw-sr-legend-lead">Enter each score out of its column's highest possible score. Leave a box empty if the work is not given yet.</p>
+                            <dl class="gw-sr-legend-list">
+                                <div><dt>Total</dt><dd>Sum of the scores entered.</dd></div>
+                                <div><dt>PS</dt><dd>Total &divide; highest possible total &times; 100. The category weight applies to PS.</dd></div>
+                                <div><dt>Earned</dt><dd>Points out of 100. Work not graded yet counts as 0.</dd></div>
+                            </dl>
+                        </div>
                     }
                 </div>
             }
 
             <div class="gw-tabpanel" role="tabpanel" id="panel-final-grade" aria-labelledby="tab-final-grade" hidden="@("final-grade" == Model.ActiveTab ? null : "hidden")">
+                <div class="gw-panel-body gw-sr-bar">
+                    <span class="gw-sr-bar-label">Read only</span>
+                    <span class="gw-sr-bar-text">Enter scores in the Midterm and Final Term tabs.</span>
+                </div>
                 <table class="gw-table gw-sr-table gw-sr-final">
                     <thead>
                         <tr>
@@ -435,19 +488,12 @@ else if (!Model.PeriodsOk)
                         </tr>
                     </tbody>
                 </table>
-                <div class="gw-panel-body">
-                    <p class="gw-note gw-note-first">This table is read only. Enter scores in the Midterm and Final Term tabs.</p>
+                <div class="gw-panel-body gw-sr-legend">
+                    <dl class="gw-sr-legend-list">
+                        <div><dt>Final Grade</dt><dd>Average of the Midterm and the Final Term.</dd></div>
+                        <div><dt>INC</dt><dd>Class standing is 65 or more in both terms, but the Final Term exam is still blank.</dd></div>
+                    </dl>
                 </div>
-            </div>
-
-            <div class="gw-panel-body">
-                <p class="gw-note gw-note-first">
-                    Enter each score out of its column's <strong>highest possible score</strong>, and leave a box empty if the work is not given yet.
-                    <strong>Total</strong> adds the entered scores of a category and <strong>PS</strong> is that total divided by the highest possible total of the same columns, times 100. The PS is what the category weight is applied to.
-                    <strong>Earned Grade</strong> is the points collected out of 100, and work that is not graded yet counts as 0.
-                    <strong>Final Grade</strong> is the average of the Midterm and the Final Term.
-                    <strong>INC</strong> (incomplete) shows when the Midterm and the Final Term class standing are each at least 65 but the Final Term exam is still blank.
-                </p>
             </div>
         }
     }

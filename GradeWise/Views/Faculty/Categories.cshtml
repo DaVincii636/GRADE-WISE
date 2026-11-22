@@ -20,10 +20,11 @@
     };
 }
 
-@* One category row: name, weight, move to the other group, remove. The page script builds the same row for "Add category". *@
-@helper CategoryRow(string period, string original, string name, string weight, string group)
+@* One category row: name, weight, remove. The page script builds the same row for "Add category".
+   A row that was emptied (removed) before a failed save comes back hidden, so it stays removed and does not show as a blank row. *@
+@helper CategoryRow(string period, string original, string name, string weight, string group, bool hide = false)
 {
-    <div class="gw-cat-row">
+    <div class="gw-cat-row" hidden="@(hide ? "hidden" : null)">
         <input type="hidden" name="originals" value="@original" />
         <input type="hidden" name="periods" value="@period" />
         <input type="hidden" name="groups" value="@group" />
@@ -32,7 +33,6 @@
             <input type="number" name="weights" value="@weight" min="0.01" max="100" step="any" inputmode="decimal" aria-label="Weight in percent" />
             <span aria-hidden="true">%</span>
         </label>
-        <button type="button" class="gw-btn gw-btn-small gw-btn-outline" data-move="1" title="Move to @(group == "Exam" ? "Class Standing" : "Exam")">@(group == "Exam" ? "To Class Standing" : "To Exam")</button>
         <button type="button" class="gw-btn gw-btn-small gw-btn-outline" data-remove="1">Remove</button>
     </div>
 }
@@ -133,8 +133,6 @@
             var key = p == GradePeriods.Midterm ? "midterm" : "final-term";
             var isFinal = p == GradePeriods.FinalTerm;
             var periodRows = Model.Rows.Where(r => r.Period == p).ToList();
-            var emptyCount = periodRows.Count(r => string.IsNullOrEmpty(r.Original) && string.IsNullOrWhiteSpace(r.Name) && string.IsNullOrWhiteSpace(r.Weight));
-            var spare = (isFinal && autoCopy) ? 0 : System.Math.Max(0, (periodRows.Count == 0 ? 3 : 1) - emptyCount);
 
             <div class="gw-tabpanel" role="tabpanel" id="panel-@key" aria-labelledby="tab-@key" data-period="@p" hidden="@(p == GradePeriods.Midterm ? null : "hidden")">
                 <div class="gw-panel-body">
@@ -146,14 +144,9 @@
                                 <div class="gw-cat-list" data-body="@p" data-group="@g.Name">
                                     @foreach (var r in periodRows.Where(x => (x.Group == "Exam" ? "Exam" : "Class Standing") == g.Name))
                                     {
-                                        @CategoryRow(p, r.Original, r.Name, r.Weight, g.Name)
-                                    }
-                                    @if (g.Key == "cs")
-                                    {
-                                        for (var i = 0; i < spare; i++)
-                                        {
-                                            @CategoryRow(p, "", "", "", g.Name)
-                                        }
+                                        var blank = string.IsNullOrWhiteSpace(r.Name) && string.IsNullOrWhiteSpace(r.Weight);
+                                        if (blank && string.IsNullOrEmpty(r.Original)) { continue; }
+                                        @CategoryRow(p, r.Original, r.Name, r.Weight, g.Name, blank)
                                     }
                                 </div>
                                 <p class="gw-cat-empty" data-empty hidden>No @g.Name.ToLower() categories in @p yet.</p>
@@ -294,13 +287,8 @@
             });
 
             // ---------- rows ----------
-            function otherGroup(group) { return group === "Exam" ? "Class Standing" : "Exam"; }
-
             function setGroup(row, group) {
                 groupInput(row).value = group;
-                var move = row.querySelector("[data-move]");
-                move.textContent = "To " + otherGroup(group);
-                move.title = "Move to " + otherGroup(group);
             }
 
             function makeRow(period, name, weight, group) {
@@ -312,7 +300,6 @@
                     '<input type="hidden" name="groups" value="" />' +
                     '<input type="text" name="names" class="gw-cat-name" maxlength="40" placeholder="Category name" aria-label="Category name" />' +
                     '<label class="gw-cat-weight"><input type="number" name="weights" min="0.01" max="100" step="any" inputmode="decimal" aria-label="Weight in percent" /><span aria-hidden="true">%</span></label>' +
-                    '<button type="button" class="gw-btn gw-btn-small gw-btn-outline" data-move="1"></button>' +
                     '<button type="button" class="gw-btn gw-btn-small gw-btn-outline" data-remove="1">Remove</button>';
                 row.querySelector("input[name=periods]").value = period;
                 nameOf(row).value = name || "";
@@ -379,18 +366,6 @@
                         }
                     });
                     copyMidterm();
-                    return;
-                }
-
-                // Move = the same category in the other major group (its scores stay).
-                if (btn.getAttribute("data-move")) {
-                    var moving = btn.closest(".gw-cat-row");
-                    var period = periodOfRow(moving);
-                    var target = otherGroup(groupInput(moving).value);
-                    listOf(period, target).appendChild(moving);
-                    setGroup(moving, target);
-                    touched(period);
-                    refresh();
                     return;
                 }
 

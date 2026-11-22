@@ -5607,7 +5607,10 @@ html.gw-loading button {
 .gw-fcourse .gw-sr-table .gw-sr-fin { width: 78px; text-align: center; }
 .gw-fcourse .gw-sr-table .gw-sr-eq { width: 62px; }
 .gw-fcourse .gw-sr-table th.gw-sr-cat:not(.is-open),
-.gw-fcourse .gw-sr-table td.gw-sr-cat:not(.is-open) { width: 88px; text-align: center; }
+.gw-fcourse .gw-sr-table td.gw-sr-cat:not(.is-open) { text-align: center; }
+.gw-fcourse .gw-sr-table th.gw-sr-cat:not(.is-open) { padding-left: 4px; padding-right: 4px; }
+/* closed categories are 96px wide; the open one takes the rest (widths are set on the <col> elements) */
+.gw-fcourse .gw-sr-table col.gw-sr-cat:not(.is-open) { width: 96px; }
 
 /* tone of each category: coloured top edge on the header, tinted open column */
 .gw-fcourse .gw-sr-tone-lime   { --sr-tone: var(--gw-lime);      --sr-pale: var(--gw-lime-pale); }
@@ -5671,6 +5674,16 @@ html.gw-loading button {
 .gw-fcourse .gw-sr-table th.gw-sr-cat:not(.is-open) .gw-sr-cathead:focus-visible { outline: 2px solid var(--gw-ink); outline-offset: -4px; }
 
 .gw-fcourse .gw-sr-table th.gw-sr-cat:not(.is-open) .gw-sr-catgroup { display: none; }
+
+/* a closed category shows its whole name (it wraps onto a second line) instead of being cut with "..." */
+.gw-fcourse .gw-sr-table th.gw-sr-cat:not(.is-open) .gw-sr-catname {
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    font-size: 0.85rem;
+    line-height: 1.15;
+}
 
 /* open / closed content */
 .gw-fcourse .gw-sr-table th.gw-sr-cat:not(.is-open) .gw-sr-open-only,
@@ -5929,11 +5942,16 @@ html.gw-loading button {
     .gw-fcourse .gw-sr-table .gw-sr-student { width: 150px; }
     .gw-fcourse .gw-sr-table .gw-sr-eq { display: none; }
     .gw-fcourse .gw-sr-final .gw-sr-eq { display: none; }
+    .gw-fcourse .gw-sr-table col.gw-sr-eq { display: none; }
 }
 
 @media (max-width: 767.98px) {
     .gw-fcourse .gw-sr-table th.gw-sr-cat:not(.is-open),
-    .gw-fcourse .gw-sr-table td.gw-sr-cat:not(.is-open) { display: none; }
+    .gw-fcourse .gw-sr-table td.gw-sr-cat:not(.is-open),
+    .gw-fcourse .gw-sr-table col.gw-sr-cat:not(.is-open) { display: none; }
+
+    /* only the open category is shown here, so the Class Standing / Exam row has nothing to span */
+    .gw-fcourse .gw-sr-table .gw-sr-grouprow { display: none; }
 
     .gw-fcourse .gw-sr-table .gw-sr-student { width: 42%; }
     .gw-fcourse .gw-sr-table .gw-sr-fin { width: 62px; }
@@ -5950,6 +5968,105 @@ html.gw-loading button {
     .gw-fcourse .gw-sr-final th:nth-child(5),
     .gw-fcourse .gw-sr-final td:nth-child(5) { display: none; }
     .gw-fcourse .gw-sr-final .gw-sr-student { width: 36%; }
+}
+
+/* ---------- Class Standing / Exam division of the score table ---------- */
+.gw-fcourse .gw-sr-chipgroup {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 10px;
+    padding: 6px 10px;
+    border: var(--gw-outline);
+}
+
+.gw-fcourse .gw-sr-chipgroup-cs { background: var(--gw-lime-pale); }
+.gw-fcourse .gw-sr-chipgroup-ex { background: var(--gw-acct-gold-pale); }
+
+.gw-fcourse .gw-sr-chipgroup-name {
+    font-size: 0.85rem;
+    font-weight: 700;
+}
+
+.gw-fcourse .gw-sr-chipgroup-name .gw-sr-chip-w { margin-left: 4px; }
+
+/* the row above the category headers: one cell per group, spanning that group's columns */
+.gw-fcourse .gw-sr-table thead .gw-sr-grouprow th {
+    padding: 6px 8px;
+    vertical-align: middle;
+    text-align: center;
+    border-bottom: 1.5px solid var(--gw-ink);
+}
+
+/* the empty cells above Student, Earned and Eq. join the header cells under them */
+.gw-fcourse .gw-sr-table thead .gw-sr-grouprow th.gw-sr-groupblank {
+    padding-top: 0;
+    padding-bottom: 0;
+    border-bottom-style: hidden;
+}
+
+.gw-fcourse .gw-sr-table thead th.gw-sr-group-cs { background: var(--gw-lime-pale); }
+.gw-fcourse .gw-sr-table thead th.gw-sr-group-ex { background: var(--gw-acct-gold-pale); }
+
+.gw-fcourse .gw-sr-group-name {
+    display: block;
+    font-size: 0.85rem;
+    font-weight: 700;
+    line-height: 1.2;
+}
+
+.gw-fcourse .gw-sr-group-w {
+    display: block;
+    font-family: var(--gw-font-pixel);
+    font-size: 0.65rem;
+    font-weight: 400;
+    letter-spacing: 0.04em;
+}
+
+/* text next to "Read only" on the Final Grade tab */
+.gw-fcourse .gw-sr-bar-text { font-size: 0.95rem; }
+
+/* short legend under each score table */
+.gw-fcourse .gw-sr-legend {
+    padding-top: 14px;
+    padding-bottom: 16px;
+    border-top: var(--gw-outline);
+}
+
+.gw-fcourse .gw-sr-legend-lead {
+    margin: 0 0 12px;
+    font-size: 0.95rem;
+}
+
+.gw-fcourse .gw-sr-legend-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 12px 24px;
+    margin: 0;
+}
+
+.gw-fcourse .gw-sr-legend-list > div {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+}
+
+.gw-fcourse .gw-sr-legend-list dt {
+    padding: 0 8px;
+    background: var(--gw-head);
+    border: 1.5px solid var(--gw-ink);
+    font-family: var(--gw-font-pixel);
+    font-size: 0.7rem;
+    font-weight: 400;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+.gw-fcourse .gw-sr-legend-list dd {
+    margin: 0;
+    font-size: 0.9rem;
+    line-height: 1.35;
 }
 
 /* ---------- Edit columns window ---------- */
@@ -6294,7 +6411,7 @@ html.gw-loading button {
 
 .gw-fpage .gw-cat-row {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 104px auto auto;
+    grid-template-columns: minmax(0, 1fr) 104px auto;
     align-items: center;
     gap: 8px;
     padding: 8px 10px;
