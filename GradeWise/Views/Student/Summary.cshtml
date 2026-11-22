@@ -18,7 +18,7 @@
 {
     <section class="gw-panel">
         <div class="gw-panel-body gw-empty-block">
-            You are not enrolled in any course yet, so there is no summary to print.
+            You are not enrolled in any course yet, so there is nothing to print.
         </div>
     </section>
 }
@@ -48,29 +48,28 @@ else
         @if (!Model.HasCategories)
         {
             <div class="gw-alert gw-alert-warn" role="status">
-                The @Model.ScopeLabel grading categories for this course have not been set yet, so there is nothing to summarize.
+                No @Model.ScopeLabel grading categories are set yet, so there is nothing to summarize.
             </div>
         }
         else if (!Model.WeightsOk)
         {
             <div class="gw-alert gw-alert-warn" role="status">
-                The @Model.ScopeLabel grading weights for this course add up to <strong>@GradeCalculator.Format(Model.WeightTotal)%</strong>, not 100%.
-                These numbers may change once the instructor fixes them.
+                The @Model.ScopeLabel weights add up to <strong>@GradeCalculator.Format(Model.WeightTotal)%</strong>, not 100%. These numbers may change once they are fixed.
             </div>
         }
 
         <section class="gw-stats" aria-label="Summary">
             <div class="gw-stat" data-tab="Average">
                 <div class="gw-stat-value">@(Model.Average.HasValue ? GradeCalculator.Format(Model.Average) + "%" : "\u2014")</div>
-                <div class="gw-stat-label">Current average <span class="gw-th-sub">(@Model.ScopeLabel, graded work so far)</span></div>
+                <div class="gw-stat-label">Current average <span class="gw-th-sub">(graded work only)</span></div>
             </div>
             <div class="gw-stat" data-tab="Equivalent">
                 <div class="gw-stat-value">@(Model.Incomplete ? "INC" : GradeCalculator.Format(Model.Equivalent))</div>
-                <div class="gw-stat-label">Equivalent grade <span class="gw-th-sub">(@Model.ScopeLabel, based on points earned so far)</span></div>
+                <div class="gw-stat-label">Equivalent grade <span class="gw-th-sub">(from points earned)</span></div>
             </div>
             <div class="gw-stat" data-tab="Remaining">
                 <div class="gw-stat-value">@(Model.HasCategories ? GradeCalculator.Format(Model.RemainingWeight) + "%" : "\u2014")</div>
-                <div class="gw-stat-label">Remaining weight <span class="gw-th-sub">(@Model.ScopeLabel, not graded yet)</span></div>
+                <div class="gw-stat-label">Remaining weight <span class="gw-th-sub">(not graded yet)</span></div>
             </div>
         </section>
 
@@ -96,7 +95,7 @@ else
                         @if (Model.Rows.Count == 0)
                         {
                             <tr>
-                                <td colspan="@(showPeriod ? 5 : 4)" class="gw-empty">No scores have been entered yet.</td>
+                                <td colspan="@(showPeriod ? 5 : 4)" class="gw-empty">No scores entered yet.</td>
                             </tr>
                         }
                         @foreach (var r in Model.Rows)
@@ -144,7 +143,7 @@ else
         @Html.Partial("_History", Model)
 
         <p class="gw-note">
-            This summary shows only your own scores. It is a copy of what GRADE-WISE held on the date above and is not an official transcript.
+            Your own scores only. A copy of GRADE-WISE as of the date above, not an official transcript.
         </p>
     </article>
 }

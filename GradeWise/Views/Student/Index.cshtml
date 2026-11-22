@@ -24,7 +24,7 @@
     <div>
         <h1 class="gw-page-title">My grades</h1>
         <p class="gw-page-sub">
-            Your courses, scores, and projected final grade.
+            Your scores and projected grade.
             @if (Model.HasCourse)
             {
                 <span class="gw-badge">@Model.Term</span>
@@ -53,7 +53,7 @@
         <div class="gw-panel-body gw-empty-state">
             <img src="@Url.Content("~/Content/img/stickers/mascot-cat.svg")" alt="" class="gw-empty-mascot" width="72" height="72" />
             <p class="gw-empty-title">No courses yet</p>
-            <p class="gw-muted">You are not enrolled in any course yet. Your instructor enrolls you, and your grades appear here once they do.</p>
+            <p class="gw-muted">Your instructor enrolls you. Your grades show up here once they do.</p>
         </div>
     </section>
     @:</div>
@@ -70,35 +70,37 @@
             </span>
         }
         <div class="gw-stat-value">@(Model.Average.HasValue ? GradeCalculator.Format(Model.Average) + "%" : "\u2014")</div>
-        <div class="gw-stat-label">Current average <span class="gw-th-sub">(@Model.ScopeLabel, graded work so far)</span></div>
+        <div class="gw-stat-label">Current average <span class="gw-th-sub">(graded work only)</span></div>
     </div>
     <div class="gw-stat gw-stat-blue" data-tab="Equivalent">
         <div class="gw-stat-value">@equivalentText</div>
-        <div class="gw-stat-label">Equivalent grade <span class="gw-th-sub">(@Model.ScopeLabel, based on points earned so far)</span></div>
+        <div class="gw-stat-label">Equivalent grade <span class="gw-th-sub">(from points earned)</span></div>
     </div>
     <div class="gw-stat gw-stat-gold" data-tab="Remaining">
         <div class="gw-stat-value">@(Model.HasCategories ? GradeCalculator.Format(Model.RemainingWeight) + "%" : "\u2014")</div>
-        <div class="gw-stat-label">Remaining weight <span class="gw-th-sub">(@Model.ScopeLabel, not graded yet)</span></div>
+        <div class="gw-stat-label">Remaining weight <span class="gw-th-sub">(not graded yet)</span></div>
     </div>
 </section>
 
 @if (!Model.HasCategories)
 {
     <div class="gw-alert gw-alert-warn" role="status">
-        Your instructor has not set the @Model.ScopeLabel grading categories for this course yet, so there is nothing to calculate.
+        No @Model.ScopeLabel grading categories are set for this course yet, so there is nothing to calculate.
     </div>
 }
 else if (!Model.WeightsOk)
 {
     <div class="gw-alert gw-alert-warn" role="status">
-        The @Model.ScopeLabel grading weights for this course add up to <strong>@GradeCalculator.Format(Model.WeightTotal)%</strong>, not 100%.
-        Your numbers may change once your instructor fixes them.
+        The @Model.ScopeLabel weights add up to <strong>@GradeCalculator.Format(Model.WeightTotal)%</strong>, not 100%. Your numbers may change once they are fixed.
     </div>
 }
 
 <section class="gw-panel gw-picker-panel gw-fc-panel" aria-labelledby="gw-sg-title">
     <div class="gw-panel-head">
         <h2 class="gw-panel-title" id="gw-sg-title">Your courses</h2>
+    </div>
+    <div class="gw-panel-body gw-fp-note">
+        <p>Pick a course to see its grades below.</p>
     </div>
 
     @* Search filter: hidden until student-grades.js runs (and only shown for longer course lists); without JavaScript every course is listed. *@
@@ -152,6 +154,9 @@ else if (!Model.WeightsOk)
         <h2 class="gw-panel-title">Assessment breakdown</h2>
         <span class="gw-fc-chip gw-fc-chip-term">@Model.Code &middot; @Model.ScopeLabel</span>
     </div>
+    <div class="gw-panel-body gw-fp-note">
+        <p><strong>Weighted points</strong> = weight &times; your score &divide; 100. Ungraded work counts as 0 in the equivalent grade.</p>
+    </div>
     <div class="gw-table-wrap">
         <table class="gw-table">
             <thead>
@@ -171,7 +176,7 @@ else if (!Model.WeightsOk)
                 @if (Model.Rows.Count == 0)
                 {
                     <tr>
-                        <td colspan="@(showPeriod ? 6 : 5)" class="gw-empty">Your scores appear here once your instructor enters them.</td>
+                        <td colspan="@(showPeriod ? 6 : 5)" class="gw-empty">Scores appear once your instructor enters them.</td>
                     </tr>
                 }
                 @for (var i = 0; i < Model.Rows.Count; i++)
@@ -263,22 +268,21 @@ else if (!Model.WeightsOk)
         <div class="gw-benchmark-body">
             <h2 id="benchmark-title" class="gw-panel-title">How you compare</h2>
             <p>
-                Across <strong>@Model.ClassGraded</strong> students with scores, the class @Model.ScopeLabel average is
-                <strong>@GradeCalculator.Format(Model.ClassAverage)%</strong>.
+                Class @Model.ScopeLabel average: <strong>@GradeCalculator.Format(Model.ClassAverage)%</strong> (@Model.ClassGraded students).
                 @if (gapText != null)
                 {
-                    <span>Yours is <strong>@GradeCalculator.Format(Model.EarnedGrade)%</strong>, which is <strong>@gapText</strong>.</span>
+                    <span>You: <strong>@GradeCalculator.Format(Model.EarnedGrade)%</strong>, <strong>@gapText</strong>.</span>
                 }
             </p>
         </div>
-        <p class="gw-benchmark-note">Only averages are shown. You never see other students' names or scores.</p>
+        <p class="gw-benchmark-note">Only averages are shown, never other students' scores.</p>
     }
     else
     {
         <div class="gw-benchmark-body">
             <h2 id="benchmark-title" class="gw-panel-title">How you compare</h2>
             <p class="gw-muted">
-                The class benchmark appears once at least @Model.MinClassSize students have scores. This keeps everyone's grades private.
+                Shown once @Model.MinClassSize or more students have scores, to keep grades private.
             </p>
         </div>
     }

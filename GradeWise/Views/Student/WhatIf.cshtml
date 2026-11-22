@@ -16,7 +16,7 @@
     <div>
         <h1 class="gw-page-title">What-If simulator</h1>
         <p class="gw-page-sub">
-            Try different scores for your remaining work and see where your @(isFinalGrade ? "final" : Model.ScopeLabel) grade could land.
+            Try scores for your remaining work and see where your @(isFinalGrade ? "final" : Model.ScopeLabel) grade could land.
             @if (Model.HasCourse)
             {
                 <span class="gw-badge">@Model.Term</span>
@@ -32,7 +32,7 @@
         <div class="gw-panel-body gw-empty-state">
             <img src="@Url.Content("~/Content/img/stickers/mascot-cat.svg")" alt="" class="gw-empty-mascot" width="72" height="72" />
             <p class="gw-empty-title">Nothing to simulate yet</p>
-            <p class="gw-muted">You are not enrolled in any course yet. Your instructor enrolls you, and the simulator is available once they do.</p>
+            <p class="gw-muted">Your instructor enrolls you. The simulator opens once they do.</p>
         </div>
     </section>
 }
@@ -62,14 +62,13 @@ else
     if (!Model.HasCategories)
     {
         <div class="gw-alert gw-alert-warn" role="status">
-            Your instructor has not set the @Model.ScopeLabel grading categories for this course yet, so there is nothing to simulate.
+            No @Model.ScopeLabel grading categories are set for this course yet, so there is nothing to simulate.
         </div>
     }
     else if (!Model.WeightsOk)
     {
         <div class="gw-alert gw-alert-warn" role="status">
-            The @Model.ScopeLabel grading weights for this course add up to <strong>@GradeCalculator.Format(Model.WeightTotal)%</strong>, not 100%.
-            The simulator is switched off until your instructor fixes them, because the results would not be reliable.
+            The @Model.ScopeLabel weights add up to <strong>@GradeCalculator.Format(Model.WeightTotal)%</strong>, not 100%. The simulator is off until they are fixed.
         </div>
     }
     else if (Model.NothingLeft)
@@ -85,7 +84,7 @@ else
             </div>
         </section>
         <div class="gw-alert gw-alert-ok" role="status">
-            Every @Model.ScopeLabel category in this course is already graded, so there is nothing left to simulate.
+            Every @Model.ScopeLabel category is graded, so there is nothing left to simulate.
         </div>
     }
     else
@@ -99,11 +98,11 @@ else
             <section class="gw-stats" aria-label="Projection">
                 <div class="gw-stat gw-stat-lime" data-tab="Earned">
                     <div class="gw-stat-value">@GradeCalculator.Format(Model.Earned)</div>
-                    <div class="gw-stat-label">Points earned so far <span class="gw-th-sub">(out of @GradeCalculator.Format(Model.WeightTotal))</span></div>
+                    <div class="gw-stat-label">Points earned <span class="gw-th-sub">(out of @GradeCalculator.Format(Model.WeightTotal))</span></div>
                 </div>
                 <div class="gw-stat gw-stat-gold" data-tab="Remaining">
                     <div class="gw-stat-value">@GradeCalculator.Format(Model.RemainingWeight)%</div>
-                    <div class="gw-stat-label">Remaining weight <span class="gw-th-sub">(still to be graded)</span></div>
+                    <div class="gw-stat-label">Remaining weight <span class="gw-th-sub">(not graded yet)</span></div>
                 </div>
                 <div class="gw-stat gw-stat-live gw-stat-lav" data-tab="Projected">
                     <div class="gw-stat-value" id="sim-final" aria-live="polite">&mdash;</div>
@@ -120,9 +119,9 @@ else
                     <h2 class="gw-panel-title">Your scenario</h2>
                 </div>
                 <div class="gw-panel-body">
-                    <p class="gw-hint-block gw-muted">
-                        Drag a slider, or type a score, for each category that is not graded yet. The projected grade above updates as you go.
-                    </p>
+                    <div class="gw-fp-note gw-sw-note">
+                        <p>Drag a slider or type a score for each ungraded category. The projection updates as you go.</p>
+                    </div>
                     <div class="gw-table-wrap">
                         <table class="gw-table gw-sim-table">
                             <thead>
@@ -167,9 +166,9 @@ else
                     <h2 class="gw-panel-title">Target grade</h2>
                 </div>
                 <div class="gw-panel-body">
-                    <p class="gw-hint-block gw-muted">
-                        Pick the @(isFinalGrade ? "final" : Model.ScopeLabel) grade you are aiming for and see what your remaining work needs to average.
-                    </p>
+                    <div class="gw-fp-note gw-sw-note">
+                        <p>Pick your goal to see what your remaining work must average.</p>
+                    </div>
 
                     <div class="gw-chips" role="group" aria-label="Target equivalent grade">
                         @foreach (var step in Model.Scale)
@@ -236,10 +235,9 @@ else
                 <h2 class="gw-panel-title">How this is calculated</h2>
             </div>
             <div class="gw-panel-body">
-                <p class="gw-hint-block gw-muted">
-                    Your @projectedLabel.ToLowerInvariant() is the points you have already earned, plus the points your remaining work could add.
-                    Each category adds <strong>weight &times; score &divide; 100</strong>. This table uses your own numbers and changes as you move the sliders.
-                </p>
+                <div class="gw-fp-note gw-sw-note">
+                    <p>Projected grade = points earned + <strong>weight &times; score &divide; 100</strong> for each remaining category. Updates as you move the sliders.</p>
+                </div>
                 <div class="gw-table-wrap">
                     <table class="gw-table gw-calc-table">
                         <thead>
@@ -273,13 +271,13 @@ else
                             </tr>
                             <tr>
                                 <th scope="row">Equivalent grade</th>
-                                <td class="gw-calc-note">Looked up on the grade scale (@GradeCalculator.Format(GradeCalculator.PassingAverage)% is the lowest passing average)</td>
+                                <td class="gw-calc-note">From the grade scale. Lowest pass: @GradeCalculator.Format(GradeCalculator.PassingAverage)%</td>
                                 <td class="gw-num" id="calc-grade">&mdash;</td>
                             </tr>
                         </tfoot>
                     </table>
                 </div>
-                <p class="gw-note">Each line is rounded to two decimals for display; the total is worked out from the exact values.</p>
+                <p class="gw-note">Lines are rounded for display. The total uses exact values.</p>
             </div>
         </section>
     }

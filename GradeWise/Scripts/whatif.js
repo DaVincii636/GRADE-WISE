@@ -173,7 +173,7 @@
             });
 
             if (projected === null) {
-                calcSum.textContent = "Enter a score from 0 to 100 in each highlighted box to see the total.";
+                calcSum.textContent = "Enter 0 to 100 in each highlighted box.";
                 calcTotal.textContent = "\u2014";
                 calcGrade.textContent = "\u2014";
                 return;
@@ -211,7 +211,7 @@
             } else {
                 finalOut.textContent = "\u2014";
                 gradeOut.textContent = "\u2014";
-                setMessage(scenarioMsg, "", "Enter a score from 0 to 100 in each highlighted box.");
+                setMessage(scenarioMsg, "", "Enter 0 to 100 in each highlighted box.");
                 scenarioMsg.style.display = "";
             }
 
@@ -239,15 +239,14 @@
             var head = "Target " + fmt(target) + "% (grade " + targetGrade + "). ";
 
             if (result.status === "Secured") {
-                setMessage(targetMsg, "ok", head + "Already secured: your " + fmt(earned) +
-                    " points meet it, even if the rest of your work scored 0.");
+                setMessage(targetMsg, "ok", head + "Secured. Your " + fmt(earned) + " points already meet it.");
             } else if (result.status === "OutOfReach") {
                 var best = earned + remaining;
-                setMessage(targetMsg, "warn", head + "Out of reach: even 100 on everything left gives at most " +
-                    fmt(best) + "% (grade " + fmt(equivalentGrade(best, scale)) + ").");
+                setMessage(targetMsg, "warn", head + "Out of reach. Even 100 on everything left gives " +
+                    fmt(best) + "% at most (grade " + fmt(equivalentGrade(best, scale)) + ").");
             } else if (result.status === "Reachable") {
                 setMessage(targetMsg, "info", head + "You need an average of " + fmt(result.required) +
-                    "% across the remaining " + fmt(remaining) + "% of the course.");
+                    "% on the remaining " + fmt(remaining) + "%.");
                 applyBtn.style.display = "";
                 applyBtn.setAttribute("data-required", String(roundUpScore(result.required)));
             }
@@ -255,10 +254,10 @@
             if (projected !== null) {
                 var gap = projected - target;
                 if (gap >= -TARGET_TOLERANCE) {
-                    compareMsg.textContent = "Your scenario finishes at " + fmt(projected) + "%, which meets this target.";
+                    compareMsg.textContent = "Your scenario ends at " + fmt(projected) + "%. Target met.";
                 } else {
-                    compareMsg.textContent = "Your scenario finishes at " + fmt(projected) + "%, which is " +
-                        fmt(-gap) + " points short of this target.";
+                    compareMsg.textContent = "Your scenario ends at " + fmt(projected) + "%, " +
+                        fmt(-gap) + " points short.";
                 }
             }
         }

@@ -43,8 +43,7 @@
     {
         <div class="gw-panel-body gw-history-note">
             <p class="gw-muted gw-small">
-                @Model.HistoryHidden earlier @(Model.HistoryHidden == 1 ? "entry was" : "entries were") saved before Midterm and Final Term were tracked separately;
-                @(Model.HistoryHidden == 1 ? "it appears" : "they appear") under Final Grade.
+                @Model.HistoryHidden older @(Model.HistoryHidden == 1 ? "entry predates" : "entries predate") separate Midterm and Final Term tracking and @(Model.HistoryHidden == 1 ? "appears" : "appear") under Final Grade.
             </p>
         </div>
     }
@@ -54,7 +53,7 @@
         <div class="gw-panel-body gw-empty-state">
             <img src="@Url.Content("~/Content/img/stickers/mascot-cat.svg")" alt="" class="gw-empty-mascot" width="72" height="72" />
             <p class="gw-empty-title">No history yet</p>
-            <p class="gw-muted">A snapshot of your @(Model.Scope == GradeWise.Models.GradeScopes.FinalGrade ? "Final Grade" : Model.ScopeLabel + " grade") is saved each time your instructor updates your scores.</p>
+            <p class="gw-muted">A snapshot is saved each time your instructor updates your scores.</p>
         </div>
     }
     else
