@@ -7459,3 +7459,308 @@ button.gw-legend-btn:focus-visible { box-shadow: 3px 3px 0 var(--gw-ink); backgr
 .gw-student-grades:not(.gw-summary) > .gw-sg-scores .gw-sr-legend-list > div { flex-direction: row; align-items: baseline; gap: 8px; }
 .gw-student-grades:not(.gw-summary) > .gw-sg-scores .gw-sr-legend-list dt { background: none; border: 0; padding: 0; color: var(--gw-ink); font-weight: 700; }
 .gw-student-grades:not(.gw-summary) > .gw-sg-scores .gw-sr-legend-list dd { color: var(--gw-muted); font-size: 0.85rem; }
+
+/* =====================================================================
+   Student Course page + What-if page: clarity pass (a modest step up)
+   1. Text a little bigger: notes, table cells, chips and the small
+      pixel-font captions go up by about 0.05 to 0.1rem.
+   2. A little more room: card padding and the gap between sections.
+   3. Calmer colours. Each colour has one job:
+        paper   = cards and table bodies
+        grey    = table headers, group rows, note bands, filter bar
+        lime    = "your number" or "what you picked" (the one big result
+                  card, the picked chip, the open category, result rows)
+        gold / orange = only the PS standing chips
+        category colours = only the small square dots and the stripe on a
+                  closed category column
+   Scoped to .gw-sg-course (Course page) and .gw-student-whatif only.
+   ===================================================================== */
+
+.gw-sg-course .gw-panel,
+.gw-student-whatif .gw-panel {
+    margin-bottom: 32px;
+}
+
+.gw-sg-course .gw-panel-head,
+.gw-student-whatif .gw-panel-head {
+    margin: -17px 20px 14px;
+}
+
+.gw-sg-course .gw-panel-title,
+.gw-student-whatif .gw-panel-title {
+    font-size: 1.05rem;
+}
+
+.gw-sg-course .gw-panel-body,
+.gw-student-whatif .gw-panel-body {
+    padding: 12px 22px 22px;
+}
+
+.gw-sg-course .gw-btn-small,
+.gw-student-whatif .gw-btn-small {
+    padding: 6px 14px;
+    font-size: 0.95rem;
+}
+
+.gw-sg-course .gw-th-sub,
+.gw-student-whatif .gw-th-sub {
+    font-size: 0.85rem;
+}
+
+.gw-sg-course .gw-fc-chip,
+.gw-student-whatif .gw-fc-chip {
+    padding: 2px 10px;
+    font-size: 0.9rem;
+}
+
+.gw-sg-course .gw-alert,
+.gw-student-whatif .gw-alert {
+    padding: 12px 16px 12px 54px;
+    font-size: 1rem;
+}
+
+.gw-sg-course .gw-alert::before,
+.gw-student-whatif .gw-alert::before {
+    top: 12px;
+    left: 14px;
+}
+
+.gw-sg-course .gw-note,
+.gw-student-whatif .gw-note {
+    font-size: 0.95rem;
+}
+
+.gw-sg-course .gw-stats,
+.gw-student-whatif .gw-stats {
+    gap: 24px;
+    margin-bottom: 32px;
+}
+
+.gw-sg-course .gw-stat,
+.gw-student-whatif .gw-stat {
+    padding: 28px 20px 18px;
+    background: var(--gw-paper);
+}
+
+.gw-sg-course .gw-stat-label,
+.gw-student-whatif .gw-stat-label {
+    margin-top: 10px;
+    padding-top: 10px;
+    font-size: 1rem;
+}
+
+.gw-sg-course .gw-stat[data-tab]::before,
+.gw-student-whatif .gw-stat[data-tab]::before {
+    padding: 0 10px;
+    background: var(--gw-head);
+    font-size: 0.68rem;
+}
+
+.gw-sg-course .gw-stat .gw-stat-value,
+.gw-student-whatif .gw-stat .gw-stat-value {
+    font-size: 2.5rem;
+    text-shadow: none;
+}
+
+.gw-sg-course .gw-stat-lime { background: var(--gw-lime-pale); }
+.gw-sg-course .gw-stat-lime[data-tab]::before { background: var(--gw-lime); }
+.gw-sg-course .gw-stat-lime .gw-stat-value { text-shadow: 3px 3px 0 var(--gw-lime); }
+.gw-sg-course .gw-sg-hero .gw-stat:first-child .gw-stat-value { font-size: 3.5rem; }
+.gw-sg-course .gw-sg-hero .gw-stat:not(:first-child) .gw-stat-value { font-size: 2.2rem; }
+
+/* What-if: the projected grade is the lime card; the equivalent beside it is raised but plain */
+.gw-student-whatif .gw-stat-lav { background: var(--gw-lime-pale); }
+.gw-student-whatif .gw-stat-lav[data-tab]::before { background: var(--gw-lime); }
+.gw-student-whatif .gw-stat-lav .gw-stat-value { text-shadow: 3px 3px 0 var(--gw-lime); font-size: 2.6rem; }
+.gw-student-whatif .gw-stat-orange { background: var(--gw-paper); }
+.gw-student-whatif .gw-stat-orange[data-tab]::before { background: var(--gw-head); }
+
+/* ---------- Course page: goal alert ---------- */
+.gw-sg-course .gw-goal-alert { padding: 16px 20px 16px 62px; margin-bottom: 28px; gap: 8px 24px; }
+.gw-sg-course .gw-goal-alert::before { left: 18px; }
+.gw-sg-course .gw-goal-alert.gw-alert-info { background: var(--gw-paper); }
+.gw-sg-course .gw-goal-label { font-size: 0.72rem; }
+.gw-sg-course .gw-goal-text { font-size: 1.05rem; }
+.gw-sg-course .gw-goal-link { padding: 7px 14px; font-size: 0.95rem; }
+.gw-sg-course .gw-sg-coursehead { margin-bottom: 22px; }
+
+/* ---------- Course page: Your scores ---------- */
+.gw-sg-course .gw-fp-note.gw-panel-body { padding: 12px 22px; font-size: 1rem; }
+
+.gw-fcourse.gw-sg-course.gw-student-grades > .gw-sg-scores .gw-sr-bar { flex-wrap: wrap; gap: 10px 18px; padding: 8px 22px 20px; overflow: visible; }
+.gw-fcourse.gw-sg-course.gw-student-grades > .gw-sg-scores .gw-sr-bar-label { font-size: 0.72rem; }
+.gw-fcourse.gw-sg-course.gw-student-grades > .gw-sg-scores .gw-sr-chipgroup { flex-wrap: wrap; gap: 8px 12px; }
+.gw-fcourse.gw-sg-course.gw-student-grades > .gw-sg-scores .gw-sr-chipgroup + .gw-sr-chipgroup { padding-left: 18px; }
+.gw-fcourse.gw-sg-course.gw-student-grades > .gw-sg-scores .gw-sr-chipgroup-name { font-size: 0.92rem; }
+.gw-fcourse.gw-sg-course.gw-student-grades > .gw-sg-scores .gw-sr-chips { flex-wrap: wrap; gap: 8px; }
+.gw-fcourse.gw-sg-course.gw-student-grades > .gw-sg-scores .gw-sr-chip { padding: 6px 12px; font-size: 0.95rem; }
+.gw-fcourse.gw-sg-course.gw-student-grades > .gw-sg-scores .gw-sr-chip-w { font-size: 0.72rem; }
+.gw-fcourse.gw-sg-course.gw-student-grades > .gw-sg-scores .gw-sr-chip:hover { background: var(--gw-head); }
+.gw-fcourse.gw-sg-course.gw-student-grades > .gw-sg-scores .gw-sr-chip[aria-pressed="true"],
+.gw-fcourse.gw-sg-course.gw-student-grades > .gw-sg-scores .gw-sr-chip[aria-pressed="true"]:hover { background: var(--gw-lime); }
+
+.gw-fcourse.gw-sg-course.gw-student-grades > .gw-sg-scores .gw-sr-table tbody td { padding: 12px 10px; font-size: 1rem; }
+.gw-fcourse.gw-sg-course.gw-student-grades > .gw-sg-scores .gw-sr-table thead tr:not(.gw-sr-grouprow) th { padding: 12px 10px; font-size: 0.95rem; }
+.gw-fcourse.gw-sg-course.gw-student-grades > .gw-sg-scores .gw-sr-table thead .gw-sr-grouprow th:not(.gw-sr-groupblank) { padding: 8px 10px; }
+.gw-fcourse.gw-sg-course.gw-student-grades > .gw-sg-scores .gw-sr-table .gw-sr-student { width: 215px; }
+.gw-fcourse.gw-sg-course.gw-student-grades > .gw-sg-scores .gw-sr-table .gw-sr-fin { width: 90px; }
+.gw-fcourse.gw-sg-course.gw-student-grades > .gw-sg-scores .gw-sr-table .gw-sr-eq { width: 68px; }
+.gw-fcourse.gw-sg-course.gw-student-grades > .gw-sg-scores .gw-sr-table col.gw-sr-cat:not(.is-open) { width: 104px; }
+
+.gw-fcourse.gw-sg-course.gw-student-grades > .gw-sg-scores .gw-sr-table thead .gw-sr-grouprow th:not(.gw-sr-groupblank),
+.gw-fcourse.gw-sg-course.gw-student-grades > .gw-sg-scores .gw-sr-table thead th.gw-sr-group-cs,
+.gw-fcourse.gw-sg-course.gw-student-grades > .gw-sg-scores .gw-sr-table thead th.gw-sr-group-ex { background: var(--gw-head); color: var(--gw-ink); }
+.gw-fcourse.gw-sg-course.gw-student-grades > .gw-sg-scores .gw-sr-group-name { font-size: 0.92rem; font-weight: 700; }
+.gw-fcourse.gw-sg-course.gw-student-grades > .gw-sg-scores .gw-sr-group-w { font-size: 0.7rem; }
+
+.gw-fcourse.gw-sg-course.gw-student-grades > .gw-sg-scores .gw-sr-table thead th.gw-sr-cat.is-open { background: var(--gw-lime); }
+.gw-fcourse.gw-sg-course.gw-student-grades > .gw-sg-scores .gw-sr-table tbody td.gw-sr-cat.is-open { background: var(--gw-lime-pale); }
+.gw-fcourse.gw-sg-course.gw-student-grades > .gw-sg-scores .gw-sr-catname { font-size: 1.05rem; }
+.gw-fcourse.gw-sg-course.gw-student-grades > .gw-sg-scores .gw-sr-table th.gw-sr-cat:not(.is-open) .gw-sr-catname { font-size: 0.92rem; }
+.gw-fcourse.gw-sg-course.gw-student-grades > .gw-sg-scores .gw-sr-catsub { font-size: 0.68rem; }
+
+.gw-sg-course .gw-sr-grid { gap: clamp(3px, calc(8px - 0.5px * var(--sr-n)), 6px); }
+.gw-sg-course .gw-sr-grid-head .gw-sr-gi { min-height: 34px; font-size: 0.85rem; }
+.gw-sg-course .gw-sr-grid-head .gw-sr-gi-calc { font-size: 0.65rem; }
+.gw-sg-course .gw-sr-val { padding: 7px 2px; font-size: clamp(0.75rem, calc(1.15rem - 0.07rem * var(--sr-n)), 0.98rem); }
+.gw-sg-course td .gw-sr-gi-calc { padding: 7px 2px; font-size: clamp(0.75rem, calc(1.15rem - 0.07rem * var(--sr-n)), 0.98rem); }
+.gw-sg-course .gw-sr-hps .gw-sr-gi { font-size: clamp(0.75rem, calc(1.15rem - 0.07rem * var(--sr-n)), 0.98rem); }
+.gw-sg-course .gw-sr-name { font-size: 1rem; }
+.gw-sg-course .gw-sr-id { font-size: 0.85rem; }
+
+.gw-fcourse.gw-sg-course.gw-student-grades > .gw-sg-scores .gw-sr-legend { padding: 16px 22px 18px; }
+.gw-fcourse.gw-sg-course.gw-student-grades > .gw-sg-scores .gw-sr-legend-list { gap: 12px 28px; }
+.gw-fcourse.gw-sg-course.gw-student-grades > .gw-sg-scores .gw-sr-legend-list dt { font-size: 0.75rem; }
+.gw-fcourse.gw-sg-course.gw-student-grades > .gw-sg-scores .gw-sr-legend-list dd { font-size: 0.9rem; }
+
+/* ---------- Course page: Progress history ---------- */
+.gw-sg-course .gw-history-table th,
+.gw-sg-course .gw-history-table td { padding: 12px 16px; font-size: 1rem; }
+.gw-sg-course .gw-history-panel .gw-chart-legend { margin-top: 10px; font-size: 0.9rem; }
+.gw-sg-course .gw-history-note p,
+.gw-sg-course .gw-small { font-size: 0.9rem; }
+.gw-sg-course .gw-chart-label { font-size: 11.5px; }
+
+/* ---------- Course page: How you compare ---------- */
+.gw-sg-course .gw-benchmark { background: var(--gw-paper); }
+.gw-sg-course .gw-benchmark .gw-stat-value { font-size: 2.6rem; text-shadow: 3px 3px 0 var(--gw-lime); }
+.gw-sg-course .gw-quote { width: 30px; height: 30px; }
+.gw-sg-course .gw-benchmark-main { gap: 28px; }
+.gw-sg-course .gw-benchmark-text { font-size: 1.05rem; }
+.gw-sg-course .gw-benchmark-note { max-width: 280px; padding: 10px 14px; font-size: 0.88rem; }
+.gw-sg-course .gw-benchmark-cats { gap: 10px; padding-top: 16px; }
+.gw-sg-course .gw-sg-cat-avgs-label { font-size: 0.72rem; }
+
+/* ---------- What-if: course picker ---------- */
+.gw-student-whatif .gw-fc-filters { gap: 12px; padding: 16px; background: var(--gw-head); }
+.gw-student-whatif .gw-fc-filter label { font-size: 0.95rem; margin-bottom: 6px; }
+.gw-student-whatif .gw-fc-filter-search select { height: 42px; font-size: 1rem; }
+.gw-student-whatif .gw-fc-filters .gw-btn { height: 42px; }
+
+/* ---------- What-if: note bands are grey and meet the table under them ---------- */
+.gw-student-whatif .gw-fp-note { background: var(--gw-head); font-size: 1rem; }
+.gw-student-whatif .gw-sw-note { margin: -12px -22px 18px; padding: 12px 22px; }
+.gw-student-whatif .gw-goal-note { margin-top: 4px; font-size: 0.9rem; }
+.gw-student-whatif .gw-sw-scenario .gw-table-wrap,
+.gw-student-whatif .gw-calc .gw-panel-body > .gw-table-wrap { margin: 0 -22px 18px; }
+.gw-student-whatif .gw-panel-body > .gw-sw-note + .gw-table-wrap { margin-top: -18px; }
+
+/* ---------- What-if: tables ---------- */
+.gw-student-whatif .gw-table th,
+.gw-student-whatif .gw-table td { padding: 12px 18px; font-size: 1rem; }
+.gw-student-whatif .gw-sw-scenario .gw-table thead th,
+.gw-student-whatif .gw-sw-graded .gw-table thead th,
+.gw-student-whatif .gw-calc .gw-table thead th { background: var(--gw-head); }
+.gw-student-whatif .gw-sw-grouprow td { padding: 8px 18px; }
+.gw-student-whatif .gw-sw-group-cs td,
+.gw-student-whatif .gw-sw-group-ex td { background: var(--gw-head); }
+.gw-student-whatif .gw-sw-group-name { font-size: 0.92rem; }
+.gw-student-whatif .gw-sw-group-w { font-size: 0.7rem; }
+.gw-student-whatif .gw-sg-cat { gap: 10px; font-size: 1rem; }
+.gw-student-whatif .gw-sg-dot { width: 15px; height: 15px; }
+.gw-student-whatif .gw-calc-note { font-size: 0.95rem; }
+
+/* ---------- What-if: sliders and number boxes ---------- */
+.gw-student-whatif .gw-sim-control { gap: 12px; }
+.gw-student-whatif .gw-score-input { width: 88px; padding: 7px 8px; font-size: 1rem; }
+.gw-student-whatif .gw-sim-control .gw-muted { font-size: 1rem; }
+.gw-student-whatif .gw-sim-label { font-size: 1rem; }
+.gw-student-whatif .gw-sim-control input[type="range"]::-webkit-slider-thumb { width: 20px; height: 20px; margin-top: -7px; }
+.gw-student-whatif .gw-sim-control input[type="range"]::-moz-range-thumb { width: 20px; height: 20px; }
+
+/* ---------- What-if: Target grade ---------- */
+.gw-student-whatif .gw-sw-target .gw-chips { gap: 10px; margin-bottom: 20px; }
+.gw-student-whatif .gw-sw-target .gw-chip { padding: 7px 12px; font-size: 0.85rem; background: var(--gw-paper); }
+.gw-student-whatif .gw-sw-target .gw-chip:hover { background: var(--gw-head); }
+.gw-student-whatif .gw-sw-target .gw-chip.gw-chip-on,
+.gw-student-whatif .gw-sw-target .gw-chip.gw-chip-on:hover { background: var(--gw-lime); color: var(--gw-ink); }
+.gw-student-whatif .gw-sw-target .gw-chip .gw-th-sub { font-size: 0.78rem; }
+.gw-student-whatif .gw-sw-target .gw-sim-target { margin-bottom: 18px; }
+.gw-student-whatif .gw-sw-target .gw-sim-compare { margin-top: 12px; font-size: 1rem; }
+.gw-student-whatif .gw-sw-scenario .gw-form-buttons,
+.gw-student-whatif .gw-sw-target .gw-form-buttons { margin-top: 18px; gap: 12px; }
+
+/* ---------- What-if: How this is calculated key ---------- */
+.gw-student-whatif .gw-calc .gw-sr-legend { padding: 16px 22px 18px; }
+.gw-student-whatif .gw-calc .gw-sr-legend-list { gap: 12px 28px; }
+.gw-student-whatif .gw-calc .gw-sr-legend-list dt { font-size: 0.75rem; }
+.gw-student-whatif .gw-calc .gw-sr-legend-list dd { font-size: 0.9rem; }
+
+/* ---------- Phones: trim the side padding ---------- */
+@media (max-width: 575.98px) {
+    .gw-sg-course .gw-panel-body,
+    .gw-student-whatif .gw-panel-body { padding: 10px 16px 18px; }
+    .gw-sg-course .gw-fp-note.gw-panel-body { padding: 12px 16px; }
+    .gw-sg-course .gw-sr-bar { padding: 8px 16px 18px; }
+    .gw-sg-course .gw-sr-legend,
+    .gw-student-whatif .gw-calc .gw-sr-legend { padding: 14px 16px 16px; }
+    .gw-student-whatif .gw-sw-note { margin: -10px -16px 16px; padding: 12px 16px; }
+    .gw-student-whatif .gw-sw-scenario .gw-table-wrap,
+    .gw-student-whatif .gw-calc .gw-panel-body > .gw-table-wrap { margin: 0 -16px 16px; }
+    .gw-student-whatif .gw-panel-body > .gw-sw-note + .gw-table-wrap { margin-top: -16px; }
+    .gw-student-whatif .gw-table th,
+    .gw-student-whatif .gw-table td { padding: 10px 12px; }
+    .gw-sg-course .gw-goal-alert { padding: 14px 14px 14px 56px; }
+    .gw-sg-course .gw-sg-hero .gw-stat:first-child .gw-stat-value { font-size: 2.8rem; }
+}
+
+/* ---------- Clarity pass fixes ---------- */
+/* goal alert: the bell sits in the middle of the box again (the shared alert rule had pinned it to the top) */
+.gw-sg-course .gw-goal-alert::before { top: 50%; margin-top: -12px; }
+
+/* progress chart: the picture is 600 x 190, so on a wide screen it was drawn over 450px tall; keep it to a sensible width, centred, with its key */
+.gw-sg-course .gw-history-panel .gw-chart,
+.gw-sg-course .gw-history-panel .gw-chart-legend {
+    max-width: 920px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+/* How this is calculated: the rounding note and the PS / Earned key share one line under the table */
+.gw-student-whatif .gw-calc .gw-panel-body > .gw-table-wrap { margin-bottom: 0; }
+.gw-student-whatif .gw-calc .gw-panel-body:not(.gw-calc-foot) { padding-bottom: 0; }
+.gw-student-whatif .gw-calc-foot {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 10px 32px;
+    padding: 16px 22px 18px;
+}
+.gw-student-whatif .gw-calc-foot-note { margin: 0; color: var(--gw-muted); font-size: 0.9rem; white-space: nowrap; }
+.gw-student-whatif .gw-calc-foot .gw-sr-legend-list { display: contents; }
+.gw-student-whatif .gw-calc-foot .gw-sr-legend-list > div {
+    display: flex;
+    flex-direction: row;
+    align-items: baseline;
+    gap: 8px;
+    white-space: nowrap;
+}
+.gw-student-whatif .gw-calc-foot .gw-sr-legend-list dt { background: none; border: 0; padding: 0; color: var(--gw-ink); font-size: 0.75rem; font-weight: 700; }
+.gw-student-whatif .gw-calc-foot .gw-sr-legend-list dd { margin: 0; color: var(--gw-muted); font-size: 0.9rem; }
+@media (max-width: 767.98px) {
+    .gw-student-whatif .gw-calc-foot-note,
+    .gw-student-whatif .gw-calc-foot .gw-sr-legend-list > div { white-space: normal; }
+}
+@media (max-width: 575.98px) {
+    .gw-student-whatif .gw-calc-foot { padding: 14px 16px 16px; }
+}
