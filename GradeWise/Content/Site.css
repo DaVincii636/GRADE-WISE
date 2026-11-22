@@ -6797,3 +6797,46 @@ button.gw-legend-btn:focus-visible { box-shadow: 3px 3px 0 var(--gw-ink); backgr
 @media (max-width: 767.98px) {
     .gw-user-form .gw-user-single { max-width: 100%; }
 }
+
+/* ---------- Scroll bars in the GradeWise theme: ink outline, lime thumb, square corners ---------- */
+/* Chrome, Edge, Safari */
+::-webkit-scrollbar {
+    width: 14px;
+    height: 14px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--gw-head);
+    border-left: var(--gw-outline);
+}
+
+::-webkit-scrollbar-track:horizontal {
+    border-left: 0;
+    border-top: var(--gw-outline);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--gw-lime);
+    border: var(--gw-outline);
+    border-radius: 0;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--gw-note);
+}
+
+::-webkit-scrollbar-thumb:active {
+    background: var(--gw-orange);
+}
+
+::-webkit-scrollbar-corner {
+    background: var(--gw-head);
+}
+
+/* Firefox (browsers that do not support the rules above) */
+@supports not selector(::-webkit-scrollbar) {
+    * {
+        scrollbar-width: auto;
+        scrollbar-color: var(--gw-lime) var(--gw-head);
+    }
+}
