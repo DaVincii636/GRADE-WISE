@@ -6921,3 +6921,74 @@ button.gw-legend-btn:focus-visible { box-shadow: 3px 3px 0 var(--gw-ink); backgr
 .gw-student-grades .gw-benchmark-empty {
     background: var(--gw-head);
 }
+
+/* =====================================================================
+   Student > What-if simulator (.gw-student-whatif, used together with
+   .gw-faculty-courses for the shared stat tints, chips and filter bar).
+   Scoped so no other page changes.
+   ===================================================================== */
+.gw-student-whatif .gw-stat-lav { background: var(--gw-fc-lav-pale); }
+.gw-student-whatif .gw-stat-orange { background: var(--gw-fc-orange-pale); }
+.gw-student-whatif .gw-stat-lav[data-tab]::before { background: var(--gw-fc-lav); }
+.gw-student-whatif .gw-stat-orange[data-tab]::before { background: var(--gw-fc-orange); }
+.gw-student-whatif .gw-stat-lav .gw-stat-value { text-shadow: 3px 3px 0 var(--gw-fc-lav); }
+.gw-student-whatif .gw-stat-orange .gw-stat-value { text-shadow: 3px 3px 0 var(--gw-fc-orange); }
+
+/* course picker sits in the same tinted bar as the faculty filters */
+.gw-student-whatif .gw-fc-filter-search select {
+    width: 100%;
+    height: 38px;
+}
+
+.gw-student-whatif .gw-fc-filter select:focus {
+    outline: 3px solid var(--gw-ink);
+    outline-offset: 0;
+    box-shadow: 0 0 0 6px var(--gw-lime);
+}
+
+/* category cells with a coloured square */
+.gw-student-whatif .gw-sg-cat {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 700;
+}
+
+.gw-student-whatif .gw-sg-dot {
+    flex: 0 0 auto;
+    width: 14px;
+    height: 14px;
+    border: 1.5px solid var(--gw-ink);
+    background: var(--gw-lime);
+}
+
+.gw-student-whatif .gw-sg-dot-lime   { background: var(--gw-lime); }
+.gw-student-whatif .gw-sg-dot-blue   { background: var(--gw-acct-blue); }
+.gw-student-whatif .gw-sg-dot-gold   { background: var(--gw-acct-gold); }
+.gw-student-whatif .gw-sg-dot-lav    { background: var(--gw-fc-lav); }
+.gw-student-whatif .gw-sg-dot-orange { background: var(--gw-fc-orange); }
+
+/* tinted table headers and totals, one tint per panel */
+.gw-student-whatif .gw-sw-scenario .gw-table thead th { background: var(--gw-fc-lav-pale); }
+.gw-student-whatif .gw-sw-graded .gw-table thead th   { background: var(--gw-acct-blue-pale); }
+.gw-student-whatif .gw-calc .gw-table thead th        { background: var(--gw-acct-gold-pale); }
+.gw-student-whatif .gw-calc .gw-table tfoot th,
+.gw-student-whatif .gw-calc .gw-table tfoot td        { background: var(--gw-lime-pale); }
+
+/* target grade chips: pixel-edged buttons that fill with the accents */
+.gw-student-whatif .gw-sw-target .gw-chip {
+    border: 1.5px solid var(--gw-ink);
+    border-radius: 0;
+    box-shadow: 2px 2px 0 var(--gw-ink);
+}
+
+.gw-student-whatif .gw-sw-target .gw-chip:hover { background: var(--gw-acct-blue); }
+.gw-student-whatif .gw-sw-target .gw-chip.gw-chip-on { background: var(--gw-lime); }
+
+.gw-student-whatif .gw-sw-target {
+    background: var(--gw-acct-blue-pale);
+}
+
+.gw-student-whatif .gw-sw-target .gw-panel-head {
+    background: var(--gw-paper);
+}

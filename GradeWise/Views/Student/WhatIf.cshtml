@@ -6,16 +6,25 @@
     var isFinalGrade = Model.Scope == GradeWise.Models.GradeScopes.FinalGrade;
     var projectedLabel = isFinalGrade ? "Projected final grade" : "Projected " + Model.ScopeLabel + " grade";
     var targetLabel = isFinalGrade ? "Target final grade" : "Target " + Model.ScopeLabel + " grade";
+
+    // Dot colours cycle through the same accents the faculty My courses page uses.
+    var tones = new[] { "lime", "blue", "gold", "lav", "orange" };
 }
 
-<h1 class="gw-page-title">What-If simulator</h1>
-<p class="gw-page-sub">
-    Try different scores for your remaining work and see where your @(isFinalGrade ? "final" : Model.ScopeLabel) grade could land.
-    @if (Model.HasCourse)
-    {
-        <span class="gw-badge">Showing: @Model.ScopeLabel</span>
-    }
-</p>
+<div class="gw-faculty-courses gw-student-whatif">
+<div class="gw-page-head">
+    <div>
+        <h1 class="gw-page-title">What-If simulator</h1>
+        <p class="gw-page-sub">
+            Try different scores for your remaining work and see where your @(isFinalGrade ? "final" : Model.ScopeLabel) grade could land.
+            @if (Model.HasCourse)
+            {
+                <span class="gw-badge">@Model.Term</span>
+                <span class="gw-badge">Showing: @Model.ScopeLabel</span>
+            }
+        </p>
+    </div>
+</div>
 
 @if (!Model.HasCourse)
 {
@@ -29,19 +38,23 @@
 }
 else
 {
-    <section class="gw-panel gw-picker-panel">
-        <div class="gw-panel-body">
-            <div class="gw-picker">
-                <label for="course-picker">Course</label>
-                <select id="course-picker" class="gw-inline-select"
-                        data-url="@Url.Action("WhatIf", "Student", new { id = "__ID__" })">
-                    @foreach (var c in Model.Courses)
-                    {
-                        <option value="@c.Id" selected="@(c.Id == Model.SelectedId)">@c.Code &middot; @c.Name</option>
-                    }
-                </select>
+    <section class="gw-panel gw-picker-panel gw-fc-panel">
+        <div class="gw-panel-head">
+            <h2 class="gw-panel-title">Course</h2>
+        </div>
+        <div class="gw-panel-body gw-fc-controls">
+            <div class="gw-fc-filters">
+                <div class="gw-fc-filter gw-fc-filter-search">
+                    <label for="course-picker">Choose a course</label>
+                    <select id="course-picker" class="gw-inline-select"
+                            data-url="@Url.Action("WhatIf", "Student", new { id = "__ID__" })">
+                        @foreach (var c in Model.Courses)
+                        {
+                            <option value="@c.Id" selected="@(c.Id == Model.SelectedId)">@c.Code &middot; @c.Name</option>
+                        }
+                    </select>
+                </div>
                 @Html.ActionLink("Back to my grades", "Index", "Student", new { id = Model.SelectedId }, new { @class = "gw-btn gw-btn-small gw-btn-outline" })
-                <span class="gw-muted">@Model.Term</span>
             </div>
         </div>
     </section>
@@ -62,11 +75,11 @@ else
     else if (Model.NothingLeft)
     {
         <section class="gw-stats" aria-label="Final result">
-            <div class="gw-stat" data-tab="Final">
+            <div class="gw-stat gw-stat-lime" data-tab="Final">
                 <div class="gw-stat-value">@GradeCalculator.Format(Model.Earned)%</div>
                 <div class="gw-stat-label">@(isFinalGrade ? "Final grade" : Model.ScopeLabel + " grade")</div>
             </div>
-            <div class="gw-stat" data-tab="Grade">
+            <div class="gw-stat gw-stat-blue" data-tab="Grade">
                 <div class="gw-stat-value">@GradeCalculator.Format(Model.Equivalent)</div>
                 <div class="gw-stat-label">Equivalent grade</div>
             </div>
@@ -84,25 +97,25 @@ else
              data-target="@GradeCalculator.Raw(GradeCalculator.PassingAverage)">
 
             <section class="gw-stats" aria-label="Projection">
-                <div class="gw-stat" data-tab="Earned">
+                <div class="gw-stat gw-stat-lime" data-tab="Earned">
                     <div class="gw-stat-value">@GradeCalculator.Format(Model.Earned)</div>
                     <div class="gw-stat-label">Points earned so far <span class="gw-th-sub">(out of @GradeCalculator.Format(Model.WeightTotal))</span></div>
                 </div>
-                <div class="gw-stat" data-tab="Remaining">
+                <div class="gw-stat gw-stat-gold" data-tab="Remaining">
                     <div class="gw-stat-value">@GradeCalculator.Format(Model.RemainingWeight)%</div>
                     <div class="gw-stat-label">Remaining weight <span class="gw-th-sub">(still to be graded)</span></div>
                 </div>
-                <div class="gw-stat gw-stat-live" data-tab="Projected">
+                <div class="gw-stat gw-stat-live gw-stat-lav" data-tab="Projected">
                     <div class="gw-stat-value" id="sim-final" aria-live="polite">&mdash;</div>
                     <div class="gw-stat-label">@projectedLabel</div>
                 </div>
-                <div class="gw-stat gw-stat-live" data-tab="Grade">
+                <div class="gw-stat gw-stat-live gw-stat-orange" data-tab="Grade">
                     <div class="gw-stat-value" id="sim-grade" aria-live="polite">&mdash;</div>
                     <div class="gw-stat-label">Projected equivalent grade</div>
                 </div>
             </section>
 
-            <section class="gw-panel">
+            <section class="gw-panel gw-sw-scenario">
                 <div class="gw-panel-head">
                     <h2 class="gw-panel-title">Your scenario</h2>
                 </div>
@@ -120,10 +133,11 @@ else
                                 </tr>
                             </thead>
                             <tbody>
-                                @foreach (var c in Model.Ungraded)
+                                @for (var i = 0; i < Model.Ungraded.Count; i++)
                                 {
+                                    var c = Model.Ungraded[i];
                                     <tr class="gw-sim-row" data-weight="@GradeCalculator.Raw(c.Weight)">
-                                        <td>@c.Name</td>
+                                        <td><span class="gw-sg-cat"><span class="gw-sg-dot gw-sg-dot-@tones[i % tones.Length]" aria-hidden="true"></span>@c.Name</span></td>
                                         <td class="gw-num">@GradeCalculator.Format(c.Weight)%</td>
                                         <td>
                                             <div class="gw-sim-control">
@@ -148,7 +162,7 @@ else
                 </div>
             </section>
 
-            <section class="gw-panel">
+            <section class="gw-panel gw-sw-target">
                 <div class="gw-panel-head">
                     <h2 class="gw-panel-title">Target grade</h2>
                 </div>
@@ -184,7 +198,7 @@ else
 
         if (Model.Graded.Count > 0)
         {
-            <section class="gw-panel">
+            <section class="gw-panel gw-sw-graded">
                 <div class="gw-panel-head">
                     <h2 class="gw-panel-title">Already graded</h2>
                 </div>
@@ -201,10 +215,13 @@ else
                         <tbody>
                             @foreach (var r in Model.Graded)
                             {
+                                var scoreClass = r.Score.Value >= 75 ? "gw-fc-avg-high"
+                                               : r.Score.Value >= GradeCalculator.PassingAverage ? "gw-fc-avg-mid"
+                                               : "gw-fc-avg-low";
                                 <tr>
-                                    <td>@r.Category</td>
+                                    <td><span class="gw-sg-cat"><span class="gw-sg-dot gw-sg-dot-lime" aria-hidden="true"></span>@r.Category</span></td>
                                     <td class="gw-num">@GradeCalculator.Format(r.Weight)%</td>
-                                    <td class="gw-num">@GradeCalculator.Format(r.Score)</td>
+                                    <td class="gw-num"><span class="gw-fc-chip @scoreClass">@GradeCalculator.Format(r.Score)</span></td>
                                     <td class="gw-num">@GradeCalculator.Format(r.WeightedPoints)</td>
                                 </tr>
                             }
@@ -238,10 +255,11 @@ else
                                 <td class="gw-calc-note">Graded work, already counted</td>
                                 <td class="gw-num">@GradeCalculator.Format(Model.Earned)</td>
                             </tr>
-                            @foreach (var c in Model.Ungraded)
+                            @for (var i = 0; i < Model.Ungraded.Count; i++)
                             {
+                                var c = Model.Ungraded[i];
                                 <tr class="gw-calc-row">
-                                    <th scope="row">@c.Name</th>
+                                    <th scope="row"><span class="gw-sg-cat"><span class="gw-sg-dot gw-sg-dot-@tones[i % tones.Length]" aria-hidden="true"></span>@c.Name</span></th>
                                     <td class="gw-calc-note"><span class="gw-calc-formula">&mdash;</span></td>
                                     <td class="gw-num gw-calc-points">&mdash;</td>
                                 </tr>
@@ -266,6 +284,8 @@ else
         </section>
     }
 }
+
+</div>
 
 @section scripts {
     <script src="@Url.Content("~/Scripts/whatif.js")?v=@System.IO.File.GetLastWriteTimeUtc(Server.MapPath("~/Scripts/whatif.js")).Ticks"></script>
