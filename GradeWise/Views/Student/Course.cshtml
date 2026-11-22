@@ -26,20 +26,20 @@
 
 @* Reading order, top to bottom: 1. which course and what can I do here, 2. alerts (problems, then my goal),
    3. where I stand (the big number first), 4. the scores behind it, 5. my progress, 6. how I compare. *@
-<div class="gw-page-head">
-    <div>
-        <h1 class="gw-page-title">@Model.Code &middot; @Model.Name</h1>
+<header class="gw-sg-coursehead">
+    <h1 class="gw-page-title">@Model.Code &middot; @Model.Name</h1>
+    <div class="gw-sg-headrow">
         <p class="gw-page-sub">
             <span class="gw-badge">@Model.Term</span>
             <span class="gw-badge">Showing: @Model.ScopeLabel</span>
         </p>
+        <div class="gw-form-buttons">
+            @Html.ActionLink("What-If simulator", "WhatIf", "Student", new { id = Model.SelectedId }, new { @class = "gw-btn gw-btn-small" })
+            @Html.ActionLink("Printable summary", "Summary", "Student", new { id = Model.SelectedId }, new { @class = "gw-btn gw-btn-small gw-btn-outline" })
+            @Html.ActionLink("All courses", "Index", "Student", null, new { @class = "gw-btn gw-btn-small gw-btn-outline" })
+        </div>
     </div>
-    <div class="gw-form-buttons">
-        @Html.ActionLink("What-If simulator", "WhatIf", "Student", new { id = Model.SelectedId }, new { @class = "gw-btn gw-btn-small" })
-        @Html.ActionLink("Printable summary", "Summary", "Student", new { id = Model.SelectedId }, new { @class = "gw-btn gw-btn-small gw-btn-outline" })
-        @Html.ActionLink("All courses", "Index", "Student", null, new { @class = "gw-btn gw-btn-small gw-btn-outline" })
-    </div>
-</div>
+</header>
 
 @if (!Model.HasCategories)
 {
@@ -62,8 +62,11 @@ else if (!Model.WeightsOk)
          data-earned="@GradeCalculator.Raw(Model.Earned)"
          data-remaining="@GradeCalculator.Raw(Model.RemainingWeight)"
          data-scale="@scaleText">
-        <span class="gw-goal-label">@Model.ScopeLabel goal</span>
-        <span class="gw-goal-text" id="gw-goal-text">No goal set yet. Pick one in the What-If simulator to see what your remaining work must average.</span>
+        <div class="gw-goal-main">
+            <span class="gw-goal-label">Your @Model.ScopeLabel goal</span>
+            <span class="gw-goal-value" id="gw-goal-value">Not set</span>
+        </div>
+        <span class="gw-goal-text" id="gw-goal-text">Pick one in the What-If simulator to see what your remaining work must average.</span>
         @Html.ActionLink("Set goal", "WhatIf", "Student", new { id = Model.SelectedId }, new { @class = "gw-goal-link", id = "gw-goal-link" })
     </div>
 }

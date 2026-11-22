@@ -7231,3 +7231,114 @@ button.gw-legend-btn:focus-visible { box-shadow: 3px 3px 0 var(--gw-ink); backgr
     .gw-student-grades .gw-sg-listhead { align-items: flex-start; gap: 6px; }
     .gw-student-grades .gw-sg-listhead .gw-datebox { margin: 0; }
 }
+
+/* Course page header: title with one full-width dashed rule, then badges on the left and buttons on the right */
+.gw-student-grades .gw-sg-coursehead { margin-bottom: 20px; }
+.gw-student-grades .gw-sg-coursehead .gw-page-title { margin: 0 0 14px; }
+.gw-student-grades .gw-sg-headrow {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px 16px;
+}
+.gw-student-grades .gw-sg-headrow .gw-page-sub { margin: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+.gw-student-grades .gw-sg-headrow .gw-form-buttons { margin: 0; }
+
+/* Goal alert: the thing to act on, so it is bigger than a normal alert, with the goal grade as its headline */
+.gw-student-grades .gw-goal-alert {
+    padding: 14px 18px 14px 58px;
+    border-left-width: 12px;
+    gap: 6px 22px;
+    box-shadow: 4px 4px 0 var(--gw-ink);
+}
+.gw-student-grades .gw-goal-alert::before { top: 50%; margin-top: -12px; left: 16px; }
+.gw-student-grades .gw-goal-alert.gw-alert-info { background: var(--gw-acct-blue-pale); }
+.gw-student-grades .gw-goal-main { display: flex; flex-direction: column; gap: 2px; }
+.gw-student-grades .gw-goal-value {
+    font-size: 1.9rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+}
+.gw-student-grades .gw-goal-text { flex: 1 1 240px; font-size: 1rem; font-weight: 700; }
+.gw-student-grades .gw-goal-link {
+    padding: 6px 12px;
+    border: var(--gw-outline);
+    background: var(--gw-paper);
+    text-decoration: none;
+}
+.gw-student-grades .gw-goal-link:hover { background: var(--gw-note); }
+
+/* =====================================================================
+   Student "Your scores" table, simpler to look at (Course page only; the
+   printable summary, with .gw-summary, and the faculty page keep their own look).
+   Less boxes and bands, same colours where they mean something: the open
+   category keeps its colour, each closed one keeps a colour stripe, and the
+   score chips still go lime / gold / orange by how you are doing.
+   ===================================================================== */
+/* the explanation is a quiet line, not a gold band */
+.gw-student-grades:not(.gw-summary) > .gw-sg-scores .gw-fp-note {
+    background: transparent;
+    border-bottom: 0;
+    padding-top: 10px;
+    padding-bottom: 0;
+    color: var(--gw-muted);
+    font-size: 0.85rem;
+}
+/* the term name is already in the panel title chip */
+.gw-student-grades:not(.gw-summary) > .gw-sg-scores .gw-sg-termhead { display: none; }
+
+/* category picker: one plain row, selected one is coloured */
+.gw-student-grades:not(.gw-summary) > .gw-sg-scores .gw-sr-bar { padding-top: 14px; padding-bottom: 14px; gap: 8px 16px; }
+.gw-student-grades:not(.gw-summary) > .gw-sg-scores .gw-sr-chipgroup {
+    padding: 0;
+    border: 0;
+    background: none;
+}
+.gw-student-grades:not(.gw-summary) > .gw-sg-scores .gw-sr-chipgroup + .gw-sr-chipgroup {
+    padding-left: 16px;
+    border-left: 1.5px dashed var(--gw-ink);
+}
+.gw-student-grades:not(.gw-summary) > .gw-sg-scores .gw-sr-chipgroup-name { color: var(--gw-muted); font-weight: 400; }
+.gw-student-grades:not(.gw-summary) > .gw-sg-scores .gw-sr-chip[aria-pressed="true"] { box-shadow: none; transform: none; }
+
+/* table head: neutral, the group row is just small labels */
+.gw-student-grades:not(.gw-summary) > .gw-sg-scores .gw-sr-table thead .gw-sr-grouprow th,
+.gw-student-grades:not(.gw-summary) > .gw-sg-scores .gw-sr-table thead th.gw-sr-group-cs,
+.gw-student-grades:not(.gw-summary) > .gw-sg-scores .gw-sr-table thead th.gw-sr-group-ex {
+    background: var(--gw-paper);
+    color: var(--gw-muted);
+    border-bottom: 1px solid var(--gw-line);
+}
+.gw-student-grades:not(.gw-summary) > .gw-sg-scores .gw-sr-group-name { font-weight: 400; display: inline; }
+.gw-student-grades:not(.gw-summary) > .gw-sg-scores .gw-sr-group-w { display: inline; margin-left: 6px; }
+
+/* closed categories: white with a colour stripe on top; the open one keeps its full colour */
+.gw-student-grades:not(.gw-summary) > .gw-sg-scores .gw-sr-table thead th.gw-sr-cat:not(.is-open) {
+    background: var(--gw-paper);
+    border-top: 5px solid var(--sr-tone);
+}
+.gw-student-grades:not(.gw-summary) > .gw-sg-scores .gw-sr-table thead th.gw-sr-cat.is-open { border-top: 5px solid var(--gw-ink); }
+.gw-student-grades:not(.gw-summary) > .gw-sg-scores .gw-sr-catgroup { display: none; }
+
+/* highest possible score: a quiet reference line */
+.gw-student-grades:not(.gw-summary) > .gw-sg-scores .gw-sr-hps td,
+.gw-student-grades:not(.gw-summary) > .gw-sg-scores .gw-sr-table tbody .gw-sr-hps td.gw-sr-cat,
+.gw-student-grades:not(.gw-summary) > .gw-sg-scores .gw-sr-table tbody .gw-sr-hps td.gw-sr-cat:not(.is-open) {
+    background: var(--gw-paper);
+    color: var(--gw-muted);
+    border-bottom: 1px solid var(--gw-line);
+}
+.gw-student-grades:not(.gw-summary) > .gw-sg-scores .gw-sr-hps strong { font-weight: 400; }
+
+/* your row: no avatar (it is only you), more room */
+.gw-student-grades:not(.gw-summary) > .gw-sg-scores .gw-sr-avatar { display: none; }
+.gw-student-grades:not(.gw-summary) > .gw-sg-scores .gw-sr-table tbody tr:not(.gw-sr-hps) td { padding-top: 16px; padding-bottom: 16px; }
+
+/* legend: one muted line of small notes */
+.gw-student-grades:not(.gw-summary) > .gw-sg-scores .gw-sr-legend { border-top: 1px solid var(--gw-line); padding-top: 12px; padding-bottom: 14px; }
+.gw-student-grades:not(.gw-summary) > .gw-sg-scores .gw-sr-legend-list { gap: 8px 28px; }
+.gw-student-grades:not(.gw-summary) > .gw-sg-scores .gw-sr-legend-list > div { flex-direction: row; align-items: baseline; gap: 8px; }
+.gw-student-grades:not(.gw-summary) > .gw-sg-scores .gw-sr-legend-list dt { background: none; border: 0; padding: 0; color: var(--gw-ink); font-weight: 700; }
+.gw-student-grades:not(.gw-summary) > .gw-sg-scores .gw-sr-legend-list dd { color: var(--gw-muted); font-size: 0.85rem; }

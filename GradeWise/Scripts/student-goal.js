@@ -11,6 +11,7 @@
     var api = window.GradeWiseWhatIf;
     if (!host || !api) { return; }
 
+    var valueEl = document.getElementById("gw-goal-value");
     var textEl = document.getElementById("gw-goal-text");
     var linkEl = document.getElementById("gw-goal-link");
     if (!textEl) { return; }
@@ -33,25 +34,26 @@
     if (goal === null) { return; }
 
     var f = api.format;
-    var head = f(api.equivalentGrade(goal, scale)) + " (" + f(goal) + "%). ";
+    var head = f(api.equivalentGrade(goal, scale)) + " (" + f(goal) + "%)";
     var result = api.checkTarget(goal, earned, remaining);
     var kind = "info";
     var text;
 
     if (result.status === "Secured") {
         kind = "ok";
-        text = head + "Secured. Your " + f(earned) + " points already meet it.";
+        text = "Secured. Your " + f(earned) + " points already meet it.";
     } else if (result.status === "NothingLeft") {
         kind = "warn";
-        text = head + "Not reached. All work is graded and you earned " + f(earned) + ".";
+        text = "Not reached. All work is graded and you earned " + f(earned) + ".";
     } else if (result.status === "OutOfReach") {
         kind = "warn";
-        text = head + "Out of reach. Even 100 on everything left gives " + f(earned + remaining) + " at most.";
+        text = "Out of reach. Even 100 on everything left gives " + f(earned + remaining) + " at most.";
     } else {
-        text = head + "You need an average of " + f(result.required) + " on the remaining " + f(remaining) + "%.";
+        text = "You need an average of " + f(result.required) + " on the remaining " + f(remaining) + "%.";
     }
 
     host.className = "gw-alert gw-alert-" + kind + " gw-goal-alert";
+    if (valueEl) { valueEl.textContent = head; }
     textEl.textContent = text;
     if (linkEl) { linkEl.textContent = "Change goal"; }
 })();
