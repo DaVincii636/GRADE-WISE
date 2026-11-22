@@ -142,6 +142,9 @@ namespace GradeWise.Models
 
         /// <summary>Percent of the students with a score here who are at or above the passing line. Null when nobody has a score.</summary>
         public double? PassRate { get; set; }
+
+        /// <summary>Students with a score here (Average holds the score), highest first. Used by the range chart's popup.</summary>
+        public List<DistributionStudent> Students { get; set; } = new List<DistributionStudent>();
     }
 
     /// <summary>How many graded students land on one equivalent grade (1.00 to 3.00, or 5.00).</summary>
@@ -154,10 +157,48 @@ namespace GradeWise.Models
         /// <summary>Percent of the graded students (0 to 100), rounded to 2 decimals.</summary>
         public double Percent { get; set; }
 
+        /// <summary>The students on this equivalent grade, highest first.</summary>
+        public List<DistributionStudent> Students { get; set; } = new List<DistributionStudent>();
+
         public string PercentText
         {
             get { return Percent.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture) + "%"; }
         }
+    }
+
+    /// <summary>One student in the Midterm vs Final Term comparison.</summary>
+    public class TermStudent
+    {
+        public string StudentNo { get; set; }
+        public string FullName { get; set; }
+        public double Midterm { get; set; }
+        public double FinalTerm { get; set; }
+
+        /// <summary>Final Term minus Midterm (Earned Grade points).</summary>
+        public double Change { get; set; }
+
+        /// <summary>"Improved", "Declined" or "Unchanged".</summary>
+        public string Status { get; set; }
+    }
+
+    /// <summary>One row of a student-list popup (see the Analytics page).</summary>
+    public class StudentModalRow
+    {
+        public string FullName { get; set; }
+        public string StudentNo { get; set; }
+        public string Value { get; set; }
+    }
+
+    /// <summary>A popup that lists students when a chart segment is clicked.</summary>
+    public class StudentModalDef
+    {
+        public string Id { get; set; }
+        public string Title { get; set; }
+        public string Badge { get; set; }
+        public string Meta { get; set; }
+        public string ValueHeader { get; set; }
+        public string EmptyText { get; set; }
+        public List<StudentModalRow> Rows { get; set; } = new List<StudentModalRow>();
     }
 
     public class AnalyticsViewModel
@@ -239,6 +280,11 @@ namespace GradeWise.Models
 
         public List<DistributionStudent> AttentionStudents { get; set; } = new List<DistributionStudent>();
 
+        /// <summary>Every graded student at or above the passing line (best first) and below it (lowest first).</summary>
+        public List<DistributionStudent> PassingStudents { get; set; } = new List<DistributionStudent>();
+
+        public List<DistributionStudent> FailingStudents { get; set; } = new List<DistributionStudent>();
+
         /// <summary>Graded students per equivalent grade, best first. Empty when nobody is graded.</summary>
         public List<EquivalentBin> EquivalentBins { get; set; } = new List<EquivalentBin>();
 
@@ -261,5 +307,8 @@ namespace GradeWise.Models
         public int Declined { get; set; }
 
         public int Unchanged { get; set; }
+
+        /// <summary>The compared students, with both term grades. Behind the Improved / Declined / Unchanged popups.</summary>
+        public List<TermStudent> TermStudents { get; set; } = new List<TermStudent>();
     }
 }

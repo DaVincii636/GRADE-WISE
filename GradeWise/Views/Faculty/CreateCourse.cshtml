@@ -3,10 +3,12 @@
     ViewBag.Title = "Create course";
 }
 
+@* Same layout and form style as the admin Add user page (the .gw-user-* classes). *@
+<div class="gw-user-page">
 <h1 class="gw-page-title">Create course</h1>
 <p class="gw-page-sub">Basics first. Categories and students come next.</p>
 
-<section class="gw-panel gw-form-narrow">
+<section class="gw-panel gw-user-form">
     <div class="gw-panel-head">
         <h2 class="gw-panel-title">Course details</h2>
     </div>
@@ -27,37 +29,54 @@
         @using (Html.BeginForm("CreateCourse", "Faculty", FormMethod.Post))
         {
             @Html.AntiForgeryToken()
-            <div class="gw-field">
-                <label for="code">Course code</label>
-                <input type="text" id="code" name="code" value="@Model.Code" maxlength="20" required autofocus placeholder="IT101" />
-            </div>
-            <div class="gw-field">
-                <label for="name">Course name</label>
-                <input type="text" id="name" name="name" value="@Model.Name" maxlength="100" required placeholder="Introduction to Programming" />
-            </div>
-            <div class="gw-field">
-                <label for="section">Section</label>
-                <select id="section" name="section">
-                    <option value="">No sections available yet</option>
-                    @foreach (var s in Model.SectionNames)
-                    {
-                        <option value="@s" selected="@(s == Model.Section)">@s</option>
-                    }
-                </select>
-            </div>
-            <div class="gw-field">
-                <label for="term">Term</label>
-                <select id="term" name="term" required>
-                    @foreach (var t in Model.TermNames)
-                    {
-                        <option value="@t" selected="@(t == Model.Term)">@t</option>
-                    }
-                </select>
-            </div>
-            <div class="gw-form-buttons">
-                <button type="submit" class="gw-btn">Create course</button>
-                @Html.ActionLink("Cancel", "Index", "Faculty")
+
+            <fieldset class="gw-user-step">
+                <legend class="gw-user-legend"><span class="gw-user-step-no">1</span> Course</legend>
+                <div class="gw-user-grid">
+                    <div class="gw-user-control">
+                        <label for="code">Course code <span class="gw-user-req">required</span></label>
+                        <input type="text" id="code" name="code" value="@Model.Code" maxlength="20" required autofocus autocomplete="off" placeholder="IT101" />
+                    </div>
+                    <div class="gw-user-control">
+                        <label for="name">Course name <span class="gw-user-req">required</span></label>
+                        <input type="text" id="name" name="name" value="@Model.Name" maxlength="100" required autocomplete="off" placeholder="Introduction to Programming" />
+                    </div>
+                </div>
+            </fieldset>
+
+            <fieldset class="gw-user-step">
+                <legend class="gw-user-legend"><span class="gw-user-step-no">2</span> Section and term</legend>
+                <div class="gw-user-grid">
+                    <div class="gw-user-control">
+                        <label for="section">Section <span class="gw-user-opt">optional</span></label>
+                        <select id="section" name="section">
+                            <option value="">No sections available yet</option>
+                            @foreach (var s in Model.SectionNames)
+                            {
+                                <option value="@s" selected="@(s == Model.Section)">@s</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="gw-user-control">
+                        <label for="term">Term <span class="gw-user-req">required</span></label>
+                        <select id="term" name="term" required>
+                            @foreach (var t in Model.TermNames)
+                            {
+                                <option value="@t" selected="@(t == Model.Term)">@t</option>
+                            }
+                        </select>
+                    </div>
+                </div>
+            </fieldset>
+
+            <div class="gw-user-actions">
+                <p class="gw-note">You can add categories and students after the course is created.</p>
+                <div class="gw-form-buttons">
+                    <button type="submit" class="gw-btn">Create course</button>
+                    @Html.ActionLink("Cancel", "Index", "Faculty")
+                </div>
             </div>
         }
     </div>
 </section>
+</div>

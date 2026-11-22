@@ -92,11 +92,13 @@ namespace GradeWise.Services
 
             foreach (var category in GradeCalculator.ScopeCategories(course.Categories, scope))
             {
-                var scores = students
-                    .Select(s => FindScore(ScoresFrom(byStudent, s.Id), category.Name))
-                    .Where(v => v.HasValue)
-                    .Select(v => v.Value)
-                    .ToList();
+                var catStudents = new List<DistributionStudent>();
+                foreach (var s in students)
+                {
+                    var entryScore = FindScore(ScoresFrom(byStudent, s.Id), category.Name);
+                    if (entryScore.HasValue) catStudents.Add(new DistributionStudent { StudentNo = s.StudentNo, FullName = s.FullName, Average = entryScore });
+                }
+                var scores = catStudents.Select(x => x.Average.Value).ToList();
 
                 model.Categories.Add(new CategoryStat
                 {
@@ -108,7 +110,8 @@ namespace GradeWise.Services
                     Average = scores.Count > 0 ? (double?)scores.Average() : null,
                     Lowest = scores.Count > 0 ? (double?)scores.Min() : null,
                     Highest = scores.Count > 0 ? (double?)scores.Max() : null,
-                    PassRate = scores.Count > 0 ? (double?)Math.Round(scores.Count(v => GradeCalculator.IsPassing(v)) * 100.0 / scores.Count, 2) : null
+                    PassRate = scores.Count > 0 ? (double?)Math.Round(scores.Count(v => GradeCalculator.IsPassing(v)) * 100.0 / scores.Count, 2) : null,
+                    Students = catStudents.OrderByDescending(x => x.Average).ThenBy(x => x.FullName).ToList()
                 });
             }
 
@@ -145,8 +148,14 @@ namespace GradeWise.Services
                 model.AttentionStudents = graded.Where(g => !GradeCalculator.IsPassing(g.Average))
                     .OrderBy(g => g.Average).ThenBy(g => g.FullName).Take(5).ToList();
 
+                model.PassingStudents = graded.Where(g => GradeCalculator.IsPassing(g.Average))
+                    .OrderByDescending(g => g.Average).ThenBy(g => g.FullName).ToList();
+                model.FailingStudents = graded.Where(g => !GradeCalculator.IsPassing(g.Average))
+                    .OrderBy(g => g.Average).ThenBy(g => g.FullName).ToList();
+
                 var labels = new[] { 1.00, 1.25, 1.50, 1.75, 2.00, 2.25, 2.50, 2.75, 3.00, 5.00 };
                 var counts = new Dictionary<double, int>();
+                var eqStudents = new Dictionary<double, List<DistributionStudent>>();
                 foreach (var g in graded)
                 {
                     var eq = GradeCalculator.EquivalentGrade(g.Average);
@@ -154,16 +163,22 @@ namespace GradeWise.Services
                     var key = Math.Round(eq.Value, 2);
                     int n;
                     counts[key] = counts.TryGetValue(key, out n) ? n + 1 : 1;
+                    List<DistributionStudent> list;
+                    if (!eqStudents.TryGetValue(key, out list)) { list = new List<DistributionStudent>(); eqStudents[key] = list; }
+                    list.Add(g);
                 }
                 foreach (var label in labels)
                 {
                     int n;
                     counts.TryGetValue(label, out n);
+                    List<DistributionStudent> inBin;
+                    eqStudents.TryGetValue(label, out inBin);
                     model.EquivalentBins.Add(new EquivalentBin
                     {
                         Label = label.ToString("0.00", CultureInfo.InvariantCulture),
                         Count = n,
-                        Percent = Math.Round(n * 100.0 / graded.Count, 2)
+                        Percent = Math.Round(n * 100.0 / graded.Count, 2),
+                        Students = (inBin ?? new List<DistributionStudent>()).OrderByDescending(x => x.Average).ThenBy(x => x.FullName).ToList()
                     });
                 }
             }
@@ -201,9 +216,20 @@ namespace GradeWise.Services
                     finals.Add(f.Value);
                     var rm = Math.Round(m.Value, 2);
                     var rf = Math.Round(f.Value, 2);
-                    if (rf > rm) model.Improved++;
-                    else if (rf < rm) model.Declined++;
-                    else model.Unchanged++;
+                    string status;
+                    if (rf > rm) { model.Improved++; status = "Improved"; }
+                    else if (rf < rm) { model.Declined++; status = "Declined"; }
+                    else { model.Unchanged++; status = "Unchanged"; }
+
+                    model.TermStudents.Add(new TermStudent
+                    {
+                        StudentNo = student.StudentNo,
+                        FullName = student.FullName,
+                        Midterm = m.Value,
+                        FinalTerm = f.Value,
+                        Change = f.Value - m.Value,
+                        Status = status
+                    });
                 }
 
                 if (midterms.Count > 0)
