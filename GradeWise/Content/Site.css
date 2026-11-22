@@ -7174,8 +7174,10 @@ button.gw-legend-btn:focus-visible { box-shadow: 3px 3px 0 var(--gw-ink); backgr
 /* My courses: two short lines of text under each course (earned so far, then the goal) */
 .gw-student-grades .gw-sg-rowtext {
     display: flex;
-    flex-direction: column;
-    gap: 3px;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 4px 18px;
     margin-top: 8px;
     font-size: 0.92rem;
     line-height: 1.4;
