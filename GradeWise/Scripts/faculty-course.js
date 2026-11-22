@@ -52,19 +52,57 @@
         return th ? (th.getAttribute("data-cat") || "") : "";
     }
 
-    /** The grid in the header wraps onto a second line when the open category has many columns. */
-    function checkWrap(table) {
-        var items = table.querySelectorAll("th.is-open .gw-sr-grid-head .gw-sr-gi:not(.gw-sr-gi-add)");
-        var wrapped = false;
-        if (items.length > 1 && items[0] instanceof HTMLElement) {
-            var last = items[items.length - 1];
-            wrapped = last instanceof HTMLElement && last.offsetTop > items[0].offsetTop;
-        }
-        table.classList.toggle("gw-sr-wrapped", wrapped);
+    /**
+     * Sizes one group of header texts so they span their tiles: as wide as fits in one line,
+     * and smaller as more columns are added. The group shares one size so the row stays even.
+     * @param {HTMLElement[]} texts the .gw-sr-fit elements
+     * @param {number} max biggest font size in px
+     * @param {number} min smallest font size in px
+     * @param {boolean} shared true: the whole group uses one size; false: each text fits its own tile
+     */
+    function fitGroup(texts, max, min, shared) {
+        /** @type {number[]} */
+        var sizes = texts.map(function (t) {
+            var tile = t.closest(".gw-sr-gi");
+            if (t.parentElement) { t.parentElement.classList.remove("gw-sr-fit-wrap"); }
+            t.style.fontSize = max + "px";
+            var avail = tile instanceof HTMLElement ? tile.clientWidth - 8 : 0;
+            var w = t.getBoundingClientRect().width;
+            return avail > 0 && w > 0 ? max * avail / w : max;
+        });
+        var common = Math.min.apply(null, sizes.concat([max]));
+        texts.forEach(function (t, i) {
+            var tile = t.closest(".gw-sr-gi");
+            var size = Math.max(min, Math.floor((shared ? common : Math.min(max, sizes[i])) * 10) / 10);
+            t.style.fontSize = size + "px";
+            // still too wide at the smallest size: let long names break onto a second line
+            if (tile instanceof HTMLElement && size <= min && t.getBoundingClientRect().width > tile.clientWidth - 6 && t.parentElement) {
+                t.parentElement.classList.add("gw-sr-fit-wrap");
+            }
+        });
+    }
+
+    /** Header tiles of the open category: names, Total/PS and "+" fill the width of their tile. */
+    function fitHeads(table) {
+        var head = table.querySelector("th.is-open .gw-sr-grid-head");
+        if (!head) { return; }
+        [].forEach.call(head.querySelectorAll(".gw-sr-gi a"), function (a) {
+            if (!a.querySelector(".gw-sr-fit")) {
+                var span = document.createElement("span");
+                span.className = "gw-sr-fit";
+                span.textContent = a.textContent;
+                a.textContent = "";
+                a.appendChild(span);
+            }
+        });
+        var all = function (sel) { return [].slice.call(head.querySelectorAll(sel)); };
+        fitGroup(all(".gw-sr-gi:not(.gw-sr-gi-calc):not(.gw-sr-gi-add) .gw-sr-fit"), 15, 7, false);
+        fitGroup(all(".gw-sr-gi-calc .gw-sr-fit"), 13, 6, true);
+        fitGroup(all(".gw-sr-gi-add .gw-sr-fit"), 24, 12, true);
     }
 
     function refreshLayout() {
-        tables.forEach(checkWrap);
+        tables.forEach(fitHeads);
     }
 
     /**
@@ -81,7 +119,7 @@
             btn.setAttribute(btn.classList.contains("gw-sr-chip") ? "aria-pressed" : "aria-expanded", on ? "true" : "false");
         });
         try { sessionStorage.setItem(storeKey(table), cat === "" ? "none" : cat); } catch (err) { /* storage may be blocked */ }
-        checkWrap(table);
+        fitHeads(table);
     }
 
     document.addEventListener("click", function (e) {
@@ -147,6 +185,7 @@
     }
 
     window.addEventListener("resize", refreshLayout);
+    if (document.fonts && document.fonts.ready) { document.fonts.ready.then(refreshLayout); }
 
     // ---------- student search ----------
     var controls = document.getElementById("gw-sr-controls");

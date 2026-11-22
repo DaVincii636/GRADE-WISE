@@ -5659,21 +5659,17 @@ html.gw-loading button {
     letter-spacing: 0.04em;
 }
 
-.gw-fcourse .gw-sr-cathead::after {
-    content: "+";
-    float: right;
-    width: 18px;
-    height: 18px;
-    background: var(--gw-paper);
-    border: 1.5px solid var(--gw-ink);
-    font-size: 0.85rem;
-    font-weight: 700;
-    line-height: 15px;
-    text-align: center;
+/* Closed category: the whole header square is the click target (the button is stretched over it). */
+.gw-fcourse .gw-sr-table th.gw-sr-cat:not(.is-open) { position: relative; cursor: pointer; }
+.gw-fcourse .gw-sr-table th.gw-sr-cat:not(.is-open) .gw-sr-cathead::before {
+    content: "";
+    position: absolute;
+    top: 0; right: 0; bottom: 0; left: 0;
 }
+.gw-fcourse .gw-sr-table th.gw-sr-cat:not(.is-open):hover,
+.gw-fcourse .gw-sr-table th.gw-sr-cat:not(.is-open):focus-within { filter: brightness(0.94); }
+.gw-fcourse .gw-sr-table th.gw-sr-cat:not(.is-open) .gw-sr-cathead:focus-visible { outline: 2px solid var(--gw-ink); outline-offset: -4px; }
 
-.gw-fcourse .gw-sr-table th.gw-sr-cat:not(.is-open) .gw-sr-cathead::after { display: none; }
-.gw-fcourse .gw-sr-table th.gw-sr-cat.is-open .gw-sr-cathead::after { content: "\2212"; }
 .gw-fcourse .gw-sr-table th.gw-sr-cat:not(.is-open) .gw-sr-catgroup { display: none; }
 
 /* open / closed content */
@@ -5685,8 +5681,9 @@ html.gw-loading button {
 
 /* The boxes of a category sit on a grid that wraps, so any number of columns fits the width. */
 .gw-fcourse .gw-sr-grid {
+    --sr-n: 5;
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
+    grid-template-columns: repeat(var(--sr-n), minmax(0, 1fr));
     gap: 6px;
 }
 
@@ -5711,10 +5708,14 @@ html.gw-loading button {
     font-size: 0.78rem;
     font-weight: 700;
     line-height: 1.2;
-    hyphens: auto;
-    overflow-wrap: anywhere;
-    white-space: normal;
+    overflow: hidden;
+    white-space: nowrap;
 }
+
+/* the page script sizes this text so it spans the tile; it shrinks as columns are added */
+.gw-fcourse .gw-sr-fit { display: inline-block; white-space: nowrap; line-height: 1.1; }
+.gw-fcourse .gw-sr-grid-head .gw-sr-fit-wrap { white-space: normal; overflow-wrap: anywhere; text-align: center; }
+.gw-fcourse .gw-sr-grid-head .gw-sr-fit-wrap .gw-sr-fit { white-space: normal; }
 
 .gw-fcourse .gw-sr-grid-head .gw-sr-gi a {
     display: flex;
@@ -5722,7 +5723,7 @@ html.gw-loading button {
     justify-content: center;
     flex: 1 1 auto;
     min-width: 0;
-    padding: 3px 4px;
+    padding: 3px 2px;
     color: var(--gw-ink);
     text-decoration: none;
 }
@@ -5740,7 +5741,7 @@ html.gw-loading button {
     font-family: var(--gw-font-pixel);
     font-size: 0.62rem;
     font-weight: 400;
-    letter-spacing: 0.04em;
+    letter-spacing: 0;
     text-transform: uppercase;
 }
 
@@ -5752,7 +5753,8 @@ html.gw-loading button {
 
 .gw-fcourse .gw-sr-addtile {
     flex: 1 1 auto;
-    padding: 0;
+    min-width: 0;
+    padding: 0 2px;
     background: var(--gw-acct-gold-pale);
     color: var(--gw-ink);
     border: 1.5px solid var(--gw-ink);
@@ -5820,18 +5822,13 @@ html.gw-loading button {
     border: 1.5px dashed var(--gw-ink);
 }
 
-/* when a category has more columns than fit on one line, each box gets its own tiny label */
-.gw-fcourse .gw-sr-wrapped td .gw-sr-gi::before {
-    content: attr(data-name);
-    display: block;
-    overflow: hidden;
-    color: var(--gw-muted);
-    font-family: var(--gw-font-pixel);
-    font-size: 0.55rem;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
+/* spacer under the "+" tile so every row uses the same columns as the header */
+.gw-fcourse .gw-sr-gi-pad { visibility: hidden; }
 
+/* more columns: smaller numbers, so each row stays on one line like the header */
+.gw-fcourse .gw-sr-grid .gw-sr-input,
+.gw-fcourse td .gw-sr-gi-calc { font-size: clamp(0.62rem, calc(1.05rem - 0.07rem * var(--sr-n)), 0.9rem); }
+.gw-fcourse .gw-sr-grid { gap: clamp(2px, calc(8px - 0.5px * var(--sr-n)), 6px); }
 
 /* highest possible score row */
 .gw-fcourse .gw-sr-hps td {
@@ -5943,7 +5940,7 @@ html.gw-loading button {
     .gw-fcourse .gw-sr-avatar { display: none; }
     .gw-fcourse .gw-sr-table th,
     .gw-fcourse .gw-sr-table td { padding: 6px 4px; font-size: 0.85rem; }
-    .gw-fcourse .gw-sr-grid { grid-template-columns: repeat(auto-fill, minmax(44px, 1fr)); gap: 4px; }
+    .gw-fcourse .gw-sr-grid { gap: 3px; }
 }
 
 @media (max-width: 575.98px) {
@@ -6185,4 +6182,306 @@ html.gw-loading button {
     .gw-fcourse .gw-sr-tool span {
         display: none;
     }
+}
+
+/* =====================================================================
+   Faculty > Students, Categories and Analytics pages (.gw-fpage, used with
+   .gw-faculty-courses .gw-fcourse) and the Edit course window (.gw-ec-*).
+   They reuse the course-page pieces: chips, tinted stats, icon toolbar,
+   slim search bar, avatars, panels and the Class Standing / Exam group bars.
+   ===================================================================== */
+
+/* the page you are on, in the icon toolbar */
+.gw-fpage .gw-iconbtn[aria-current="page"] {
+    box-shadow: inset 0 -4px 0 var(--gw-ink);
+}
+
+/* short explanation at the top of a panel */
+.gw-fpage .gw-fp-note {
+    background: var(--gw-acct-gold-pale);
+    border-bottom: var(--gw-outline);
+    color: var(--gw-ink);
+    font-size: 0.92rem;
+    line-height: 1.5;
+}
+
+.gw-fpage .gw-fp-note .gw-hint-block { margin: 0; }
+
+/* ---------- Class Standing / Exam group bars (Categories and Analytics) ----------
+   One look in both places: lime bar for Class Standing, gold bar for Exam, share of the term on the right. */
+.gw-student-major.gw-grp-cs > summary { background: var(--gw-lime-pale); }
+.gw-student-major.gw-grp-ex > summary { background: var(--gw-acct-gold-pale); }
+.gw-student-major.gw-grp-cs > summary > span,
+.gw-student-major.gw-grp-ex > summary > span { letter-spacing: 0.04em; }
+
+/* the group bars of the analytics table fill the panel edge to edge */
+.gw-fpage .gw-table-grouped { min-width: 0; }
+.gw-fpage .gw-student-major > summary { border-top: var(--gw-outline); }
+
+/* ---------- Students page ---------- */
+.gw-fpage .gw-fp-table { width: 100%; table-layout: fixed; border-top: var(--gw-outline); }
+.gw-fpage .gw-fp-table thead th { background: var(--gw-head); box-shadow: inset 0 5px 0 var(--gw-acct-blue); }
+.gw-fpage .gw-fp-table th,
+.gw-fpage .gw-fp-table td { padding: 10px 14px; vertical-align: middle; overflow-wrap: anywhere; }
+.gw-fpage .gw-fp-table tbody tr:nth-child(even) td { background: var(--gw-acct-blue-pale); }
+.gw-fpage .gw-fp-table tbody tr:hover td { background: var(--gw-lime-pale); }
+.gw-fpage .gw-fp-table .gw-empty,
+.gw-fpage .gw-fp-table tr:hover td.gw-empty { background: var(--gw-paper); text-align: center; }
+.gw-fpage .gw-fp-table tr[hidden] { display: none; }
+.gw-fpage .gw-fp-col-student { width: 34%; }
+.gw-fpage .gw-fp-col-action { width: 120px; text-align: right; }
+.gw-fpage .gw-fp-table .gw-row-form { margin: 0; display: inline-block; }
+.gw-fpage .gw-fp-email { color: var(--gw-muted); }
+.gw-fpage .gw-fp-table .gw-status { align-self: flex-start; }
+
+.gw-fpage .gw-fp-avatar-lime   { background: var(--gw-lime); }
+.gw-fpage .gw-fp-avatar-blue   { background: var(--gw-acct-blue); }
+.gw-fpage .gw-fp-avatar-gold   { background: var(--gw-acct-gold); }
+.gw-fpage .gw-fp-avatar-lav    { background: var(--gw-fc-lav); }
+.gw-fpage .gw-fp-avatar-orange { background: var(--gw-fc-orange); }
+
+/* students that can be added: a grid of tick cards */
+.gw-fpage .gw-fp-picks {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 10px;
+}
+
+.gw-fpage .gw-fp-pick {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0;
+    padding: 8px 12px;
+    background: var(--gw-paper);
+    border: var(--gw-outline);
+    cursor: pointer;
+}
+
+.gw-fpage .gw-fp-pick[hidden] { display: none; }
+.gw-fpage .gw-fp-pick:hover { background: var(--gw-lime-pale); }
+.gw-fpage .gw-fp-pick:has(input:checked) { background: var(--gw-lime-pale); box-shadow: inset 0 0 0 2px var(--gw-ink); }
+.gw-fpage .gw-fp-pick input { flex: 0 0 auto; width: 18px; height: 18px; margin: 0; accent-color: var(--gw-ink); }
+
+.gw-fpage .gw-fp-nomatch-add { margin: 12px 0 0; color: var(--gw-muted); text-align: center; }
+.gw-fpage .gw-fp-nomatch-add[hidden] { display: none; }
+.gw-fpage .gw-sr-savebar .gw-btn[disabled] { opacity: 0.5; cursor: not-allowed; }
+
+/* ---------- Categories page ---------- */
+.gw-fpage .gw-cat-totals { grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); margin-bottom: 0; }
+.gw-fpage .gw-cat-of { font-size: 1.1rem; font-weight: 400; text-shadow: none; }
+.gw-fpage .gw-cat-split { margin-top: 6px; color: var(--gw-ink); font-size: 0.85rem; }
+
+/* Class Standing and Exam sit side by side on wide screens and stack on narrow ones */
+.gw-fpage .gw-cat-groups {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+    gap: 20px;
+    align-items: start;
+}
+
+.gw-fpage .gw-cat-groups .gw-student-major {
+    background: var(--gw-paper);
+    border: var(--gw-outline);
+}
+
+.gw-fpage .gw-cat-groups .gw-student-major > summary { border-top: 0; }
+.gw-fpage .gw-student-major.is-full > summary > span { background: var(--gw-lime); padding: 0 6px; border: 1.5px solid var(--gw-ink); }
+.gw-fpage .gw-student-major.is-over > summary > span { background: var(--gw-fc-orange); padding: 0 6px; border: 1.5px solid var(--gw-ink); }
+.gw-fpage .gw-cat-groups .gw-student-major > summary > span b { font-weight: 700; }
+
+.gw-fpage .gw-cat-list { border-top: var(--gw-outline); }
+
+.gw-fpage .gw-cat-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 104px auto auto;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    border-bottom: 1.5px solid var(--gw-ink);
+}
+
+.gw-fpage .gw-cat-row:nth-child(even) { background: var(--gw-head); }
+.gw-fpage .gw-cat-row[hidden] { display: none; }
+
+.gw-fpage .gw-cat-row input[type="text"],
+.gw-fpage .gw-cat-weight {
+    height: 38px;
+    background: var(--gw-paper);
+    border: var(--gw-outline);
+    border-radius: 0;
+}
+
+.gw-fpage .gw-cat-row input[type="text"] {
+    width: 100%;
+    min-width: 0;
+    padding: 4px 10px;
+    color: var(--gw-ink);
+    font-family: inherit;
+    font-size: 1rem;
+}
+
+.gw-fpage .gw-cat-weight {
+    display: flex;
+    align-items: center;
+    margin: 0;
+    padding-right: 8px;
+}
+
+.gw-fpage .gw-cat-weight input {
+    flex: 1 1 auto;
+    width: 100%;
+    min-width: 0;
+    height: 100%;
+    padding: 4px 8px;
+    border: 0;
+    background: transparent;
+    color: var(--gw-ink);
+    font-family: inherit;
+    font-size: 1rem;
+    text-align: right;
+}
+
+.gw-fpage .gw-cat-weight span { color: var(--gw-muted); font-weight: 700; }
+
+.gw-fpage .gw-cat-row input:focus,
+.gw-fpage .gw-cat-weight:focus-within {
+    outline: 3px solid var(--gw-ink);
+    outline-offset: 0;
+    box-shadow: 0 0 0 6px var(--gw-lime);
+}
+
+.gw-fpage .gw-cat-weight input:focus { outline: 0; box-shadow: none; }
+
+.gw-fpage .gw-cat-empty {
+    margin: 0;
+    padding: 14px;
+    border-bottom: 1.5px solid var(--gw-ink);
+    color: var(--gw-muted);
+    text-align: center;
+}
+
+.gw-fpage .gw-cat-empty[hidden] { display: none; }
+
+.gw-fpage .gw-cat-actions { padding: 10px; background: var(--gw-paper); }
+
+.gw-fpage .gw-cat-copybar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 14px;
+    margin-top: 16px;
+}
+
+.gw-fpage .gw-cat-copybar .gw-note { margin: 0; }
+
+@media (max-width: 575.98px) {
+    .gw-fpage .gw-cat-groups { grid-template-columns: minmax(0, 1fr); }
+    .gw-fpage .gw-cat-row { grid-template-columns: minmax(0, 1fr) 96px; }
+    .gw-fpage .gw-cat-row .gw-btn { grid-column: auto; }
+}
+
+@media (max-width: 767.98px) {
+    .gw-fpage .gw-fp-col-student { width: 60%; }
+    .gw-fpage .gw-fp-email { display: none; }
+    .gw-fpage .gw-fp-table thead th:nth-child(2) { display: none; }
+    .gw-fpage .gw-fp-col-action { width: 96px; }
+}
+
+/* ---------- Edit course window ----------
+   Same look as the Add user form: numbered steps with a dashed rule, label above a full-width box. */
+.gw-ec-body { overflow-y: auto; }
+
+.gw-ec-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 0 0 16px;
+}
+
+.gw-ec-step {
+    min-width: 0;
+    margin: 0 0 20px;
+    padding: 0;
+    border: 0;
+}
+
+.gw-ec-step:last-child { margin-bottom: 0; }
+
+.gw-ec-legend {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    margin: 0 0 12px;
+    padding: 0 0 8px;
+    border-bottom: 1.5px dashed var(--gw-ink);
+    font-size: 1.05rem;
+    font-weight: 700;
+}
+
+.gw-ec-no {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    background: var(--gw-ink);
+    color: var(--gw-paper);
+    font-family: var(--gw-font-pixel);
+    font-size: 0.75rem;
+}
+
+.gw-ec-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px 14px;
+}
+
+.gw-ec-grid-course { grid-template-columns: minmax(96px, 0.45fr) minmax(0, 2fr); }
+.gw-ec-grid-term { grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr); }
+
+.gw-ec-control label {
+    display: block;
+    margin: 0 0 4px;
+    font-size: 0.88rem;
+    font-weight: 700;
+}
+
+.gw-ec-control input,
+.gw-ec-control select {
+    display: block;
+    width: 100%;
+    min-width: 0;
+    height: 42px;
+    padding: 6px 12px;
+    background: var(--gw-paper);
+    border: var(--gw-outline);
+    border-radius: 0;
+    color: var(--gw-ink);
+    font-family: inherit;
+    font-size: 1rem;
+}
+
+.gw-ec-control input:focus,
+.gw-ec-control select:focus {
+    outline: 3px solid var(--gw-ink);
+    outline-offset: 0;
+    box-shadow: 0 0 0 6px var(--gw-lime);
+}
+
+.gw-ec-static {
+    display: flex;
+    align-items: center;
+    height: 42px;
+    padding: 6px 12px;
+    background: var(--gw-head);
+    border: 1.5px dashed var(--gw-ink);
+    color: var(--gw-muted);
+}
+
+@media (max-width: 575.98px) {
+    .gw-ec-grid,
+    .gw-ec-grid-course,
+    .gw-ec-grid-term { grid-template-columns: minmax(0, 1fr); }
 }

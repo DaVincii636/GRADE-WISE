@@ -298,14 +298,14 @@ else if (!Model.PeriodsOk)
                                                 </button>
                                             </div>
                                             <div class="gw-sr-open-only">
-                                                <div class="gw-sr-grid gw-sr-grid-head">
+                                                <div class="gw-sr-grid gw-sr-grid-head" style="--sr-n:@(x.Category.Assessments.Count + 3)">
                                                     @foreach (var assessment in x.Category.Assessments)
                                                     {
                                                         <span class="gw-sr-gi">@Html.ActionLink(assessment.Name, "Assessment", "Faculty", new { id = Model.CourseId, category = x.Category.Name, assessment = assessment.Id }, new { title = "Open " + assessment.Name + " to enter its scores and edit it" })</span>
                                                     }
-                                                    <span class="gw-sr-gi gw-sr-gi-calc">Total</span>
-                                                    <span class="gw-sr-gi gw-sr-gi-calc">PS</span>
-                                                    <span class="gw-sr-gi gw-sr-gi-add"><button type="button" class="gw-sr-addtile" data-modal-open="gw-cols-@x.Index" aria-haspopup="dialog" aria-label="Add a column to @x.Category.Name" title="Add a column">+</button></span>
+                                                    <span class="gw-sr-gi gw-sr-gi-calc"><span class="gw-sr-fit">Total</span></span>
+                                                    <span class="gw-sr-gi gw-sr-gi-calc"><span class="gw-sr-fit">PS</span></span>
+                                                    <span class="gw-sr-gi gw-sr-gi-add"><button type="button" class="gw-sr-addtile" data-modal-open="gw-cols-@x.Index" aria-haspopup="dialog" aria-label="Add a column to @x.Category.Name" title="Add a column"><span class="gw-sr-fit">+</span></button></span>
                                                 </div>
                                             </div>
                                         </th>
@@ -322,7 +322,7 @@ else if (!Model.PeriodsOk)
                                         var x = periodCategories[p];
                                         <td class="gw-sr-cat gw-sr-tone-@tones[p % tones.Length] @(p == 0 ? "is-open" : "")" data-cat="@x.Index">
                                             <div class="gw-sr-sum"><strong>@GradeCalculator.Format(x.Category.Assessments.Sum(a => a.MaxScore))</strong></div>
-                                            <div class="gw-sr-grid">
+                                            <div class="gw-sr-grid" style="--sr-n:@(x.Category.Assessments.Count + 3)">
                                                 @foreach (var assessment in x.Category.Assessments)
                                                 {
                                                     <span class="gw-sr-gi" data-name="@assessment.Name">
@@ -335,6 +335,7 @@ else if (!Model.PeriodsOk)
                                                 }
                                                 <span class="gw-sr-gi gw-sr-gi-calc" data-name="Total"><strong>@GradeCalculator.Format(x.Category.Assessments.Sum(a => a.MaxScore))</strong></span>
                                                 <span class="gw-sr-gi gw-sr-gi-calc" data-name="PS"><strong>100.00</strong></span>
+                                                <span class="gw-sr-gi gw-sr-gi-pad" aria-hidden="true"></span>
                                             </div>
                                         </td>
                                     }
@@ -355,7 +356,7 @@ else if (!Model.PeriodsOk)
                                                 <div class="gw-sr-sum">
                                                     <span class="gw-fc-chip gw-sr-ps gw-sr-ps-@gradeTone(cells.Percent)" title="Total @GradeCalculator.Format(cells.Total) of @GradeCalculator.Format(cells.GradedMax)">@GradeCalculator.Format(cells.Percent)</span>
                                                 </div>
-                                                <div class="gw-sr-grid">
+                                                <div class="gw-sr-grid" style="--sr-n:@(x.Category.Assessments.Count + 3)">
                                                     @for (var j = 0; j < x.Category.Assessments.Count; j++)
                                                     {
                                                         var assessment = x.Category.Assessments[j];
@@ -370,6 +371,7 @@ else if (!Model.PeriodsOk)
                                                     }
                                                     <span class="gw-sr-gi gw-sr-gi-calc" data-name="Total">@GradeCalculator.Format(cells.Total)</span>
                                                     <span class="gw-sr-gi gw-sr-gi-calc" data-name="PS"><strong>@GradeCalculator.Format(cells.Percent)</strong></span>
+                                                    <span class="gw-sr-gi gw-sr-gi-pad" aria-hidden="true"></span>
                                                 </div>
                                             </td>
                                         }
@@ -536,7 +538,7 @@ else if (!Model.PeriodsOk)
         @using (Html.BeginForm("EditCourse", "Faculty", new { id = Model.CourseId }, FormMethod.Post, new { @class = "gw-editcourse-form" }))
         {
             @Html.AntiForgeryToken()
-            <div class="gw-panel-body gw-editinfo-body">
+            <div class="gw-panel-body gw-editinfo-body gw-ec-body">
                 @if (editErrors.Count > 0)
                 {
                     <div class="gw-alert" role="alert">
@@ -550,43 +552,59 @@ else if (!Model.PeriodsOk)
                     </div>
                 }
 
-                <div class="gw-field">
-                    <label for="gw-ec-code">Course code</label>
-                    <input type="text" id="gw-ec-code" name="code" value="@editCode" maxlength="20" required data-autofocus />
+                <div class="gw-ec-chips">
+                    <span class="gw-fc-chip gw-fc-chip-students">@Model.Rows.Count @(Model.Rows.Count == 1 ? "student" : "students")</span>
+                    <span class="gw-fc-chip gw-fc-chip-section">@Model.Categories.Count @(Model.Categories.Count == 1 ? "category" : "categories")</span>
                 </div>
-                <div class="gw-field">
-                    <label for="gw-ec-name">Course name</label>
-                    <input type="text" id="gw-ec-name" name="name" value="@editName" maxlength="100" required />
-                </div>
-                @if (edit.SectionNames.Count > 0)
-                {
-                    <div class="gw-field">
-                        <label for="gw-ec-section">Section</label>
-                        <select id="gw-ec-section" name="section">
-                            <option value="">No section</option>
-                            @foreach (var s in edit.SectionNames)
-                            {
-                                <option value="@s" selected="@(s == editSection)">@s</option>
-                            }
-                        </select>
+
+                <fieldset class="gw-ec-step">
+                    <legend class="gw-ec-legend"><span class="gw-ec-no">1</span> Course</legend>
+                    <div class="gw-ec-grid gw-ec-grid-course">
+                        <div class="gw-ec-control gw-ec-small">
+                            <label for="gw-ec-code">Course code</label>
+                            <input type="text" id="gw-ec-code" name="code" value="@editCode" maxlength="20" required data-autofocus />
+                        </div>
+                        <div class="gw-ec-control">
+                            <label for="gw-ec-name">Course name</label>
+                            <input type="text" id="gw-ec-name" name="name" value="@editName" maxlength="100" required />
+                        </div>
                     </div>
-                }
-                else
-                {
-                    <div class="gw-field">
-                        <label>Section</label>
-                        <div class="gw-field-static">@(string.IsNullOrWhiteSpace(edit.Section) ? "No section" : edit.Section)</div>
-                    </div>
-                }
-                <div class="gw-field">
-                    <label for="gw-ec-term">Term</label>
-                    <select id="gw-ec-term" name="term" required>
-                        @foreach (var t in edit.TermNames)
+                </fieldset>
+
+                <fieldset class="gw-ec-step">
+                    <legend class="gw-ec-legend"><span class="gw-ec-no">2</span> Term and section</legend>
+                    <div class="gw-ec-grid gw-ec-grid-term">
+                        <div class="gw-ec-control">
+                            <label for="gw-ec-term">Term</label>
+                            <select id="gw-ec-term" name="term" required>
+                                @foreach (var t in edit.TermNames)
+                                {
+                                    <option value="@t" selected="@(t == editTerm)">@t</option>
+                                }
+                            </select>
+                        </div>
+                        @if (edit.SectionNames.Count > 0)
                         {
-                            <option value="@t" selected="@(t == editTerm)">@t</option>
+                            <div class="gw-ec-control">
+                                <label for="gw-ec-section">Section</label>
+                                <select id="gw-ec-section" name="section">
+                                    <option value="">No section</option>
+                                    @foreach (var s in edit.SectionNames)
+                                    {
+                                        <option value="@s" selected="@(s == editSection)">@s</option>
+                                    }
+                                </select>
+                            </div>
                         }
-                    </select>
-                </div>
+                        else
+                        {
+                            <div class="gw-ec-control">
+                                <label>Section</label>
+                                <div class="gw-ec-static">@(string.IsNullOrWhiteSpace(edit.Section) ? "No section" : edit.Section)</div>
+                            </div>
+                        }
+                    </div>
+                </fieldset>
             </div>
 
             <div class="gw-modal-foot">
