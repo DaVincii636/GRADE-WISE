@@ -6,7 +6,7 @@
     var equivalentText = Model.Incomplete ? "INC" : GradeCalculator.Format(Model.Equivalent);
 }
 
-<div class="gw-toolbar gw-no-print">
+<div class="gw-toolbar gw-summary-toolbar gw-no-print">
     @Html.ActionLink("Back to course", "Course", "Student", new { id = Model.SelectedId }, new { @class = "gw-btn gw-btn-outline" })
     @if (Model.HasCourse)
     {
@@ -30,17 +30,16 @@ else
             <p class="gw-page-sub">GRADE-WISE &middot; printed @DateTime.Now.ToString("MMMM d, yyyy", System.Globalization.CultureInfo.InvariantCulture)</p>
         </header>
 
-        <section class="gw-panel">
+        <section class="gw-panel gw-summary-facts" aria-labelledby="summary-facts-title">
+            <div class="gw-panel-head">
+                <h2 id="summary-facts-title" class="gw-panel-title">Student details</h2>
+            </div>
             <div class="gw-panel-body">
                 <dl class="gw-facts">
-                    <dt>Student</dt>
-                    <dd>@Model.StudentName (@Model.StudentNo)</dd>
-                    <dt>Course</dt>
-                    <dd>@Model.Code &middot; @Model.Name</dd>
-                    <dt>Term</dt>
-                    <dd>@Model.Term</dd>
-                    <dt>Showing</dt>
-                    <dd>@Model.ScopeLabel</dd>
+                    <div><dt>Student</dt><dd>@Model.StudentName (@Model.StudentNo)</dd></div>
+                    <div><dt>Course</dt><dd>@Model.Code &middot; @Model.Name</dd></div>
+                    <div><dt>Term</dt><dd>@Model.Term</dd></div>
+                    <div><dt>Showing</dt><dd>@Model.ScopeLabel</dd></div>
                 </dl>
             </div>
         </section>
@@ -77,7 +76,7 @@ else
 
         @Html.Partial("_History", Model)
 
-        <p class="gw-note">
+        <p class="gw-summary-note">
             Your own scores only. A copy of GRADE-WISE as of the date above, not an official transcript.
         </p>
     </article>

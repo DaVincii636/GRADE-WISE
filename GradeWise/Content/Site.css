@@ -1652,7 +1652,72 @@ body.gw-modal-open {
 
 /* ---------- Printable summary sheet ---------- */
 .gw-summary-sheet {
-    max-width: 900px;
+    max-width: 1100px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+/* the Back / Print buttons line up with the sheet under them */
+.gw-summary-toolbar {
+    max-width: 1100px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+/* Student details: four label-over-value items in one row (they wrap on narrow screens and on paper) */
+.gw-summary-sheet .gw-facts {
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 14px 24px;
+}
+
+    .gw-summary-sheet .gw-facts > div {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        min-width: 0;
+    }
+
+    .gw-summary-sheet .gw-facts dt {
+        font-family: var(--gw-font-pixel);
+        font-size: 0.7rem;
+        font-weight: 400;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+    }
+
+    .gw-summary-sheet .gw-facts dd {
+        font-weight: 700;
+        overflow-wrap: anywhere;
+    }
+
+/* the printed list of every score: a small title, then a tinted table like the other student tables */
+.gw-summary-sheet .gw-sg-detail-title {
+    margin: 0;
+    padding: 14px 18px 8px;
+    border-top: 1px solid var(--gw-line);
+    font-weight: 700;
+}
+
+.gw-summary-sheet .gw-table.gw-sg-detail {
+    margin-top: 0;
+}
+
+    .gw-summary-sheet .gw-sg-detail thead th {
+        background: var(--gw-acct-blue-pale);
+    }
+
+/* closing line: a dashed note box like the one on How you compare */
+.gw-summary-note {
+    margin: 0;
+    padding: 10px 14px;
+    border: 1.5px dashed var(--gw-ink);
+    color: var(--gw-muted);
+    font-size: 0.85rem;
+}
+
+/* the sheet's last block adds no extra gap above the footer */
+.gw-summary-sheet > :last-child {
+    margin-bottom: 0;
 }
 
 @media print {
@@ -7233,6 +7298,21 @@ button.gw-legend-btn:focus-visible { box-shadow: 3px 3px 0 var(--gw-ink); backgr
 
 /* the last panel adds no extra gap before the footer (the page already pads the bottom) */
 .gw-student-whatif > .gw-panel:last-child { margin-bottom: 0; }
+
+/* the gold note band and the table under it meet on one rule instead of leaving a gap with two lines */
+.gw-student-whatif .gw-panel-body > .gw-sw-note + .gw-table-wrap { margin-top: -16px; }
+.gw-student-whatif .gw-sw-note + .gw-table-wrap .gw-table thead th { border-top: 0; }
+
+/* How this is calculated: one heavy double rule above the results, thin rule between them */
+.gw-student-whatif .gw-calc .gw-table tfoot tr + tr th,
+.gw-student-whatif .gw-calc .gw-table tfoot tr + tr td { border-top: 1.5px solid var(--gw-ink); }
+
+/* How this is calculated: the PS / Earned key reads like the key on the Course page (term and meaning on one line) */
+.gw-student-whatif .gw-calc .gw-sr-legend { border-top: 1px solid var(--gw-line); padding-top: 12px; padding-bottom: 14px; }
+.gw-student-whatif .gw-calc .gw-sr-legend-list { gap: 8px 28px; }
+.gw-student-whatif .gw-calc .gw-sr-legend-list > div { flex-direction: row; align-items: baseline; gap: 8px; }
+.gw-student-whatif .gw-calc .gw-sr-legend-list dt { background: none; border: 0; padding: 0; color: var(--gw-ink); font-weight: 700; }
+.gw-student-whatif .gw-calc .gw-sr-legend-list dd { color: var(--gw-muted); font-size: 0.85rem; }
 .gw-student-whatif .gw-sw-scenario .gw-form-buttons,
 .gw-student-whatif .gw-sw-target .gw-form-buttons { margin-top: 16px; }
 
