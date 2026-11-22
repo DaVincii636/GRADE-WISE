@@ -5277,3 +5277,194 @@ html.gw-loading button {
 
 .gw-col-add input[type="text"] { width: 15em; }
 .gw-col-add input[type="number"] { width: 6em; }
+
+/* =====================================================================
+   Faculty > My courses: colour and variety
+   Borrows the accents of the admin Accounts page (blue, gold, lime, ink
+   outlines, pixel-font chips, tinted filter bar). Scoped to
+   .gw-faculty-courses so no other page changes.
+   ===================================================================== */
+.gw-faculty-courses {
+    --gw-acct-blue: #cddff4;
+    --gw-acct-blue-pale: #edf3fb;
+    --gw-acct-gold: #f1d48a;
+    --gw-acct-gold-pale: #fbf3dc;
+    --gw-fc-lav: #d9d6fb;
+    --gw-fc-lav-pale: #f3f2fe;
+    --gw-fc-orange: #f9c9a8;
+    --gw-fc-orange-pale: #fdeee3;
+}
+
+/* ---------- Stat cards: one tint each ---------- */
+.gw-faculty-courses .gw-stat-lime { background: var(--gw-lime-pale); }
+.gw-faculty-courses .gw-stat-blue { background: var(--gw-acct-blue-pale); }
+.gw-faculty-courses .gw-stat-gold { background: var(--gw-acct-gold-pale); }
+
+.gw-faculty-courses .gw-stat-lime[data-tab]::before { background: var(--gw-lime); }
+.gw-faculty-courses .gw-stat-blue[data-tab]::before { background: var(--gw-acct-blue); }
+.gw-faculty-courses .gw-stat-gold[data-tab]::before { background: var(--gw-acct-gold); }
+
+.gw-faculty-courses .gw-stat-blue .gw-stat-value { text-shadow: 3px 3px 0 var(--gw-acct-blue); }
+.gw-faculty-courses .gw-stat-gold .gw-stat-value { text-shadow: 3px 3px 0 var(--gw-acct-gold); }
+
+/* ---------- Filter bar (same tinted bar as Accounts) ---------- */
+.gw-faculty-courses .gw-fc-controls[hidden] {
+    display: none;
+}
+
+.gw-faculty-courses .gw-fc-filters {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 12px 14px;
+    padding: 12px 14px;
+    background: var(--gw-acct-blue-pale);
+    border: var(--gw-outline);
+}
+
+.gw-faculty-courses .gw-fc-filter label {
+    display: block;
+    margin: 0 0 4px;
+    font-size: 0.85rem;
+    font-weight: 700;
+}
+
+.gw-faculty-courses .gw-fc-filter-search {
+    flex: 1 1 260px;
+}
+
+.gw-faculty-courses .gw-fc-filter-search input {
+    width: 100%;
+    height: 38px;
+    padding-left: 34px;
+    background: var(--gw-paper) url(img/icons/search.svg) 9px center / 18px 18px no-repeat;
+}
+
+.gw-faculty-courses .gw-fc-filter input:focus {
+    outline: 3px solid var(--gw-ink);
+    outline-offset: 0;
+    box-shadow: 0 0 0 6px var(--gw-lime);
+}
+
+.gw-faculty-courses .gw-fc-filters .gw-btn {
+    height: 38px;
+    margin: 0;
+}
+
+.gw-faculty-courses .gw-fc-count {
+    margin: 10px 0 0;
+    color: var(--gw-muted);
+    font-family: var(--gw-font-pixel);
+    font-size: 0.7rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+/* ---------- Course rows: coloured sticker + matching edge ---------- */
+.gw-faculty-courses .gw-fc-row-lime   { --fc-tone: var(--gw-lime);       --fc-tone-pale: var(--gw-lime-pale); }
+.gw-faculty-courses .gw-fc-row-blue   { --fc-tone: var(--gw-acct-blue);  --fc-tone-pale: var(--gw-acct-blue-pale); }
+.gw-faculty-courses .gw-fc-row-gold   { --fc-tone: var(--gw-acct-gold);  --fc-tone-pale: var(--gw-acct-gold-pale); }
+.gw-faculty-courses .gw-fc-row-lav    { --fc-tone: var(--gw-fc-lav);     --fc-tone-pale: var(--gw-fc-lav-pale); }
+.gw-faculty-courses .gw-fc-row-orange { --fc-tone: var(--gw-fc-orange);  --fc-tone-pale: var(--gw-fc-orange-pale); }
+
+.gw-faculty-courses .gw-fc-row {
+    box-shadow: inset 6px 0 0 var(--fc-tone);
+    padding-left: 22px;
+}
+
+.gw-faculty-courses .gw-fc-row:hover,
+.gw-faculty-courses .gw-fc-row:focus-within {
+    background: var(--fc-tone-pale);
+}
+
+/* square sticker like the Accounts avatars, tinted per row */
+.gw-faculty-courses .gw-fc-sticker {
+    flex-basis: 44px;
+    width: 44px;
+    height: 44px;
+    border-radius: 0;
+    background: var(--fc-tone);
+    font-size: 0.8rem;
+    box-shadow: 3px 3px 0 var(--gw-ink);
+}
+
+.gw-faculty-courses .gw-fc-row .gw-collection-go:hover {
+    background: var(--fc-tone);
+}
+
+/* ---------- Meta chips ---------- */
+.gw-faculty-courses .gw-fc-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 8px;
+    margin-top: 4px;
+    overflow: visible;
+    white-space: normal;
+}
+
+.gw-faculty-courses .gw-fc-chip {
+    display: inline-block;
+    padding: 1px 8px;
+    background: var(--gw-head);
+    color: var(--gw-ink);
+    border: 1.5px solid var(--gw-ink);
+    font-size: 0.8rem;
+    line-height: 1.5;
+    white-space: nowrap;
+}
+
+.gw-faculty-courses .gw-fc-chip-term     { background: var(--gw-paper); }
+.gw-faculty-courses .gw-fc-chip-students { background: var(--gw-acct-blue); }
+.gw-faculty-courses .gw-fc-chip-section  { background: var(--gw-acct-gold); }
+.gw-faculty-courses .gw-fc-chip-plain    { background: var(--gw-head); color: var(--gw-muted); border-color: var(--gw-line); }
+
+/* class average chip: lime = 75 and up, gold = passing, orange = below 65 */
+.gw-faculty-courses .gw-fc-avg-high { background: var(--gw-lime); font-weight: 700; }
+.gw-faculty-courses .gw-fc-avg-mid  { background: var(--gw-note); font-weight: 700; }
+.gw-faculty-courses .gw-fc-avg-low  { background: var(--gw-fc-orange); font-weight: 700; }
+.gw-faculty-courses .gw-fc-avg-none { background: var(--gw-head); color: var(--gw-muted); border-color: var(--gw-line); }
+
+/* ---------- No search results ---------- */
+.gw-faculty-courses .gw-fc-empty {
+    padding: 18px 16px;
+    border-bottom: var(--gw-outline);
+    background: var(--gw-paper);
+    text-align: center;
+}
+
+.gw-faculty-courses .gw-fc-empty[hidden],
+.gw-faculty-courses .gw-collection > li[hidden] {
+    display: none;
+}
+
+.gw-faculty-courses .gw-fc-linkbtn {
+    margin-left: 8px;
+    padding: 0;
+    background: none;
+    border: 0;
+    color: var(--gw-ink);
+    font: inherit;
+    font-weight: 700;
+    text-decoration: underline;
+    cursor: pointer;
+}
+
+@media (max-width: 767.98px) {
+    .gw-faculty-courses .gw-fc-row .gw-collection-buttons {
+        padding-left: 0;
+    }
+}
+
+@media (max-width: 575.98px) {
+    .gw-faculty-courses .gw-fc-row {
+        padding-left: 18px;
+    }
+
+    .gw-faculty-courses .gw-fc-sticker {
+        flex-basis: 36px;
+        width: 36px;
+        height: 36px;
+        font-size: 0.7rem;
+    }
+}

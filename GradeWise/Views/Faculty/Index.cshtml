@@ -5,8 +5,12 @@
 
     var message = TempData["Message"] as string;
     var error = TempData["Error"] as string;
+
+    // Sticker colours cycle through the same accents the admin Accounts page uses.
+    var tones = new[] { "lime", "blue", "gold", "lav", "orange" };
 }
 
+<div class="gw-faculty-courses">
 <div class="gw-page-head">
     <div>
         <h1 class="gw-page-title">My courses</h1>
@@ -27,23 +31,23 @@
 }
 
 <section class="gw-stats" aria-label="Summary">
-    <div class="gw-stat" data-tab="Courses">
+    <div class="gw-stat gw-stat-lime" data-tab="Courses">
         <div class="gw-stat-value">@Model.Courses.Count</div>
         <div class="gw-stat-label">Courses</div>
     </div>
-    <div class="gw-stat" data-tab="Students">
+    <div class="gw-stat gw-stat-blue" data-tab="Students">
         <div class="gw-stat-value">@Model.StudentCount</div>
         <div class="gw-stat-label">Enrolled students</div>
     </div>
-    <div class="gw-stat" data-tab="Missing">
+    <div class="gw-stat gw-stat-gold" data-tab="Missing">
         <div class="gw-stat-value">@Model.MissingScores</div>
         <div class="gw-stat-label">Scores not yet entered</div>
     </div>
 </section>
 
-<section class="gw-panel">
+<section class="gw-panel gw-fc-panel" aria-labelledby="gw-fc-title">
     <div class="gw-panel-head">
-        <h2 class="gw-panel-title">Courses</h2>
+        <h2 class="gw-panel-title" id="gw-fc-title">Courses</h2>
     </div>
 
     @if (Model.Courses.Count == 0)
@@ -57,29 +61,49 @@
     }
     else
     {
-        <ul class="gw-collection">
-            @foreach (var c in Model.Courses)
+        @* Search filter: hidden until faculty-courses.js runs; without JavaScript every course is listed. *@
+        <div class="gw-panel-body gw-fc-controls" id="gw-fc-controls" hidden>
+            <div class="gw-fc-filters" role="search" aria-label="Filter courses">
+                <div class="gw-fc-filter gw-fc-filter-search">
+                    <label for="gw-fc-search">Search</label>
+                    <input type="search" id="gw-fc-search" class="gw-inline-select" placeholder="Course code or name" autocomplete="off" spellcheck="false" />
+                </div>
+                <button type="button" class="gw-btn gw-btn-small gw-btn-outline" id="gw-fc-clear">Clear filters</button>
+            </div>
+            <p class="gw-fc-count" id="gw-fc-count" aria-live="polite"></p>
+        </div>
+
+        <ul class="gw-collection" id="gw-fc-list">
+            @for (var i = 0; i < Model.Courses.Count; i++)
             {
-                <li>
-                    <div class="gw-collection-item gw-collection-row">
-                        <span class="gw-collection-sticker" aria-hidden="true">@(c.Code.Length > 2 ? c.Code.Substring(0, 2) : c.Code)</span>
+                var c = Model.Courses[i];
+                var tone = tones[i % tones.Length];
+                // Passing mark is 65: lime at 75 and above, gold from 65, orange below.
+                var avgClass = !c.ClassAverage.HasValue ? "gw-fc-avg-none"
+                             : c.ClassAverage.Value >= 75 ? "gw-fc-avg-high"
+                             : c.ClassAverage.Value >= 65 ? "gw-fc-avg-mid"
+                             : "gw-fc-avg-low";
+                <li data-course-row data-search="@((c.Code + " " + c.Name + " " + c.Section).ToLowerInvariant())">
+                    <div class="gw-collection-item gw-collection-row gw-fc-row gw-fc-row-@tone">
+                        <span class="gw-collection-sticker gw-fc-sticker gw-fc-sticker-@tone" aria-hidden="true">@(c.Code.Length > 2 ? c.Code.Substring(0, 2) : c.Code)</span>
                         <span class="gw-collection-main">
                             <span class="gw-collection-code">@c.Code &middot; @c.Name</span>
-                            <span class="gw-collection-meta">
-                                @c.Term &middot; @c.StudentCount students &middot;
+                            <span class="gw-collection-meta gw-fc-meta">
+                                <span class="gw-fc-chip gw-fc-chip-term">@c.Term</span>
+                                <span class="gw-fc-chip gw-fc-chip-students">@c.StudentCount @(c.StudentCount == 1 ? "student" : "students")</span>
                                 @if (string.IsNullOrWhiteSpace(c.Section))
                                 {
-                                    <span class="gw-muted">No section</span>
+                                    <span class="gw-fc-chip gw-fc-chip-plain">No section</span>
                                 }
                                 else
                                 {
-                                    <span>Section @c.Section</span>
+                                    <span class="gw-fc-chip gw-fc-chip-section">Section @c.Section</span>
                                 }
                                 @if (c.CategoryCount == 0)
                                 {
                                     <span class="gw-status gw-status-warn">No weights set</span>
                                 }
-                                &middot; class average @GradeCalculator.Format(c.ClassAverage) (@c.ScopeLabel)
+                                <span class="gw-fc-chip @avgClass">Class average @GradeCalculator.Format(c.ClassAverage) (@c.ScopeLabel)</span>
                             </span>
                         </span>
                         <a href="@Url.Action("Course", "Faculty", new { id = c.Id })" class="gw-collection-go" aria-label="Open @c.Code">
@@ -88,6 +112,16 @@
                     </div>
                 </li>
             }
+            <li class="gw-fc-empty" id="gw-fc-empty" hidden>
+                <span>No courses match this search.</span>
+                <button type="button" class="gw-fc-linkbtn" data-fc-clear>Clear filters</button>
+            </li>
         </ul>
     }
 </section>
+</div>
+
+@section scripts {
+    @* The page script is in Scripts/faculty-courses.js. *@
+    <script src="@Url.Content("~/Scripts/faculty-courses.js")?v=@System.IO.File.GetLastWriteTimeUtc(Server.MapPath("~/Scripts/faculty-courses.js")).Ticks"></script>
+}
