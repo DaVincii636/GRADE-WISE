@@ -6991,12 +6991,39 @@ button.gw-legend-btn:focus-visible { box-shadow: 3px 3px 0 var(--gw-ink); backgr
 .gw-student-whatif .gw-sw-target .gw-chip:hover { background: var(--gw-acct-blue); }
 .gw-student-whatif .gw-sw-target .gw-chip.gw-chip-on { background: var(--gw-lime); }
 
-.gw-student-whatif .gw-sw-target {
-    background: var(--gw-acct-blue-pale);
+/* Target grade is a plain paper card like Your scenario (no tint, and no band behind the tab) */
+.gw-student-whatif .gw-sw-target .gw-chips {
+    gap: 10px;
+    margin-bottom: 20px;
 }
 
-.gw-student-whatif .gw-sw-target .gw-panel-head {
-    background: var(--gw-paper);
+.gw-student-whatif .gw-sw-target .gw-chip {
+    padding: 6px 12px 5px;
+    line-height: 1.2;
+}
+
+/* the small percentage on each chip stays readable, also on the lime (picked) chip */
+.gw-student-whatif .gw-sw-target .gw-chip .gw-th-sub,
+.gw-student-whatif .gw-sw-target .gw-chip.gw-chip-on .gw-th-sub {
+    color: var(--gw-ink);
+    opacity: 0.7;
+}
+
+.gw-student-whatif .gw-sw-target .gw-sim-target {
+    margin-bottom: 16px;
+}
+
+.gw-student-whatif .gw-sw-target .gw-sim-msg {
+    margin-top: 0;
+}
+
+.gw-student-whatif .gw-sw-target .gw-sim-compare {
+    margin: 12px 0 0;
+    min-height: 0;
+}
+
+.gw-student-whatif .gw-sw-target .gw-sim-compare:empty {
+    display: none;
 }
 
 /* =====================================================================
@@ -7198,7 +7225,14 @@ button.gw-legend-btn:focus-visible { box-shadow: 3px 3px 0 var(--gw-ink); backgr
 
 /* What-if: saved-goal note, room under the table and above the buttons */
 .gw-student-whatif .gw-goal-note { margin: 4px 0 0; font-size: 0.88rem; color: var(--gw-muted); }
-.gw-student-whatif .gw-sw-scenario .gw-table-wrap { margin-bottom: 16px; }
+/* the tables run edge to edge inside their card, like Already graded, so every row closes at the card border */
+.gw-student-whatif .gw-sw-scenario .gw-table-wrap,
+.gw-student-whatif .gw-calc .gw-panel-body > .gw-table-wrap { margin: 0 -18px 16px; }
+.gw-student-whatif .gw-sw-scenario .gw-table tbody tr:last-child td { border-bottom: 1.5px solid var(--gw-ink); }
+.gw-student-whatif .gw-sim-table td { vertical-align: middle; }
+
+/* the last panel adds no extra gap before the footer (the page already pads the bottom) */
+.gw-student-whatif > .gw-panel:last-child { margin-bottom: 0; }
 .gw-student-whatif .gw-sw-scenario .gw-form-buttons,
 .gw-student-whatif .gw-sw-target .gw-form-buttons { margin-top: 16px; }
 
