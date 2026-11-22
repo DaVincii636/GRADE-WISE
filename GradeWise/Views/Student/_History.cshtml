@@ -75,11 +75,17 @@
                     <polygon class="gw-chart-area" points="@areaPoints" />
                     <polyline class="gw-chart-line" points="@linePoints" />
 
+                    @* Each point gets a tall hover band (like the faculty Analytics charts): hover or focus it to see the grade. *@
                     @for (var i = 0; i < points.Count; i++)
                     {
-                        <circle class="gw-chart-dot" cx="@GradeCalculator.Raw(px(i))" cy="@GradeCalculator.Raw(py(points[i].Earned))" r="4">
-                            <title>@points[i].Label: @gradeHead @GradeCalculator.Format(points[i].Earned)</title>
-                        </circle>
+                        var step = (W - L - R) / (points.Count - 1);
+                        var tip = points[i].Label + " · " + gradeHead + " " + GradeCalculator.Format(points[i].Earned)
+                                  + " · Eq. " + GradeCalculator.Format(points[i].Equivalent)
+                                  + (points[i].Change.HasValue ? " · " + (points[i].Change.Value >= 0 ? "+" : "") + GradeCalculator.Format(points[i].Change) : "");
+                        <g class="gw-hit gw-history-hit" data-tooltip="@tip" data-iso="@points[i].Iso" tabindex="0" role="img" aria-label="@tip">
+                            <rect class="gw-hit-area" x="@GradeCalculator.Raw(px(i) - step / 2)" y="@GradeCalculator.Raw(T)" width="@GradeCalculator.Raw(step)" height="@GradeCalculator.Raw(H - T - B)" />
+                            <circle class="gw-chart-dot" cx="@GradeCalculator.Raw(px(i))" cy="@GradeCalculator.Raw(py(points[i].Earned))" r="4" />
+                        </g>
                     }
                 </svg>
             </div>
@@ -149,9 +155,48 @@
 
 <script>
     (function () {
+        // Hover tooltip for the chart (anything with class gw-hit and a data-tooltip), same as faculty Analytics.
+        (function () {
+            var tip = document.createElement("div");
+            tip.className = "gw-tip";
+            tip.setAttribute("role", "tooltip");
+            tip.hidden = true;
+            document.body.appendChild(tip);
+
+            function place(x, y) {
+                var w = tip.offsetWidth, h = tip.offsetHeight;
+                var left = Math.max(8, Math.min(x - w / 2, window.innerWidth - w - 8));
+                var top = y - h - 14;
+                if (top < 8) top = y + 20;
+                tip.style.left = left + "px";
+                tip.style.top = top + "px";
+            }
+            function hit(node) {
+                return node && node.closest ? node.closest(".gw-hit[data-tooltip]") : null;
+            }
+            document.addEventListener("mousemove", function (e) {
+                var el = hit(e.target);
+                if (!el) { tip.hidden = true; return; }
+                tip.textContent = el.getAttribute("data-tooltip");
+                tip.hidden = false;
+                place(e.clientX, e.clientY);
+            });
+            document.addEventListener("focusin", function (e) {
+                var el = hit(e.target);
+                if (!el) return;
+                var r = el.getBoundingClientRect();
+                tip.textContent = el.getAttribute("data-tooltip");
+                tip.hidden = false;
+                place(r.left + r.width / 2, r.top);
+            });
+            document.addEventListener("focusout", function () { tip.hidden = true; });
+            window.addEventListener("scroll", function () { tip.hidden = true; }, true);
+        })();
+
         function pad(n) { return n < 10 ? "0" + n : String(n); }
 
         // Show each time in the viewer's own time zone as MM/DD/YYYY h:mm AM/PM.
+        var localTimes = {};
         var times = document.querySelectorAll("time.gw-history-time[datetime]");
         for (var t = 0; t < times.length; t++) {
             var d = new Date(times[t].getAttribute("datetime"));
@@ -160,8 +205,22 @@
             var suffix = hours >= 12 ? "PM" : "AM";
             hours = hours % 12;
             if (hours === 0) hours = 12;
-            times[t].textContent = pad(d.getMonth() + 1) + "/" + pad(d.getDate()) + "/" + d.getFullYear() +
+            var shown = pad(d.getMonth() + 1) + "/" + pad(d.getDate()) + "/" + d.getFullYear() +
                 " " + hours + ":" + pad(d.getMinutes()) + " " + suffix;
+            times[t].textContent = shown;
+            localTimes[times[t].getAttribute("datetime")] = shown;
+        }
+
+        // The chart tooltips start with the same time, so they show the viewer's own time too.
+        var hits = document.querySelectorAll(".gw-history-hit[data-iso]");
+        for (var k = 0; k < hits.length; k++) {
+            var local = localTimes[hits[k].getAttribute("data-iso")];
+            var text = hits[k].getAttribute("data-tooltip") || "";
+            var cut = text.indexOf(" \u00b7 ");
+            if (!local || cut < 0) continue;
+            var fixed = local + text.substring(cut);
+            hits[k].setAttribute("data-tooltip", fixed);
+            hits[k].setAttribute("aria-label", fixed);
         }
 
         // "and N more" in the What changed column: show the full list, "show less" folds it back.

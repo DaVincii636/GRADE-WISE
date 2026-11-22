@@ -1,6 +1,5 @@
 /// <reference path="gw-globals.d.ts" />
-// Student > My grades (Views/Student/Index.cshtml): day and date box, course search filter,
-// and scroll-to-numbers after choosing a course. The filter bar is hidden in the markup and
+// Student > My courses (Views/Student/Index.cshtml): day and date box and course search filter. The filter bar is hidden in the markup and
 // only shown here, so without JavaScript every course is simply listed.
 
 (function () {
@@ -12,29 +11,6 @@
     var date = document.getElementById("gw-date");
     if (day) { day.textContent = names[now.getDay()]; }
     if (date) { date.textContent = two(now.getMonth() + 1) + "/" + two(now.getDate()) + "/" + now.getFullYear(); }
-
-    // ---------- Choosing a course scrolls down to its numbers. The flag survives the page reload. ----------
-    var links = document.querySelectorAll(".gw-picker-panel a.gw-collection-item");
-    for (var r = 0; r < links.length; r++) {
-        links[r].addEventListener("click", function () {
-            try { sessionStorage.setItem("gwScroll", "1"); } catch (e) { }
-        });
-    }
-
-    var flag = null;
-    try {
-        flag = sessionStorage.getItem("gwScroll");
-        sessionStorage.removeItem("gwScroll");
-    } catch (e) { }
-
-    var target = document.getElementById("course-summary");
-    if (flag === "1" && target) {
-        var calm = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-        window.scrollTo(0, 0);
-        window.requestAnimationFrame(function () {
-            target.scrollIntoView({ behavior: calm ? "auto" : "smooth", block: "start" });
-        });
-    }
 
     // ---------- Course search filter ----------
     var controls = document.getElementById("gw-fc-controls");

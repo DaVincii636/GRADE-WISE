@@ -47,7 +47,7 @@
         .ToList();
 }
 
-<div class="gw-faculty-courses gw-fcourse gw-student-whatif">
+<div class="gw-faculty-courses gw-fcourse gw-student-whatif gw-calm">
 <div class="gw-page-head">
     <div>
         <h1 class="gw-page-title">What-If simulator</h1>
@@ -90,7 +90,7 @@ else
                         }
                     </select>
                 </div>
-                @Html.ActionLink("Back to my grades", "Index", "Student", new { id = Model.SelectedId }, new { @class = "gw-btn gw-btn-small gw-btn-outline" })
+                @Html.ActionLink("Back to course", "Course", "Student", new { id = Model.SelectedId }, new { @class = "gw-btn gw-btn-small gw-btn-outline" })
             </div>
         </div>
     </section>

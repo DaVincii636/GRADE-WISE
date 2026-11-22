@@ -7,7 +7,7 @@
 }
 
 <div class="gw-toolbar gw-no-print">
-    @Html.ActionLink("Back to my grades", "Index", "Student", new { id = Model.SelectedId }, new { @class = "gw-btn gw-btn-outline" })
+    @Html.ActionLink("Back to course", "Course", "Student", new { id = Model.SelectedId }, new { @class = "gw-btn gw-btn-outline" })
     @if (Model.HasCourse)
     {
         <button type="button" id="print-summary" class="gw-btn"><img src="@Url.Content("~/Content/img/icons/print.svg")" alt="" width="18" height="18" /> Print or save as PDF</button>

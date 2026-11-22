@@ -23,7 +23,7 @@
      data-url-readall="@Url.Action("ReadAll", "Notifications")"
      data-url-delete="@Url.Action("Delete", "Notifications")"
      data-url-deleteall="@Url.Action("DeleteAll", "Notifications")"
-     data-url-course="@Url.Action("Index", "Student", new { id = "__ID__" })">
+     data-url-course="@Url.Action("Course", "Student", new { id = "__ID__" })">
 
     <form id="gw-notif-token" class="gw-notif-token" action="#" method="post">@Html.AntiForgeryToken()</form>
 
