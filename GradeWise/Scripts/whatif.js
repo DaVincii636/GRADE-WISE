@@ -180,7 +180,7 @@
             }
 
             calcSum.textContent = parts.join(" + ") + " = " + fmt(projected);
-            calcTotal.textContent = fmt(projected) + "%";
+            calcTotal.textContent = fmt(projected);
             calcGrade.textContent = fmt(equivalentGrade(projected, scale));
         }
 
@@ -204,7 +204,7 @@
             var projected = null;
             if (allValid) {
                 projected = projectFinal(earned, weights, scores);
-                finalOut.textContent = fmt(projected) + "%";
+                finalOut.textContent = fmt(projected);
                 gradeOut.textContent = fmt(equivalentGrade(projected, scale));
                 setMessage(scenarioMsg, "", "");
                 scenarioMsg.style.display = "none";

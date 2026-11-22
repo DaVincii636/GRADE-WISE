@@ -84,17 +84,26 @@ namespace GradeWise.Services
                 ? Math.Max(0, Math.Min(100, Math.Round(result.Average.Value)))
                 : 75;
 
+            var perTerm = new Dictionary<string, int>();
             foreach (var category in GradeCalculator.ScopeCategories(course.Categories, scope))
             {
                 var own = FindScore(scores, category.Name);
                 var weight = GradeCalculator.ScopeWeight(category, scope);
+                var period = GradePeriods.Normalize(category.Period);
+                var group = GradeGroups.Normalize(category.Group);
+
+                int position;
+                perTerm.TryGetValue(period, out position);
+                perTerm[period] = position + 1;
+                model.Positions[period + "|" + category.Name] = position;
 
                 if (own.HasValue)
                 {
                     model.Graded.Add(new BreakdownRow
                     {
                         Category = category.Name,
-                        Period = GradePeriods.Normalize(category.Period),
+                        Period = period,
+                        Group = group,
                         Weight = weight,
                         Score = own,
                         WeightedPoints = weight * own.Value / 100.0
@@ -102,7 +111,7 @@ namespace GradeWise.Services
                 }
                 else
                 {
-                    model.Ungraded.Add(new GradeCategory { Name = category.Name, Period = GradePeriods.Normalize(category.Period), Weight = weight });
+                    model.Ungraded.Add(new GradeCategory { Name = category.Name, Period = period, Group = group, Weight = weight });
                 }
             }
 

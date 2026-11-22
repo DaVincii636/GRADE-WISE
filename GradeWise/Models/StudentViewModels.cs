@@ -21,6 +21,9 @@ namespace GradeWise.Models
         /// <summary>"Midterm" or "Final Term".</summary>
         public string Period { get; set; }
 
+        /// <summary>"Class Standing" or "Exam".</summary>
+        public string Group { get; set; }
+
         /// <summary>Effective weight: the category's weight inside its period x the period's share (so the course totals 100).</summary>
         public double Weight { get; set; }
 
@@ -231,5 +234,8 @@ namespace GradeWise.Models
         public List<GradeCategory> Ungraded { get; set; } = new List<GradeCategory>();
 
         public List<GradeStep> Scale { get; set; } = new List<GradeStep>();
+
+        /// <summary>Place of each category inside its term (keyed "Period|Name"), so colours match the score table.</summary>
+        public Dictionary<string, int> Positions { get; set; } = new Dictionary<string, int>();
     }
 }
