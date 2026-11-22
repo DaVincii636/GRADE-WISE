@@ -13,6 +13,7 @@ namespace GradeWise.Services
         public const int MaxCodeLength = 20;
         public const int MaxNameLength = 100;
         public const int MaxCategoryNameLength = 40;
+        public const int MaxAssessmentNameLength = 40;
         private const int MaxErrorsShown = 15;
 
         public static CourseListViewModel GetCourseList(string facultyId)
@@ -26,7 +27,7 @@ namespace GradeWise.Services
                 var scope = GradeScopes.Normalize(course.ReflectedScope);
                 var rows = BuildRows(db, course, null);
                 var summary = GradeCalculator.Summarize(rows.Select(r => r.ScopeResult.EarnedOrNull));
-                var missing = rows.Sum(r => r.Inputs.Count(string.IsNullOrEmpty));
+                var missing = rows.Sum(r => r.CategoryCells.Sum(cc => cc.Inputs.Count(string.IsNullOrEmpty)));
 
                 model.Courses.Add(new CourseListItem
                 {
@@ -160,6 +161,7 @@ namespace GradeWise.Services
             if (course == null) return null;
 
             var rows = BuildRows(db, course, raw);
+            var maxes = EffectiveMaxes(course, raw);
             var scope = GradeScopes.Normalize(course.ReflectedScope);
             var summary = GradeCalculator.Summarize(rows.Select(r => r.ScopeResult.EarnedOrNull));
             var terms = db.Terms.Find(_ => true).ToList();
@@ -176,7 +178,7 @@ namespace GradeWise.Services
                 Name = course.Name,
                 Term = course.Term,
                 Section = course.Section,
-                Categories = course.Categories.Select(c => new GradeCategory { Name = c.Name, Weight = c.Weight, Period = GradePeriods.Normalize(c.Period) }).ToList(),
+                Categories = course.Categories.Select(c => new GradeCategory { Name = c.Name, Weight = c.Weight, Period = GradePeriods.Normalize(c.Period), Group = GradeGroups.Normalize(c.Group), Assessments = OrderedAssessments(c).Select(a => new GradeAssessment { Id = a.Id, Name = a.Name, Order = a.Order, MaxScore = maxes.ContainsKey(a.Id) ? maxes[a.Id] : a.MaxScore }).ToList() }).ToList(),
                 WeightTotal = GradeCalculator.TotalWeight(course.Categories),
                 ActiveTab = string.IsNullOrEmpty(tab) ? scope : NormalizeTab(tab),
                 MidtermTotal = GradeCalculator.PeriodTotal(course.Categories, GradePeriods.Midterm),
@@ -188,6 +190,35 @@ namespace GradeWise.Services
 
         public static string ScoreFieldName(string studentId, string category) => "score__" + studentId + "__" + category;
 
+        /// <summary>Name of the score box on the single-assessment page (matches Views/Faculty/Assessment.cshtml).</summary>
+        public static string AssessmentFieldName(string studentId) => "assessment__" + studentId;
+
+        /// <summary>Name of one score box of the class record (one student, one assessment column).</summary>
+        public static string CellFieldName(string studentId, string assessmentId) => "cell__" + studentId + "__" + assessmentId;
+
+        /// <summary>Name of the HIGHEST POSSIBLE SCORE box above one assessment column.</summary>
+        public static string HpsFieldName(string assessmentId) => "hps__" + assessmentId;
+
+        /// <summary>The assessments of a category in column order.</summary>
+        public static IEnumerable<GradeAssessment> OrderedAssessments(GradeCategory category)
+        {
+            return (category == null || category.Assessments == null ? new List<GradeAssessment>() : category.Assessments).OrderBy(a => a.Order);
+        }
+
+        /// <summary>The course page tab ("midterm" or "final-term") that holds a category, so a redirect lands on the right table.</summary>
+        public static string TabOfCategory(string courseId, string facultyId, string categoryName)
+        {
+            var db = new MongoDbContext();
+            var course = FindOwned(db, courseId, facultyId);
+            var category = FindCategory(course, categoryName);
+            return category != null && GradePeriods.Normalize(category.Period) == GradePeriods.FinalTerm ? "final-term" : "midterm";
+        }
+
+        /// <summary>
+        /// Saves the class record boxes (one per student and assessment) and the highest possible scores.
+        /// Nothing is saved when any box is invalid. A category's score is its PS:
+        /// the total of the entered scores divided by the highest possible total of the same columns, times 100.
+        /// </summary>
         public static bool SaveScores(string courseId, string facultyId, Func<string, string> raw, out List<string> errors)
         {
             errors = new List<string>();
@@ -196,77 +227,170 @@ namespace GradeWise.Services
 
             if (course == null) { errors.Add("That course no longer exists."); return false; }
 
-            var pending = new List<Tuple<GradeRecord, string, double?>>();
             var problems = 0;
+
+            // 1. highest possible scores
+            var maxes = new Dictionary<string, double>();
+            foreach (var category in course.Categories)
+            {
+                foreach (var assessment in OrderedAssessments(category))
+                {
+                    maxes[assessment.Id] = assessment.MaxScore;
+                    var typedMax = raw(HpsFieldName(assessment.Id));
+                    if (typedMax == null) continue;
+
+                    double parsedMax;
+                    if (!TryParseMax(typedMax, out parsedMax))
+                    {
+                        problems++;
+                        if (errors.Count < MaxErrorsShown) errors.Add(category.Name + " / " + assessment.Name + ": the highest possible score must be a number above 0.");
+                        continue;
+                    }
+                    maxes[assessment.Id] = parsedMax;
+                }
+            }
+
+            // 2. the score boxes
+            var records = new Dictionary<string, GradeRecord>();
+            var pending = new List<Tuple<string, GradeCategory, GradeAssessment, double?>>();
 
             foreach (var studentId in course.StudentIds)
             {
                 var student = db.Users.Find(u => u.Id == studentId).FirstOrDefault();
                 var label = student == null ? studentId : student.FullName;
-                var record = EnsureRecord(db, course, studentId);
+                records[studentId] = EnsureRecord(db, course, studentId);
 
                 foreach (var category in course.Categories)
                 {
-                    var text = raw(ScoreFieldName(studentId, category.Name));
-                    if (text == null) continue;
-
-                    if (!TryParseScore(text, out double? value))
+                    foreach (var assessment in OrderedAssessments(category))
                     {
-                        problems++;
-                        if (errors.Count < MaxErrorsShown) errors.Add(label + " / " + category.Name + ": enter a number from 0 to 100.");
-                        continue;
+                        var text = raw(CellFieldName(studentId, assessment.Id));
+                        if (text == null) continue;
+
+                        double? value;
+                        if (!TryParseRawScore(text, maxes[assessment.Id], out value))
+                        {
+                            problems++;
+                            if (errors.Count < MaxErrorsShown)
+                                errors.Add(label + " / " + category.Name + " " + assessment.Name + ": enter a number from 0 to " + maxes[assessment.Id].ToString("0.##", CultureInfo.InvariantCulture) + ".");
+                            continue;
+                        }
+                        pending.Add(Tuple.Create(studentId, category, assessment, value));
                     }
-                    pending.Add(Tuple.Create(record, category.Name, value));
                 }
             }
 
             if (problems > MaxErrorsShown) errors.Add("...and " + (problems - MaxErrorsShown) + " more.");
             if (problems > 0) return false;
 
+            // 3. apply the highest possible scores
+            var maxChanged = false;
+            foreach (var category in course.Categories)
+            {
+                foreach (var assessment in OrderedAssessments(category))
+                {
+                    if (Math.Abs(assessment.MaxScore - maxes[assessment.Id]) >= 0.005) { assessment.MaxScore = maxes[assessment.Id]; maxChanged = true; }
+                }
+            }
+
+            // 4. apply the score boxes
+            var touched = new HashSet<ScoreEntry>();
+            var dirty = new HashSet<string>();
+
+            foreach (var item in pending)
+            {
+                var record = records[item.Item1];
+                var entry = record.Scores.FirstOrDefault(sc => string.Equals(sc.Category, item.Item2.Name, StringComparison.OrdinalIgnoreCase));
+                if (entry == null) continue;
+                if (entry.AssessmentScores == null) entry.AssessmentScores = new List<AssessmentScoreEntry>();
+
+                var assessmentId = item.Item3.Id;
+                var existing = entry.AssessmentScores.FirstOrDefault(a => a.AssessmentId == assessmentId);
+                if (SameScore(existing == null ? null : existing.Score, item.Item4)) continue;
+
+                if (existing == null)
+                {
+                    existing = new AssessmentScoreEntry { AssessmentId = assessmentId };
+                    entry.AssessmentScores.Add(existing);
+                }
+                existing.Score = item.Item4;
+                touched.Add(entry);
+                dirty.Add(record.Id);
+            }
+
+            // 5. recalculate the category scores (PS)
             var changesByStudent = new Dictionary<string, List<ScoreChange>>();
             var recordsByStudent = new Dictionary<string, GradeRecord>();
-            var toWrite = new Dictionary<string, GradeRecord>();
 
-            foreach (var change in pending)
+            foreach (var studentId in course.StudentIds)
             {
-                var record = change.Item1;
-                var categoryName = change.Item2;
-                var newScore = change.Item3;
-
-                var entry = record.Scores.FirstOrDefault(s => string.Equals(s.Category, categoryName, StringComparison.OrdinalIgnoreCase));
-                if (entry == null) continue;
-
-                recordsByStudent[record.StudentId] = record;
-
-                if (!SameScore(entry.Score, newScore))
+                var record = records[studentId];
+                foreach (var category in course.Categories)
                 {
-                    if (!changesByStudent.TryGetValue(record.StudentId, out var list))
+                    var entry = record.Scores.FirstOrDefault(sc => string.Equals(sc.Category, category.Name, StringComparison.OrdinalIgnoreCase));
+                    if (entry == null) continue;
+
+                    var isTouched = touched.Contains(entry);
+                    if (!isTouched && !(maxChanged && HasAnyAssessmentScore(entry))) continue;
+
+                    var oldScore = entry.Score;
+                    var newScore = CategoryPercent(entry.AssessmentScores, category);
+                    if (oldScore.HasValue != newScore.HasValue || (oldScore.HasValue && Math.Abs(oldScore.Value - newScore.Value) > 0.0000001))
                     {
-                        list = new List<ScoreChange>();
-                        changesByStudent[record.StudentId] = list;
+                        entry.Score = newScore;
+                        dirty.Add(record.Id);
                     }
-                    list.Add(new ScoreChange { Category = entry.Category, OldScore = entry.Score, NewScore = newScore });
-                }
 
-                if (entry.Score != newScore) { entry.Score = newScore; toWrite[record.Id] = record; }
-            }
-
-            foreach (var record in toWrite.Values)
-                db.Grades.UpdateOne(g => g.Id == record.Id, Builders<GradeRecord>.Update.Set(g => g.Scores, record.Scores));
-
-            var nowUtc = DateTime.UtcNow;
-            foreach (var changed in changesByStudent)
-            {
-                HistoryService.RecordChange(course, changed.Key, recordsByStudent[changed.Key].Scores, nowUtc, HistoryService.ReasonScores, changed.Value);
-                NotificationService.NotifyScoresChanged(course, changed.Key, changed.Value.Select(c => c.Category).ToList());
-
-                // NEW: Send Email Alert
-                var studentUser = db.Users.Find(u => u.Id == changed.Key).FirstOrDefault();
-                if (studentUser != null && !string.IsNullOrEmpty(studentUser.Email))
-                {
-                    EmailService.SendGradeUpdate(studentUser.Email, studentUser.FullName, course.Code, course.Name);
+                    if (!SameScore(oldScore, newScore))
+                    {
+                        List<ScoreChange> list;
+                        if (!changesByStudent.TryGetValue(studentId, out list))
+                        {
+                            list = new List<ScoreChange>();
+                            changesByStudent[studentId] = list;
+                        }
+                        list.Add(new ScoreChange { Category = entry.Category, OldScore = oldScore, NewScore = newScore });
+                        recordsByStudent[studentId] = record;
+                    }
                 }
             }
+
+            if (maxChanged)
+                db.Courses.UpdateOne(c => c.Id == course.Id && c.FacultyId == facultyId, Builders<Course>.Update.Set(c => c.Categories, course.Categories));
+
+            foreach (var record in records.Values)
+                if (dirty.Contains(record.Id))
+                    db.Grades.UpdateOne(g => g.Id == record.Id, Builders<GradeRecord>.Update.Set(g => g.Scores, record.Scores));
+
+            AnnounceScoreChanges(db, course, changesByStudent, recordsByStudent);
+            return true;
+        }
+
+        /// <summary>A raw score from 0 up to the assessment's highest possible score. Blank is allowed (not graded yet).</summary>
+        public static bool TryParseRawScore(string text, double max, out double? value)
+        {
+            value = null;
+            text = (text ?? string.Empty).Trim();
+            if (text.Length == 0) return true;
+
+            double parsed;
+            if (!double.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out parsed)) return false;
+            if (double.IsNaN(parsed) || double.IsInfinity(parsed) || parsed < 0 || parsed > max + 0.0000001) return false;
+
+            value = Math.Round(parsed, 2);
+            return true;
+        }
+
+        /// <summary>A highest possible score: a number above 0 (up to 10000).</summary>
+        public static bool TryParseMax(string text, out double value)
+        {
+            value = 0;
+            text = (text ?? string.Empty).Trim();
+            double parsed;
+            if (!double.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out parsed)) return false;
+            if (double.IsNaN(parsed) || double.IsInfinity(parsed) || parsed <= 0 || parsed > 10000) return false;
+
+            value = Math.Round(parsed, 2);
             return true;
         }
 
@@ -361,13 +485,14 @@ namespace GradeWise.Services
                     Original = c.Name,
                     Name = c.Name,
                     Period = GradePeriods.Normalize(c.Period),
+                    Group = GradeGroups.Normalize(c.Group),
                     Weight = c.Weight.ToString("0.##", CultureInfo.InvariantCulture)
                 });
             }
             return model;
         }
 
-        public static CategoriesViewModel EchoCategories(string courseId, string facultyId, IList<string> originals, IList<string> names, IList<string> periods, IList<string> weights, List<string> errors)
+        public static CategoriesViewModel EchoCategories(string courseId, string facultyId, IList<string> originals, IList<string> names, IList<string> periods, IList<string> weights, IList<string> groups, List<string> errors)
         {
             var db = new MongoDbContext();
             var course = FindOwned(db, courseId, facultyId);
@@ -381,6 +506,7 @@ namespace GradeWise.Services
                     Original = At(originals, i),
                     Name = At(names, i),
                     Period = GradePeriods.Normalize(At(periods, i)),
+                    Group = GradeGroups.Normalize(At(groups, i)),
                     Weight = At(weights, i)
                 });
             }
@@ -388,7 +514,7 @@ namespace GradeWise.Services
             return model;
         }
 
-        public static bool SaveCategories(string courseId, string facultyId, IList<string> originals, IList<string> names, IList<string> periods, IList<string> weights, out List<string> errors)
+        public static bool SaveCategories(string courseId, string facultyId, IList<string> originals, IList<string> names, IList<string> periods, IList<string> weights, IList<string> groups, out List<string> errors)
         {
             errors = new List<string>();
             var parsed = new List<CategoryRow>();
@@ -401,6 +527,7 @@ namespace GradeWise.Services
                 var weightText = (At(weights, i) ?? string.Empty).Trim();
                 var original = (At(originals, i) ?? string.Empty).Trim();
                 var period = GradePeriods.Normalize((At(periods, i) ?? string.Empty).Trim());
+                var group = GradeGroups.Normalize(At(groups, i));
 
                 if (name.Length == 0 && weightText.Length == 0) continue;
 
@@ -417,7 +544,7 @@ namespace GradeWise.Services
                 if (rowOk)
                 {
                     parsed.Add(new CategoryRow { Original = original, Name = name });
-                    newCategories.Add(new GradeCategory { Name = name, Period = period, Weight = Math.Round(weight, 2) });
+                    newCategories.Add(new GradeCategory { Name = name, Period = period, Group = group, Weight = Math.Round(weight, 2) });
                 }
             }
 
@@ -432,7 +559,20 @@ namespace GradeWise.Services
 
                     var total = Math.Round(inPeriod.Sum(c => c.Weight), 2);
                     if (Math.Abs(total - 100) >= GradeCalculator.WeightTolerance)
+                    {
                         errors.Add(period + " weights must add up to exactly 100% (currently " + total.ToString("0.##", CultureInfo.InvariantCulture) + "%).");
+                        continue;
+                    }
+
+                    // Inside a period Class Standing must total 60 and Exam 40.
+                    foreach (var group in GradeGroups.All)
+                    {
+                        var groupTotal = Math.Round(inPeriod.Where(c => c.Group == group).Sum(c => c.Weight), 2);
+                        var required = GradeGroups.RequiredTotal(group);
+                        if (Math.Abs(groupTotal - required) >= GradeCalculator.WeightTolerance)
+                            errors.Add(period + " " + group + " must add up to exactly " + required.ToString("0.##", CultureInfo.InvariantCulture)
+                                + "% (currently " + groupTotal.ToString("0.##", CultureInfo.InvariantCulture) + "%).");
+                    }
                 }
             }
 
@@ -456,6 +596,20 @@ namespace GradeWise.Services
                 else sources.Add(null);
             }
 
+            // Renaming a category keeps its assessments; every category keeps at least one.
+            for (var i = 0; i < newCategories.Count; i++)
+            {
+                var kept = sources[i] == null ? null : course.Categories.FirstOrDefault(c => string.Equals(c.Name, sources[i], StringComparison.OrdinalIgnoreCase));
+                var assessments = kept == null || kept.Assessments == null
+                    ? new List<GradeAssessment>()
+                    : kept.Assessments.Select(a => new GradeAssessment { Id = a.Id, Name = a.Name, Order = a.Order, MaxScore = a.MaxScore }).ToList();
+
+                if (assessments.Count == 0)
+                    assessments.Add(new GradeAssessment { Id = NewAssessmentId(), Name = "1", Order = 1, MaxScore = 100 });
+
+                newCategories[i].Assessments = assessments;
+            }
+
             var gradeRecords = db.Grades.Find(g => g.CourseId == course.Id).ToList();
             var rebuiltByStudent = new Dictionary<string, List<ScoreEntry>>();
             foreach (var record in gradeRecords)
@@ -464,12 +618,18 @@ namespace GradeWise.Services
                 for (var i = 0; i < newCategories.Count; i++)
                 {
                     double? score = null;
+                    var assessmentScores = new List<AssessmentScoreEntry>();
                     if (sources[i] != null)
                     {
                         var old = record.Scores.FirstOrDefault(s => string.Equals(s.Category, sources[i], StringComparison.OrdinalIgnoreCase));
-                        if (old != null) score = old.Score;
+                        if (old != null)
+                        {
+                            score = old.Score;
+                            if (old.AssessmentScores != null)
+                                assessmentScores = old.AssessmentScores.Select(a => new AssessmentScoreEntry { AssessmentId = a.AssessmentId, Score = a.Score }).ToList();
+                        }
                     }
-                    rebuilt.Add(new ScoreEntry { Category = newCategories[i].Name, Score = score });
+                    rebuilt.Add(new ScoreEntry { Category = newCategories[i].Name, Score = score, AssessmentScores = assessmentScores });
                 }
 
                 db.Grades.UpdateOne(g => g.Id == record.Id, Builders<GradeRecord>.Update.Set(g => g.Scores, rebuilt));
@@ -493,6 +653,306 @@ namespace GradeWise.Services
             return true;
         }
 
+        // ---------- individual assessments (Quiz 1, Quiz 2, ...) inside a category ----------
+
+        /// <summary>
+        /// Score page for one assessment. Returns null when the course is not the faculty member's
+        /// or the category / assessment does not exist.
+        /// </summary>
+        public static AssessmentScoreViewModel GetAssessmentScores(string courseId, string facultyId, string categoryName, string assessmentId)
+        {
+            var db = new MongoDbContext();
+            var course = FindOwned(db, courseId, facultyId);
+            if (course == null) return null;
+
+            var category = FindCategory(course, categoryName);
+            var assessment = FindAssessment(category, assessmentId);
+            if (category == null || assessment == null) return null;
+
+            var model = new AssessmentScoreViewModel
+            {
+                CourseId = course.Id,
+                CategoryName = category.Name,
+                AssessmentId = assessment.Id,
+                AssessmentName = assessment.Name,
+                MaxScore = assessment.MaxScore,
+                Period = GradePeriods.Normalize(category.Period)
+            };
+
+            var students = db.Users.Find(u => course.StudentIds.Contains(u.Id)).SortBy(u => u.FullName).ToList();
+
+            var enrolled = course.StudentIds;
+            var records = db.Grades.Find(g => g.CourseId == courseId && enrolled.Contains(g.StudentId)).ToList();
+            var byStudent = new Dictionary<string, List<ScoreEntry>>();
+            foreach (var r in records)
+                if (r.StudentId != null && !byStudent.ContainsKey(r.StudentId)) byStudent[r.StudentId] = r.Scores ?? new List<ScoreEntry>();
+
+            foreach (var student in students)
+            {
+                string text = string.Empty;
+                List<ScoreEntry> scores;
+                if (byStudent.TryGetValue(student.Id, out scores))
+                {
+                    var entry = scores.FirstOrDefault(s => string.Equals(s.Category, category.Name, StringComparison.OrdinalIgnoreCase));
+                    var own = entry == null || entry.AssessmentScores == null ? null : entry.AssessmentScores.FirstOrDefault(a => a.AssessmentId == assessment.Id);
+                    if (own != null && own.Score.HasValue) text = own.Score.Value.ToString("0.##", CultureInfo.InvariantCulture);
+                }
+
+                model.Rows.Add(new AssessmentScoreRow { StudentId = student.Id, StudentNo = student.StudentNo, FullName = student.FullName, Score = text });
+            }
+            return model;
+        }
+
+        /// <summary>
+        /// Saves the scores typed for one assessment. Nothing is saved when any box is invalid.
+        /// The category score of each student becomes the average of their entered assessment scores.
+        /// </summary>
+        public static bool SaveAssessmentScores(string courseId, string facultyId, string categoryName, string assessmentId, Func<string, string> raw, out List<string> errors)
+        {
+            errors = new List<string>();
+            var db = new MongoDbContext();
+            var course = FindOwned(db, courseId, facultyId);
+            if (course == null) { errors.Add("That course no longer exists."); return false; }
+
+            var category = FindCategory(course, categoryName);
+            var assessment = FindAssessment(category, assessmentId);
+            if (category == null || assessment == null) { errors.Add("That assessment no longer exists."); return false; }
+
+            var pending = new List<Tuple<GradeRecord, double?>>();
+            var problems = 0;
+
+            foreach (var studentId in course.StudentIds)
+            {
+                var text = raw(AssessmentFieldName(studentId));
+                if (text == null) continue;
+
+                var student = db.Users.Find(u => u.Id == studentId).FirstOrDefault();
+                var label = student == null ? studentId : student.FullName;
+
+                double? value;
+                if (!TryParseRawScore(text, assessment.MaxScore, out value))
+                {
+                    problems++;
+                    if (errors.Count < MaxErrorsShown) errors.Add(label + " / " + assessment.Name + ": enter a number from 0 to " + assessment.MaxScore.ToString("0.##", CultureInfo.InvariantCulture) + ".");
+                    continue;
+                }
+                pending.Add(Tuple.Create(EnsureRecord(db, course, studentId), value));
+            }
+
+            if (problems > MaxErrorsShown) errors.Add("...and " + (problems - MaxErrorsShown) + " more.");
+            if (problems > 0) return false;
+
+            var changesByStudent = new Dictionary<string, List<ScoreChange>>();
+            var recordsByStudent = new Dictionary<string, GradeRecord>();
+            var toWrite = new Dictionary<string, GradeRecord>();
+
+            foreach (var item in pending)
+            {
+                var record = item.Item1;
+                var newValue = item.Item2;
+
+                var entry = record.Scores.FirstOrDefault(s => string.Equals(s.Category, category.Name, StringComparison.OrdinalIgnoreCase));
+                if (entry == null) continue;
+                if (entry.AssessmentScores == null) entry.AssessmentScores = new List<AssessmentScoreEntry>();
+
+                var existing = entry.AssessmentScores.FirstOrDefault(a => a.AssessmentId == assessment.Id);
+                if (SameScore(existing == null ? null : existing.Score, newValue)) continue;
+
+                if (existing == null)
+                {
+                    existing = new AssessmentScoreEntry { AssessmentId = assessment.Id };
+                    entry.AssessmentScores.Add(existing);
+                }
+                existing.Score = newValue;
+
+                var oldCategoryScore = entry.Score;
+                var newCategoryScore = CategoryPercent(entry.AssessmentScores, category);
+                entry.Score = newCategoryScore;
+
+                toWrite[record.Id] = record;
+                recordsByStudent[record.StudentId] = record;
+
+                if (!SameScore(oldCategoryScore, newCategoryScore))
+                {
+                    List<ScoreChange> list;
+                    if (!changesByStudent.TryGetValue(record.StudentId, out list))
+                    {
+                        list = new List<ScoreChange>();
+                        changesByStudent[record.StudentId] = list;
+                    }
+                    list.Add(new ScoreChange { Category = entry.Category, OldScore = oldCategoryScore, NewScore = newCategoryScore });
+                }
+            }
+
+            foreach (var record in toWrite.Values)
+                db.Grades.UpdateOne(g => g.Id == record.Id, Builders<GradeRecord>.Update.Set(g => g.Scores, record.Scores));
+
+            AnnounceScoreChanges(db, course, changesByStudent, recordsByStudent);
+            return true;
+        }
+
+        /// <summary>
+        /// Adds an assessment column to a category (the next number, like 1, 2, 3 of the class record, when no name is given).
+        /// maxScoreText is its highest possible score; blank means 100.
+        /// </summary>
+        public static bool AddAssessment(string courseId, string facultyId, string categoryName, string name, string maxScoreText, out string error)
+        {
+            error = null;
+            var db = new MongoDbContext();
+            var course = FindOwned(db, courseId, facultyId);
+            if (course == null) { error = "That course no longer exists."; return false; }
+
+            var category = FindCategory(course, categoryName);
+            if (category == null) { error = "That category was not found."; return false; }
+
+            double max = 100;
+            if (!string.IsNullOrWhiteSpace(maxScoreText) && !TryParseMax(maxScoreText, out max))
+            { error = "The highest possible score must be a number above 0."; return false; }
+
+            if (category.Assessments == null) category.Assessments = new List<GradeAssessment>();
+
+            name = (name ?? string.Empty).Trim();
+            if (name.Length == 0)
+            {
+                var number = category.Assessments.Count + 1;
+                while (category.Assessments.Any(a => string.Equals(a.Name, number.ToString(CultureInfo.InvariantCulture), StringComparison.OrdinalIgnoreCase))) number++;
+                name = number.ToString(CultureInfo.InvariantCulture);
+            }
+            if (name.Length > MaxAssessmentNameLength) { error = "The assessment name must be " + MaxAssessmentNameLength + " characters or fewer."; return false; }
+
+            if (category.Assessments.Any(a => string.Equals(a.Name, name, StringComparison.OrdinalIgnoreCase)))
+            { error = "This category already has an assessment with that name."; return false; }
+
+            var nextOrder = category.Assessments.Count == 0 ? 1 : category.Assessments.Max(a => a.Order) + 1;
+            category.Assessments.Add(new GradeAssessment { Id = NewAssessmentId(), Name = name, Order = nextOrder, MaxScore = max });
+
+            db.Courses.UpdateOne(c => c.Id == course.Id && c.FacultyId == facultyId, Builders<Course>.Update.Set(c => c.Categories, course.Categories));
+            return true;
+        }
+
+        /// <summary>
+        /// Removes an assessment and the scores entered for it. A category must keep at least one assessment.
+        /// Students' category scores are recalculated from what is left.
+        /// </summary>
+        public static bool RemoveAssessment(string courseId, string facultyId, string categoryName, string assessmentId)
+        {
+            var db = new MongoDbContext();
+            var course = FindOwned(db, courseId, facultyId);
+            if (course == null) return false;
+
+            var category = FindCategory(course, categoryName);
+            var assessment = FindAssessment(category, assessmentId);
+            if (category == null || assessment == null) return false;
+            if (category.Assessments.Count <= 1) return false;
+
+            var removedId = assessment.Id;
+            category.Assessments.RemoveAll(a => a.Id == removedId);
+            db.Courses.UpdateOne(c => c.Id == course.Id && c.FacultyId == facultyId, Builders<Course>.Update.Set(c => c.Categories, course.Categories));
+
+            var changesByStudent = new Dictionary<string, List<ScoreChange>>();
+            var recordsByStudent = new Dictionary<string, GradeRecord>();
+            var courseKey = course.Id;
+
+            foreach (var record in db.Grades.Find(g => g.CourseId == courseKey).ToList())
+            {
+                var entry = record.Scores.FirstOrDefault(s => string.Equals(s.Category, category.Name, StringComparison.OrdinalIgnoreCase));
+                if (entry == null || entry.AssessmentScores == null) continue;
+
+                var removed = entry.AssessmentScores.FirstOrDefault(a => a.AssessmentId == removedId);
+                if (removed == null) continue;
+
+                var hadScore = removed.Score.HasValue;
+                entry.AssessmentScores.RemoveAll(a => a.AssessmentId == removedId);
+
+                var oldCategoryScore = entry.Score;
+                if (hadScore) entry.Score = CategoryPercent(entry.AssessmentScores, category);
+
+                db.Grades.UpdateOne(g => g.Id == record.Id, Builders<GradeRecord>.Update.Set(g => g.Scores, record.Scores));
+
+                if (!SameScore(oldCategoryScore, entry.Score))
+                {
+                    recordsByStudent[record.StudentId] = record;
+                    changesByStudent[record.StudentId] = new List<ScoreChange> { new ScoreChange { Category = entry.Category, OldScore = oldCategoryScore, NewScore = entry.Score } };
+                }
+            }
+
+            AnnounceScoreChanges(db, course, changesByStudent, recordsByStudent);
+            return true;
+        }
+
+        /// <summary>Records history, notifies students and sends the grade-update email for changed category scores.</summary>
+        private static void AnnounceScoreChanges(MongoDbContext db, Course course, Dictionary<string, List<ScoreChange>> changesByStudent, Dictionary<string, GradeRecord> recordsByStudent)
+        {
+            var nowUtc = DateTime.UtcNow;
+            foreach (var changed in changesByStudent)
+            {
+                HistoryService.RecordChange(course, changed.Key, recordsByStudent[changed.Key].Scores, nowUtc, HistoryService.ReasonScores, changed.Value);
+                NotificationService.NotifyScoresChanged(course, changed.Key, changed.Value.Select(c => c.Category).ToList());
+
+                var studentUser = db.Users.Find(u => u.Id == changed.Key).FirstOrDefault();
+                if (studentUser != null && !string.IsNullOrEmpty(studentUser.Email))
+                    EmailService.SendGradeUpdate(studentUser.Email, studentUser.FullName, course.Code, course.Name);
+            }
+        }
+
+        /// <summary>
+        /// The category's PS, like the class record: total of the entered scores / highest possible total of those
+        /// same columns x 100. Columns without a score yet are left out. Null when nothing is entered.
+        /// </summary>
+        public static double? CategoryPercent(IEnumerable<AssessmentScoreEntry> entries, GradeCategory category)
+        {
+            var maxById = new Dictionary<string, double>();
+            foreach (var a in (category.Assessments ?? new List<GradeAssessment>())) maxById[a.Id] = a.MaxScore;
+
+            double total = 0, gradedMax = 0;
+            foreach (var e in entries ?? Enumerable.Empty<AssessmentScoreEntry>())
+            {
+                double max;
+                if (!e.Score.HasValue || e.AssessmentId == null || !maxById.TryGetValue(e.AssessmentId, out max)) continue;
+                total += e.Score.Value;
+                gradedMax += max;
+            }
+
+            return gradedMax <= 0 ? (double?)null : Math.Round(total / gradedMax * 100.0, 6);
+        }
+
+        private static bool HasAnyAssessmentScore(ScoreEntry entry)
+        {
+            return entry != null && entry.AssessmentScores != null && entry.AssessmentScores.Any(a => a.Score.HasValue);
+        }
+
+        /// <summary>Highest possible score of every assessment: the typed box when valid, otherwise the saved value.</summary>
+        private static Dictionary<string, double> EffectiveMaxes(Course course, Func<string, string> raw)
+        {
+            var maxes = new Dictionary<string, double>();
+            foreach (var category in course.Categories)
+            {
+                foreach (var a in OrderedAssessments(category))
+                {
+                    var value = a.MaxScore;
+                    var typed = raw == null ? null : raw(HpsFieldName(a.Id));
+                    double parsed;
+                    if (typed != null && TryParseMax(typed, out parsed)) value = parsed;
+                    maxes[a.Id] = value;
+                }
+            }
+            return maxes;
+        }
+
+        private static GradeCategory FindCategory(Course course, string categoryName)
+        {
+            if (course == null || string.IsNullOrEmpty(categoryName)) return null;
+            return course.Categories.FirstOrDefault(c => string.Equals(c.Name, categoryName, StringComparison.OrdinalIgnoreCase));
+        }
+
+        private static GradeAssessment FindAssessment(GradeCategory category, string assessmentId)
+        {
+            if (category == null || category.Assessments == null || string.IsNullOrEmpty(assessmentId)) return null;
+            return category.Assessments.FirstOrDefault(a => a.Id == assessmentId);
+        }
+
+        private static string NewAssessmentId() => "a-" + Guid.NewGuid().ToString("N").Substring(0, 8);
+
         private static bool SameScore(double? a, double? b)
         {
             if (!a.HasValue && !b.HasValue) return true;
@@ -504,14 +964,49 @@ namespace GradeWise.Services
         {
             if (before.Count != after.Count) return false;
             for (var i = 0; i < before.Count; i++)
-                if (before[i].Name != after[i].Name || before[i].Period != after[i].Period || Math.Abs(before[i].Weight - after[i].Weight) >= 0.005) return false;
+                if (before[i].Name != after[i].Name || before[i].Period != after[i].Period || GradeGroups.Normalize(before[i].Group) != GradeGroups.Normalize(after[i].Group) || Math.Abs(before[i].Weight - after[i].Weight) >= 0.005) return false;
             return true;
         }
 
         private static Course FindOwned(MongoDbContext db, string courseId, string facultyId)
         {
             if (string.IsNullOrEmpty(courseId) || string.IsNullOrEmpty(facultyId)) return null;
-            return db.Courses.Find(c => c.Id == courseId && c.FacultyId == facultyId).FirstOrDefault();
+            var course = db.Courses.Find(c => c.Id == courseId && c.FacultyId == facultyId).FirstOrDefault();
+            if (course != null) EnsureAssessments(db, course);
+            return course;
+        }
+
+        /// <summary>
+        /// Every category needs at least one assessment column. Categories saved before assessments existed get
+        /// one column named "1" (highest possible score 100) and the score already entered moves into it,
+        /// so nothing is lost. Does nothing when every category already has a column.
+        /// </summary>
+        private static void EnsureAssessments(MongoDbContext db, Course course)
+        {
+            var missing = course.Categories.Where(c => c.Assessments == null || c.Assessments.Count == 0).ToList();
+            if (missing.Count == 0) return;
+
+            foreach (var c in missing)
+                c.Assessments = new List<GradeAssessment> { new GradeAssessment { Id = NewAssessmentId(), Name = "1", Order = 1, MaxScore = 100 } };
+
+            db.Courses.UpdateOne(x => x.Id == course.Id, Builders<Course>.Update.Set(x => x.Categories, course.Categories));
+
+            var courseKey = course.Id;
+            foreach (var record in db.Grades.Find(g => g.CourseId == courseKey).ToList())
+            {
+                var changed = false;
+                foreach (var c in missing)
+                {
+                    var entry = record.Scores.FirstOrDefault(sc => string.Equals(sc.Category, c.Name, StringComparison.OrdinalIgnoreCase));
+                    if (entry == null || !entry.Score.HasValue) continue;
+                    if (entry.AssessmentScores == null) entry.AssessmentScores = new List<AssessmentScoreEntry>();
+                    if (entry.AssessmentScores.Count > 0) continue;
+
+                    entry.AssessmentScores.Add(new AssessmentScoreEntry { AssessmentId = c.Assessments[0].Id, Score = entry.Score });
+                    changed = true;
+                }
+                if (changed) db.Grades.UpdateOne(g => g.Id == record.Id, Builders<GradeRecord>.Update.Set(g => g.Scores, record.Scores));
+            }
         }
 
         private static GradeRecord EnsureRecord(MongoDbContext db, Course course, string studentId)
@@ -547,6 +1042,7 @@ namespace GradeWise.Services
                 if (r.StudentId != null && !byStudent.ContainsKey(r.StudentId)) byStudent[r.StudentId] = r.Scores ?? new List<ScoreEntry>();
 
             var scope = GradeScopes.Normalize(course.ReflectedScope);
+            var maxes = EffectiveMaxes(course, raw);
 
             foreach (var student in students)
             {
@@ -566,18 +1062,46 @@ namespace GradeWise.Services
 
                 foreach (var category in course.Categories)
                 {
-                    string typed = raw == null ? null : raw(ScoreFieldName(student.Id, category.Name));
-                    if (typed != null)
+                    var entry = scores.FirstOrDefault(s => string.Equals(s.Category, category.Name, StringComparison.OrdinalIgnoreCase));
+
+                    // Category-level text (the PS), kept for the rest of the app.
+                    row.Inputs.Add(entry != null && entry.Score.HasValue ? entry.Score.Value.ToString("0.##", CultureInfo.InvariantCulture) : string.Empty);
+                    row.Invalid.Add(false);
+
+                    // One box per assessment column, plus the Total and PS of the class record.
+                    var cells = new CategoryCells();
+                    double total = 0, gradedMax = 0;
+                    var any = false;
+
+                    foreach (var assessment in OrderedAssessments(category))
                     {
-                        row.Inputs.Add(typed);
-                        row.Invalid.Add(!TryParseScore(typed, out _));
+                        var own = entry == null || entry.AssessmentScores == null ? null : entry.AssessmentScores.FirstOrDefault(a => a.AssessmentId == assessment.Id);
+                        var typed = raw == null ? null : raw(CellFieldName(student.Id, assessment.Id));
+
+                        if (typed != null)
+                        {
+                            double? ignored;
+                            cells.Inputs.Add(typed);
+                            cells.Invalid.Add(!TryParseRawScore(typed, maxes[assessment.Id], out ignored));
+                        }
+                        else
+                        {
+                            cells.Inputs.Add(own != null && own.Score.HasValue ? own.Score.Value.ToString("0.##", CultureInfo.InvariantCulture) : string.Empty);
+                            cells.Invalid.Add(false);
+                        }
+
+                        if (own != null && own.Score.HasValue)
+                        {
+                            any = true;
+                            total += own.Score.Value;
+                            gradedMax += assessment.MaxScore;
+                        }
                     }
-                    else
-                    {
-                        var entry = scores.FirstOrDefault(s => string.Equals(s.Category, category.Name, StringComparison.OrdinalIgnoreCase));
-                        row.Inputs.Add(entry != null && entry.Score.HasValue ? entry.Score.Value.ToString("0.##", CultureInfo.InvariantCulture) : string.Empty);
-                        row.Invalid.Add(false);
-                    }
+
+                    cells.GradedMax = gradedMax;
+                    cells.Total = any ? (double?)Math.Round(total, 2) : null;
+                    cells.Percent = any && gradedMax > 0 ? (double?)(total / gradedMax * 100.0) : null;
+                    row.CategoryCells.Add(cells);
                 }
                 rows.Add(row);
             }

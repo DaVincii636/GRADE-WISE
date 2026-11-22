@@ -101,6 +101,7 @@ namespace GradeWise.Services
                 model.Categories.Add(new CategoryStat
                 {
                     Name = category.Name,
+                    Group = GradeGroups.Normalize(category.Group),
                     Period = GradePeriods.Normalize(category.Period),
                     Weight = GradeCalculator.ScopeWeight(category, scope),
                     Graded = scores.Count,

@@ -87,10 +87,10 @@ namespace GradeWise.Data
                 {
                     new GradeCategory { Name = "Midterm Quizzes", Period = GradePeriods.Midterm, Weight = 30 },
                     new GradeCategory { Name = "Midterm Project", Period = GradePeriods.Midterm, Weight = 30 },
-                    new GradeCategory { Name = "Midterm Exam", Period = GradePeriods.Midterm, Weight = 40 },
+                    new GradeCategory { Name = "Midterm Exam", Period = GradePeriods.Midterm, Group = GradeGroups.Exam, Weight = 40 },
                     new GradeCategory { Name = "Final Quizzes", Period = GradePeriods.FinalTerm, Weight = 30 },
                     new GradeCategory { Name = "Final Project", Period = GradePeriods.FinalTerm, Weight = 30 },
-                    new GradeCategory { Name = "Final Exam", Period = GradePeriods.FinalTerm, Weight = 40 }
+                    new GradeCategory { Name = "Final Exam", Period = GradePeriods.FinalTerm, Group = GradeGroups.Exam, Weight = 40 }
                 },
                 StudentIds = new List<string> { "u-student1", "u-student2", "u-student3" }
             }

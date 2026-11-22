@@ -209,21 +209,59 @@ else if (!Model.PeriodsOk)
                     }
                     else
                     {
+                        var periodCategories = Model.Categories
+                            .Select((c, index) => new { Category = c, Index = index })
+                            .Where(x => GradePeriods.Normalize(x.Category.Period) == period)
+                            .ToList();
+
                         <div class="gw-table-wrap">
-                            <table class="gw-table gw-score-table">
+                            <table class="gw-table gw-score-table gw-classrecord">
                                 <thead>
                                     <tr>
-                                        <th class="gw-sticky-col">Student</th>
-                                        @foreach (var c in Model.Categories)
+                                        <th class="gw-sticky-col" rowspan="2">Student</th>
+                                        @foreach (var x in periodCategories)
                                         {
-                                            if (GradePeriods.Normalize(c.Period) != period) { continue; }
-                                            <th class="gw-num">@c.Name<br /><span class="gw-th-sub">@GradeCalculator.Format(c.Weight)%</span></th>
+                                            <th class="gw-group-head" colspan="@(x.Category.Assessments.Count + 2)">
+                                                @x.Category.Name
+                                                <span class="gw-th-sub">@GradeCalculator.Format(x.Category.Weight)% &middot; @x.Category.Group</span>
+                                            </th>
                                         }
-                                        <th class="gw-num">Earned Grade<br /><span class="gw-th-sub">of 100</span></th>
-                                        <th class="gw-num">Equivalent</th>
+                                        <th class="gw-num" rowspan="2">Earned Grade<br /><span class="gw-th-sub">of 100</span></th>
+                                        <th class="gw-num" rowspan="2">Equivalent</th>
+                                    </tr>
+                                    <tr>
+                                        @foreach (var x in periodCategories)
+                                        {
+                                            foreach (var assessment in x.Category.Assessments)
+                                            {
+                                                <th class="gw-num">@Html.ActionLink(assessment.Name, "Assessment", "Faculty", new { id = Model.CourseId, category = x.Category.Name, assessment = assessment.Id }, new { title = "Enter " + assessment.Name + " scores on their own page" })</th>
+                                            }
+                                            <th class="gw-num">Total</th>
+                                            <th class="gw-num">PS</th>
+                                        }
                                     </tr>
                                 </thead>
                                 <tbody>
+                                    <tr class="gw-hps-row">
+                                        <td class="gw-sticky-col"><strong>Highest possible score</strong></td>
+                                        @foreach (var x in periodCategories)
+                                        {
+                                            foreach (var assessment in x.Category.Assessments)
+                                            {
+                                                <td class="gw-num">
+                                                    <input type="number" min="0.01" step="any" inputmode="decimal"
+                                                           class="gw-score-input gw-hps-input"
+                                                           name="@CourseService.HpsFieldName(assessment.Id)"
+                                                           value="@GradeCalculator.Raw(assessment.MaxScore)"
+                                                           aria-label="Highest possible score of @x.Category.Name @assessment.Name" />
+                                                </td>
+                                            }
+                                            <td class="gw-num"><strong>@GradeCalculator.Format(x.Category.Assessments.Sum(a => a.MaxScore))</strong></td>
+                                            <td class="gw-num"><strong>100.00</strong></td>
+                                        }
+                                        <td class="gw-num">&nbsp;</td>
+                                        <td class="gw-num">&nbsp;</td>
+                                    </tr>
                                     @foreach (var row in Model.Rows)
                                     {
                                         var result = isFinal ? row.FinalResult : row.MidtermResult;
@@ -232,18 +270,23 @@ else if (!Model.PeriodsOk)
                                                 @row.FullName
                                                 <div class="gw-muted gw-small">@row.StudentNo</div>
                                             </td>
-                                            @for (var i = 0; i < Model.Categories.Count; i++)
+                                            @foreach (var x in periodCategories)
                                             {
-                                                var category = Model.Categories[i];
-                                                if (GradePeriods.Normalize(category.Period) != period) { continue; }
-                                                <td class="gw-num">
-                                                    <input type="number" min="0" max="100" step="any" inputmode="decimal"
-                                                           class="gw-score-input @(row.Invalid[i] ? "gw-input-bad" : "")"
-                                                           name="@CourseService.ScoreFieldName(row.StudentId, category.Name)"
-                                                           value="@row.Inputs[i]"
-                                                           placeholder="&mdash;"
-                                                           aria-label="@category.Name score for @row.FullName" />
-                                                </td>
+                                                var cells = row.CategoryCells[x.Index];
+                                                for (var j = 0; j < x.Category.Assessments.Count; j++)
+                                                {
+                                                    var assessment = x.Category.Assessments[j];
+                                                    <td class="gw-num">
+                                                        <input type="number" min="0" max="@GradeCalculator.Raw(assessment.MaxScore)" step="any" inputmode="decimal"
+                                                               class="gw-score-input @(cells.Invalid[j] ? "gw-input-bad" : "")"
+                                                               name="@CourseService.CellFieldName(row.StudentId, assessment.Id)"
+                                                               value="@cells.Inputs[j]"
+                                                               placeholder="&mdash;"
+                                                               aria-label="@x.Category.Name @assessment.Name score for @row.FullName" />
+                                                    </td>
+                                                }
+                                                <td class="gw-num">@GradeCalculator.Format(cells.Total)</td>
+                                                <td class="gw-num"><strong>@GradeCalculator.Format(cells.Percent)</strong></td>
                                             }
                                             <td class="gw-num"><strong>@GradeCalculator.Format(result.EarnedOrNull)</strong></td>
                                             <td class="gw-num">@GradeCalculator.Format(GradeCalculator.EquivalentFromEarned(result))</td>
@@ -301,7 +344,8 @@ else if (!Model.PeriodsOk)
 
             <div class="gw-panel-body">
                 <p class="gw-note gw-note-first">
-                    Scores are percentages from 0 to 100. Leave a box empty if the work is not graded yet.
+                    Enter each score out of its column's <strong>highest possible score</strong>, and leave a box empty if the work is not given yet.
+                    <strong>Total</strong> adds the entered scores of a category and <strong>PS</strong> is that total divided by the highest possible total of the same columns, times 100. The PS is what the category weight is applied to.
                     <strong>Earned Grade</strong> is the points collected out of 100, and work that is not graded yet counts as 0.
                     <strong>Final Grade</strong> is the average of the Midterm and the Final Term.
                     <strong>INC</strong> (incomplete) shows when the Midterm and the Final Term class standing are each at least 65 but the Final Term exam is still blank.
@@ -310,6 +354,47 @@ else if (!Model.PeriodsOk)
         }
     }
 </section>
+
+@if (Model.Categories.Count > 0)
+{
+    <section class="gw-panel" id="manage-columns">
+        <div class="gw-panel-head">
+            <h2 class="gw-panel-title">Columns</h2>
+        </div>
+        <div class="gw-panel-body">
+            <p class="gw-field-hint gw-hint-block">
+                Add a column for every quiz, project or attendance day (1, 2, 3 and so on, like the class record). Each column keeps its own highest possible score, which you set in the table above.
+                Removing a column deletes the scores entered in it.
+            </p>
+
+            @foreach (var c in Model.Categories)
+            {
+                <div class="gw-col-manage">
+                    <div class="gw-col-title"><strong>@c.Name</strong> <span class="gw-muted">@c.Period &middot; @c.Group</span></div>
+                    <div class="gw-col-list">
+                        @foreach (var assessment in c.Assessments)
+                        {
+                            using (Html.BeginForm("RemoveAssessment", "Faculty", new { id = Model.CourseId, category = c.Name, assessment = assessment.Id }, FormMethod.Post, new { @class = "gw-inline-form", data_confirm = "Remove column " + assessment.Name + " from " + c.Name + "? The scores entered in it are deleted." }))
+                            {
+                                @Html.AntiForgeryToken()
+                                <span class="gw-col-chip">@assessment.Name <span class="gw-muted">/ @GradeCalculator.Raw(assessment.MaxScore)</span>
+                                    <button type="submit" class="gw-btn gw-btn-small gw-btn-outline" disabled="@(c.Assessments.Count <= 1)" title="@(c.Assessments.Count <= 1 ? "A category needs at least one column" : "Remove this column")">Remove</button>
+                                </span>
+                            }
+                        }
+                    </div>
+                    @using (Html.BeginForm("AddAssessment", "Faculty", new { id = Model.CourseId, category = c.Name }, FormMethod.Post, new { @class = "gw-inline-form gw-col-add" }))
+                    {
+                        @Html.AntiForgeryToken()
+                        <input type="text" name="name" maxlength="40" placeholder="Name (optional, next number)" aria-label="New @c.Name column name" />
+                        <input type="number" name="maxScore" min="0.01" step="any" value="100" aria-label="Highest possible score of the new @c.Name column" />
+                        <button type="submit" class="gw-btn gw-btn-small gw-btn-outline">Add column</button>
+                    }
+                </div>
+            }
+        </div>
+    </section>
+}
 
 <div id="gw-editcourse-modal" class="gw-modal-backdrop" hidden @(editErrors.Count > 0 ? "data-open-on-load" : null)>
     <div class="gw-panel gw-card-raised gw-modal-card" role="dialog" aria-modal="true" aria-labelledby="gw-editcourse-title">
@@ -392,6 +477,12 @@ else if (!Model.PeriodsOk)
 @section scripts {
     <script>
         (function () {
+            // Forms that carry data-confirm ask first (removing a column deletes its scores).
+            document.addEventListener("submit", function (e) {
+                var message = e.target.getAttribute && e.target.getAttribute("data-confirm");
+                if (message && !window.confirm(message)) { e.preventDefault(); }
+            });
+
             var tabs = [].slice.call(document.querySelectorAll('[role="tab"][data-tab]'));
             var hidden = document.getElementById("active-tab");
             if (!tabs.length) { return; }

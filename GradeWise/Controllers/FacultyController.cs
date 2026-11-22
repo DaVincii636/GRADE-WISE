@@ -169,26 +169,28 @@ namespace GradeWise.Controllers
                 return View("Assessment", model);
             }
             TempData["Message"] = "Assessment scores saved.";
-            return RedirectToAction("Course", new { id = id, tab = "midterm" });
+            return RedirectToAction("Course", new { id = id, tab = CourseService.TabOfCategory(id, CurrentFacultyId(), category) });
         }
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public ActionResult AddAssessment(string id, string category, string name)
+        public ActionResult AddAssessment(string id, string category, string name, string maxScore)
         {
+            var facultyId = CurrentFacultyId();
             string error;
-            if (!CourseService.AddAssessment(id, CurrentFacultyId(), category, name, out error)) TempData["Message"] = error;
-            else TempData["Message"] = "Assessment added.";
-            return RedirectToAction("Course", new { id = id });
+            if (!CourseService.AddAssessment(id, facultyId, category, name, maxScore, out error)) TempData["Error"] = error;
+            else TempData["Message"] = "Column added to " + category + ". Enter its highest possible score and the scores in the class record.";
+            return RedirectToAction("Course", new { id = id, tab = CourseService.TabOfCategory(id, facultyId, category) });
         }
 
         [HttpPost]
         [ValidateAntiForgeryToken]
         public ActionResult RemoveAssessment(string id, string category, string assessment)
         {
-            if (!CourseService.RemoveAssessment(id, CurrentFacultyId(), category, assessment)) TempData["Message"] = "The assessment could not be removed. Each category must keep at least one assessment.";
-            else TempData["Message"] = "Assessment removed.";
-            return RedirectToAction("Course", new { id = id });
+            var facultyId = CurrentFacultyId();
+            if (!CourseService.RemoveAssessment(id, facultyId, category, assessment)) TempData["Error"] = "The column could not be removed. Each category must keep at least one column.";
+            else TempData["Message"] = "Column removed along with its scores.";
+            return RedirectToAction("Course", new { id = id, tab = CourseService.TabOfCategory(id, facultyId, category) });
         }
 
         // ---------- Enrollment ----------

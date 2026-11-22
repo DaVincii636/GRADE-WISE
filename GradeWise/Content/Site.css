@@ -5189,3 +5189,91 @@ html.gw-loading button {
     .gw-student-major > summary::before,
     .gw-student-category > summary::before { display: none; }
 }
+
+/* ---------- Class record columns (1, 2, 3 ... with Total and PS) ---------- */
+.gw-classrecord .gw-score-input {
+    width: 4.5em;
+    min-width: 3.5em;
+    padding: 6px 6px;
+}
+
+.gw-classrecord th.gw-group-head {
+    text-align: center;
+    background: var(--gw-lime-pale);
+    border-left: var(--gw-outline);
+    white-space: nowrap;
+}
+
+.gw-classrecord thead th.gw-num {
+    text-align: center;
+}
+
+.gw-classrecord thead tr:nth-child(2) th:not(.gw-sticky-col):first-child,
+.gw-classrecord tbody td.gw-num:first-of-type {
+    border-left: 0;
+}
+
+/* the HIGHEST POSSIBLE SCORE row of the class record */
+.gw-classrecord .gw-hps-row td {
+    background: var(--gw-head);
+    border-bottom: var(--gw-outline);
+}
+
+.gw-classrecord .gw-hps-row td.gw-sticky-col {
+    background: var(--gw-head);
+}
+
+.gw-classrecord .gw-hps-input {
+    font-weight: 700;
+}
+
+/* add and remove columns */
+.gw-col-manage {
+    padding: 12px 0;
+    border-top: 1.5px dashed var(--gw-line);
+}
+
+.gw-col-manage:first-of-type {
+    border-top: 0;
+}
+
+.gw-col-title {
+    margin-bottom: 8px;
+}
+
+.gw-col-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.gw-inline-form {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+}
+
+.gw-col-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 4px 4px 10px;
+    border: var(--gw-outline);
+    background: var(--gw-paper);
+}
+
+.gw-col-add input[type="text"],
+.gw-col-add input[type="number"] {
+    border: var(--gw-outline);
+    border-radius: 0;
+    background: var(--gw-paper);
+    color: var(--gw-ink);
+    font-family: inherit;
+    padding: 6px 8px;
+}
+
+.gw-col-add input[type="text"] { width: 15em; }
+.gw-col-add input[type="number"] { width: 6em; }
