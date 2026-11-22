@@ -103,26 +103,29 @@ else if (!Model.WeightsOk)
 }
 
 <section class="@(hasClass ? "gw-panel gw-benchmark" : "gw-panel gw-benchmark gw-benchmark-empty")" aria-labelledby="benchmark-title">
+    <div class="gw-panel-head">
+        <h2 id="benchmark-title" class="gw-panel-title">How you compare</h2>
+    </div>
+
     @if (hasClass)
     {
-        <div class="gw-benchmark-figure">
-            <img src="@Url.Content("~/Content/img/icons/quote.svg")" alt="" class="gw-quote" width="28" height="28" />
-            <div class="gw-stat-value">@GradeCalculator.Format(Model.ClassAverage)</div>
-        </div>
-        <div class="gw-benchmark-body">
-            <h2 id="benchmark-title" class="gw-panel-title">How you compare</h2>
-            <p>
+        <div class="gw-panel-body gw-benchmark-main">
+            <div class="gw-benchmark-figure">
+                <img src="@Url.Content("~/Content/img/icons/quote.svg")" alt="" class="gw-quote" width="28" height="28" />
+                <div class="gw-stat-value">@GradeCalculator.Format(Model.ClassAverage)</div>
+            </div>
+            <p class="gw-benchmark-text">
                 Class @Model.ScopeLabel average: <strong>@GradeCalculator.Format(Model.ClassAverage)</strong> (@Model.ClassGraded students).
                 @if (gapText != null)
                 {
-                    <span>You: <strong>@GradeCalculator.Format(Model.EarnedGrade)</strong>, <strong>@gapText</strong>.</span>
+                    <span class="gw-benchmark-you">You: <strong>@GradeCalculator.Format(Model.EarnedGrade)</strong>, <strong>@gapText</strong>.</span>
                 }
             </p>
+            <p class="gw-benchmark-note">Only averages are shown, never other students' scores.</p>
         </div>
-        <p class="gw-benchmark-note">Only averages are shown, never other students' scores.</p>
         if (Model.CategoryAverages.Count > 0)
         {
-            <div class="gw-sg-cat-avgs">
+            <div class="gw-panel-body gw-benchmark-cats">
                 <span class="gw-sg-cat-avgs-label">Class PS by category</span>
                 @foreach (var ca in Model.CategoryAverages)
                 {
@@ -133,9 +136,8 @@ else if (!Model.WeightsOk)
     }
     else
     {
-        <div class="gw-benchmark-body">
-            <h2 id="benchmark-title" class="gw-panel-title">How you compare</h2>
-            <p class="gw-muted">
+        <div class="gw-panel-body">
+            <p class="gw-muted gw-benchmark-text">
                 Shown once @Model.MinClassSize or more students have scores, to keep grades private.
             </p>
         </div>

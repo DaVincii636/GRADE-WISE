@@ -2798,16 +2798,12 @@ body.gw-modal-open {
 }
 
 /* ---------- Class benchmark: full-width panel ---------- */
-.gw-benchmark {
+/* Same tab card as the other panels (title on the top edge); the body is a three-part row. */
+.gw-benchmark-main {
     display: grid;
     grid-template-columns: auto 1fr auto;
     align-items: center;
     gap: 24px;
-    padding: 18px 20px;
-}
-
-.gw-benchmark-empty {
-    grid-template-columns: 1fr;
 }
 
 .gw-benchmark-figure {
@@ -2820,12 +2816,12 @@ body.gw-modal-open {
         margin: 0;
     }
 
-.gw-benchmark-body .gw-panel-title {
-    margin: 0 0 6px;
+.gw-benchmark-text {
+    margin: 0;
 }
 
-.gw-benchmark-body p {
-    margin: 0;
+.gw-benchmark-you {
+    display: inline-block;
 }
 
 .gw-benchmark-note {
@@ -2837,8 +2833,18 @@ body.gw-modal-open {
     font-size: 0.85rem;
 }
 
+/* class PS per category: its own row under a thin rule, like the legend under the history chart */
+.gw-benchmark-cats {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    padding-top: 14px;
+    border-top: 1px solid var(--gw-line);
+}
+
 @media (max-width: 719.98px) {
-    .gw-benchmark {
+    .gw-benchmark-main {
         grid-template-columns: 1fr;
         gap: 12px;
     }
@@ -7075,15 +7081,9 @@ button.gw-legend-btn:focus-visible { box-shadow: 3px 3px 0 var(--gw-ink); backgr
 }
 
 /* class PS per category, under the class comparison */
-.gw-student-grades .gw-sg-cat-avgs {
-    grid-column: 1 / -1;
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 6px 8px;
-}
-
 .gw-student-grades .gw-sg-cat-avgs-label {
+    margin-right: 4px;
+    color: var(--gw-muted);
     font-family: var(--gw-font-pixel);
     font-size: 0.7rem;
     letter-spacing: 0.06em;
@@ -7170,6 +7170,9 @@ button.gw-legend-btn:focus-visible { box-shadow: 3px 3px 0 var(--gw-ink); backgr
 .gw-student-grades > .gw-panel,
 .gw-student-whatif .gw-panel,
 .gw-student-whatif .gw-stats { margin-bottom: 28px; }
+
+/* the last panel (How you compare) sits right above the page's own bottom padding, so it adds no extra gap before the footer */
+.gw-student-grades > .gw-panel:last-child { margin-bottom: 0; }
 
 /* My courses: two short lines of text under each course (earned so far, then the goal) */
 .gw-student-grades .gw-sg-rowtext {
