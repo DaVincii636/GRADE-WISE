@@ -6840,3 +6840,84 @@ button.gw-legend-btn:focus-visible { box-shadow: 3px 3px 0 var(--gw-ink); backgr
         scrollbar-color: var(--gw-lime) var(--gw-head);
     }
 }
+
+/* =====================================================================
+   Student > My grades (.gw-student-grades, used together with
+   .gw-faculty-courses for the shared stat tints, course rows, chips and
+   filter bar). Scoped so no other page changes.
+   ===================================================================== */
+.gw-student-grades .gw-stat-lav { background: var(--gw-fc-lav-pale); }
+
+/* the course list: the arrow still points down to the numbers */
+.gw-student-grades .gw-fc-row .gw-collection-chevron {
+    transform: rotate(90deg);
+}
+
+.gw-student-grades .gw-fc-row[aria-current="true"] {
+    background: var(--fc-tone-pale);
+}
+
+.gw-student-grades .gw-fc-row:hover .gw-collection-chevron,
+.gw-student-grades .gw-fc-row:focus-visible .gw-collection-chevron {
+    transform: rotate(90deg) translateX(3px);
+}
+
+/* the panel head holds a title and a chip */
+.gw-student-grades .gw-sg-breakdown .gw-panel-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px 12px;
+}
+
+/* breakdown table: tinted header like the faculty tables */
+.gw-student-grades .gw-sg-breakdown .gw-table thead th {
+    background: var(--gw-acct-blue-pale);
+}
+
+.gw-student-grades .gw-sg-breakdown .gw-table tfoot th {
+    background: var(--gw-acct-gold-pale);
+}
+
+.gw-student-grades .gw-sg-cat {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 700;
+}
+
+.gw-student-grades .gw-sg-dot {
+    flex: 0 0 auto;
+    width: 14px;
+    height: 14px;
+    border: 1.5px solid var(--gw-ink);
+    background: var(--gw-lime);
+}
+
+.gw-student-grades .gw-sg-dot-lime   { background: var(--gw-lime); }
+.gw-student-grades .gw-sg-dot-blue   { background: var(--gw-acct-blue); }
+.gw-student-grades .gw-sg-dot-gold   { background: var(--gw-acct-gold); }
+.gw-student-grades .gw-sg-dot-lav    { background: var(--gw-fc-lav); }
+.gw-student-grades .gw-sg-dot-orange { background: var(--gw-fc-orange); }
+
+.gw-student-grades .gw-sg-period-mid   { background: var(--gw-fc-lav); }
+.gw-student-grades .gw-sg-period-final { background: var(--gw-fc-orange); }
+
+.gw-student-grades .gw-sg-pending {
+    border-style: dashed;
+    font-style: italic;
+}
+
+/* class benchmark: lavender note card */
+.gw-student-grades .gw-benchmark {
+    background: var(--gw-fc-lav-pale);
+}
+
+.gw-student-grades .gw-benchmark .gw-stat-value {
+    text-shadow: 3px 3px 0 var(--gw-fc-lav);
+}
+
+.gw-student-grades .gw-benchmark-empty {
+    background: var(--gw-head);
+}

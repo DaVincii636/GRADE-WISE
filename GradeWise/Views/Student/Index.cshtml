@@ -8,47 +8,18 @@
     var showPeriod = Model.Scope == GradeScopes.FinalGrade;
     // Final Grade shows INC (incomplete) while the Final Term exam is still blank, like the class record.
     var equivalentText = Model.Incomplete ? "INC" : GradeCalculator.Format(Model.Equivalent);
+
+    // Sticker colours cycle through the same accents the faculty My courses page uses.
+    var tones = new[] { "lime", "blue", "gold", "lav", "orange" };
+    var pass = GradeCalculator.PassingAverage;
 }
 
-@* Defined before any early return below, so it also runs when the student has no courses. *@
+@* Defined before the page markup, so it also runs when the student has no courses. The script is in Scripts/student-grades.js. *@
 @section scripts {
-    <script>
-        (function () {
-            // Day and date come from the browser, so they match the student's own time zone.
-            var names = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-            var now = new Date();
-            var two = function (n) { return n < 10 ? "0" + n : "" + n; };
-            var day = document.getElementById("gw-day");
-            var date = document.getElementById("gw-date");
-            if (day) { day.textContent = names[now.getDay()]; }
-            if (date) { date.textContent = two(now.getMonth() + 1) + "/" + two(now.getDate()) + "/" + now.getFullYear(); }
-
-            // Choosing a course scrolls down to its numbers. The flag survives the page reload.
-            var rows = document.querySelectorAll(".gw-picker-panel a.gw-collection-item");
-            for (var r = 0; r < rows.length; r++) {
-                rows[r].addEventListener("click", function () {
-                    try { sessionStorage.setItem("gwScroll", "1"); } catch (e) { }
-                });
-            }
-
-            var flag = null;
-            try {
-                flag = sessionStorage.getItem("gwScroll");
-                sessionStorage.removeItem("gwScroll");
-            } catch (e) { }
-
-            var target = document.getElementById("course-summary");
-            if (flag === "1" && target) {
-                var calm = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-                window.scrollTo(0, 0);
-                window.requestAnimationFrame(function () {
-                    target.scrollIntoView({ behavior: calm ? "auto" : "smooth", block: "start" });
-                });
-            }
-        })();
-    </script>
+    <script src="@Url.Content("~/Scripts/student-grades.js")?v=@System.IO.File.GetLastWriteTimeUtc(Server.MapPath("~/Scripts/student-grades.js")).Ticks"></script>
 }
 
+<div class="gw-faculty-courses gw-student-grades">
 <div class="gw-page-head gw-page-head-date">
     <div>
         <h1 class="gw-page-title">My grades</h1>
@@ -85,32 +56,29 @@
             <p class="gw-muted">You are not enrolled in any course yet. Your instructor enrolls you, and your grades appear here once they do.</p>
         </div>
     </section>
+    @:</div>
     return;
 }
 
-<section class="gw-panel gw-picker-panel">
-    <div class="gw-panel-head">
-        <h2 class="gw-panel-title">Your courses</h2>
-    </div>
-    <ul class="gw-collection">
-        @foreach (var c in Model.Courses)
+<section class="gw-stats" id="course-summary" aria-label="Summary">
+    <div class="gw-stat gw-stat-lime gw-stat-stamp" data-tab="Average">
+        @if (Model.Equivalent.HasValue)
         {
-            var current = c.Id == Model.SelectedId;
-            <li>
-                <a href="@(Url.Action("Index", "Student", new { id = c.Id }) + "#course-summary")" class="gw-collection-item" aria-current="@(current ? "true" : "false")">
-                    <span class="gw-collection-sticker" aria-hidden="true">@(c.Code.Length > 2 ? c.Code.Substring(0, 2) : c.Code)</span>
-                    <span class="gw-collection-main">
-                        <span class="gw-collection-code">@c.Code</span>
-                        <span class="gw-collection-meta">@c.Name &middot; @c.FacultyName</span>
-                    </span>
-                    <img src="@Url.Content("~/Content/img/icons/chevron-right.svg")" alt="" class="gw-collection-chevron" width="20" height="20" />
-                </a>
-            </li>
+            <span class="gw-grade-stamp" aria-label="Equivalent grade @equivalentText">
+                <img src="@Url.Content("~/Content/img/stickers/stamp-ring.svg")" alt="" class="gw-grade-stamp-ring" width="64" height="64" />
+                <span class="gw-grade-stamp-text">@equivalentText</span>
+            </span>
         }
-    </ul>
-    <div class="gw-panel-body gw-collection-actions">
-        @Html.ActionLink("What-If simulator", "WhatIf", "Student", new { id = Model.SelectedId }, new { @class = "gw-btn gw-btn-small" })
-        @Html.ActionLink("Printable summary", "Summary", "Student", new { id = Model.SelectedId }, new { @class = "gw-btn gw-btn-small gw-btn-outline" })
+        <div class="gw-stat-value">@(Model.Average.HasValue ? GradeCalculator.Format(Model.Average) + "%" : "\u2014")</div>
+        <div class="gw-stat-label">Current average <span class="gw-th-sub">(@Model.ScopeLabel, graded work so far)</span></div>
+    </div>
+    <div class="gw-stat gw-stat-blue" data-tab="Equivalent">
+        <div class="gw-stat-value">@equivalentText</div>
+        <div class="gw-stat-label">Equivalent grade <span class="gw-th-sub">(@Model.ScopeLabel, based on points earned so far)</span></div>
+    </div>
+    <div class="gw-stat gw-stat-gold" data-tab="Remaining">
+        <div class="gw-stat-value">@(Model.HasCategories ? GradeCalculator.Format(Model.RemainingWeight) + "%" : "\u2014")</div>
+        <div class="gw-stat-label">Remaining weight <span class="gw-th-sub">(@Model.ScopeLabel, not graded yet)</span></div>
     </div>
 </section>
 
@@ -128,31 +96,61 @@ else if (!Model.WeightsOk)
     </div>
 }
 
-<section class="gw-stats" id="course-summary" aria-label="Summary">
-    <div class="gw-stat gw-stat-stamp" data-tab="Average">
-        @if (Model.Equivalent.HasValue)
+<section class="gw-panel gw-picker-panel gw-fc-panel" aria-labelledby="gw-sg-title">
+    <div class="gw-panel-head">
+        <h2 class="gw-panel-title" id="gw-sg-title">Your courses</h2>
+    </div>
+
+    @* Search filter: hidden until student-grades.js runs (and only shown for longer course lists); without JavaScript every course is listed. *@
+    <div class="gw-panel-body gw-fc-controls" id="gw-fc-controls" hidden>
+        <div class="gw-fc-filters" role="search" aria-label="Filter courses">
+            <div class="gw-fc-filter gw-fc-filter-search">
+                <label for="gw-fc-search">Search</label>
+                <input type="search" id="gw-fc-search" class="gw-inline-select" placeholder="Course code, name or instructor" autocomplete="off" spellcheck="false" />
+            </div>
+            <button type="button" class="gw-btn gw-btn-small gw-btn-outline" id="gw-fc-clear">Clear filters</button>
+        </div>
+        <p class="gw-fc-count" id="gw-fc-count" aria-live="polite"></p>
+    </div>
+
+    <ul class="gw-collection" id="gw-fc-list">
+        @for (var i = 0; i < Model.Courses.Count; i++)
         {
-            <span class="gw-grade-stamp" aria-label="Equivalent grade @equivalentText">
-                <img src="@Url.Content("~/Content/img/stickers/stamp-ring.svg")" alt="" class="gw-grade-stamp-ring" width="64" height="64" />
-                <span class="gw-grade-stamp-text">@equivalentText</span>
-            </span>
+            var c = Model.Courses[i];
+            var tone = tones[i % tones.Length];
+            var current = c.Id == Model.SelectedId;
+            <li data-course-row data-search="@((c.Code + " " + c.Name + " " + c.FacultyName).ToLowerInvariant())">
+                <a href="@(Url.Action("Index", "Student", new { id = c.Id }) + "#course-summary")" class="gw-collection-item gw-collection-row gw-fc-row gw-fc-row-@tone" aria-current="@(current ? "true" : "false")">
+                    <span class="gw-collection-sticker gw-fc-sticker gw-fc-sticker-@tone" aria-hidden="true">@(c.Code.Length > 2 ? c.Code.Substring(0, 2) : c.Code)</span>
+                    <span class="gw-collection-main">
+                        <span class="gw-collection-code">@c.Code &middot; @c.Name</span>
+                        <span class="gw-collection-meta gw-fc-meta">
+                            <span class="gw-fc-chip gw-fc-chip-section">@c.FacultyName</span>
+                            @if (current)
+                            {
+                                <span class="gw-fc-chip gw-fc-avg-high">Viewing now</span>
+                            }
+                        </span>
+                    </span>
+                    <img src="@Url.Content("~/Content/img/icons/chevron-right.svg")" alt="" class="gw-collection-chevron" width="20" height="20" />
+                </a>
+            </li>
         }
-        <div class="gw-stat-value">@(Model.Average.HasValue ? GradeCalculator.Format(Model.Average) + "%" : "\u2014")</div>
-        <div class="gw-stat-label">Current average <span class="gw-th-sub">(@Model.ScopeLabel, graded work so far)</span></div>
-    </div>
-    <div class="gw-stat" data-tab="Equivalent">
-        <div class="gw-stat-value">@equivalentText</div>
-        <div class="gw-stat-label">Equivalent grade <span class="gw-th-sub">(@Model.ScopeLabel, based on points earned so far)</span></div>
-    </div>
-    <div class="gw-stat" data-tab="Remaining">
-        <div class="gw-stat-value">@(Model.HasCategories ? GradeCalculator.Format(Model.RemainingWeight) + "%" : "\u2014")</div>
-        <div class="gw-stat-label">Remaining weight <span class="gw-th-sub">(@Model.ScopeLabel, not graded yet)</span></div>
+        <li class="gw-fc-empty" id="gw-fc-empty" hidden>
+            <span>No courses match this search.</span>
+            <button type="button" class="gw-fc-linkbtn" data-fc-clear>Clear filters</button>
+        </li>
+    </ul>
+    <div class="gw-panel-body gw-collection-actions">
+        @Html.ActionLink("What-If simulator", "WhatIf", "Student", new { id = Model.SelectedId }, new { @class = "gw-btn gw-btn-small" })
+        @Html.ActionLink("Printable summary", "Summary", "Student", new { id = Model.SelectedId }, new { @class = "gw-btn gw-btn-small gw-btn-outline" })
     </div>
 </section>
 
-<section class="gw-panel">
+<section class="gw-panel gw-sg-breakdown">
     <div class="gw-panel-head">
         <h2 class="gw-panel-title">Assessment breakdown</h2>
+        <span class="gw-fc-chip gw-fc-chip-term">@Model.Code &middot; @Model.ScopeLabel</span>
     </div>
     <div class="gw-table-wrap">
         <table class="gw-table">
@@ -176,23 +174,35 @@ else if (!Model.WeightsOk)
                         <td colspan="@(showPeriod ? 6 : 5)" class="gw-empty">Your scores appear here once your instructor enters them.</td>
                     </tr>
                 }
-                @foreach (var r in Model.Rows)
+                @for (var i = 0; i < Model.Rows.Count; i++)
                 {
+                    var r = Model.Rows[i];
+                    var tone = tones[i % tones.Length];
+                    // Passing mark is 65: lime at 75 and above, gold from 65, orange below.
+                    var scoreClass = !r.Score.HasValue ? "gw-fc-avg-none"
+                                   : r.Score.Value >= 75 ? "gw-fc-avg-high"
+                                   : r.Score.Value >= pass ? "gw-fc-avg-mid"
+                                   : "gw-fc-avg-low";
                     <tr>
-                        <td>@r.Category</td>
+                        <td>
+                            <span class="gw-sg-cat">
+                                <span class="gw-sg-dot gw-sg-dot-@tone" aria-hidden="true"></span>
+                                @r.Category
+                            </span>
+                        </td>
                         @if (showPeriod)
                         {
-                            <td>@r.Period</td>
+                            <td><span class="gw-fc-chip @(r.Period == GradePeriods.Midterm ? "gw-sg-period-mid" : "gw-sg-period-final")">@r.Period</span></td>
                         }
                         <td class="gw-num">@GradeCalculator.Format(r.Weight)%</td>
                         <td class="gw-num">
                             @if (r.Score.HasValue)
                             {
-                                @GradeCalculator.Format(r.Score)
+                                <span class="gw-fc-chip @scoreClass">@GradeCalculator.Format(r.Score)</span>
                             }
                             else
                             {
-                                <span class="gw-cell-empty">Not graded yet</span>
+                                <span class="gw-fc-chip gw-fc-avg-none gw-sg-pending">Not graded yet</span>
                             }
                         </td>
                         <td class="gw-num">@GradeCalculator.Format(r.WeightedPoints)</td>
@@ -273,3 +283,4 @@ else if (!Model.WeightsOk)
         </div>
     }
 </section>
+</div>
