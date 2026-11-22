@@ -50,16 +50,25 @@ namespace GradeWise.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public ActionResult CreateUser(string fullName, string loginId, string email, string role)
+        public ActionResult CreateUser(string fullName, string loginId, string email, string role,
+            string firstName, string middleName, string lastName, string suffix)
         {
-            fullName = (fullName ?? string.Empty).Trim();
+            firstName = (firstName ?? string.Empty).Trim();
+            middleName = (middleName ?? string.Empty).Trim();
+            lastName = (lastName ?? string.Empty).Trim();
+            suffix = (suffix ?? string.Empty).Trim();
+            var validSuffixes = new[] { "", "Jr.", "Sr.", "II", "III", "IV", "V" };
+            fullName = string.Join(" ", new[] { firstName, middleName, lastName, suffix }.Where(x => !string.IsNullOrWhiteSpace(x))).Trim();
             loginId = (loginId ?? string.Empty).Trim();
             email = (email ?? string.Empty).Trim().ToLowerInvariant();
 
             var errors = new List<string>();
 
-            if (fullName.Length == 0) errors.Add("Full name is required.");
-            else if (fullName.Length > 100) errors.Add("Full name must be 100 characters or fewer.");
+            if (firstName.Length == 0) errors.Add("First name is required.");
+            if (lastName.Length == 0) errors.Add("Last name is required.");
+            if (new[] { firstName, middleName, lastName }.Any(x => x.Length > 40)) errors.Add("Each name field must be 40 characters or fewer.");
+            if (!validSuffixes.Contains(suffix)) errors.Add("Choose a valid suffix.");
+            if (fullName.Length > 100) errors.Add("Full name must be 100 characters or fewer.");
 
             if (loginId.Length == 0) errors.Add("Student number or username is required.");
             else if (!LoginIdPattern.IsMatch(loginId))
@@ -92,6 +101,10 @@ namespace GradeWise.Controllers
                         Id = "u-" + Guid.NewGuid().ToString("N").Substring(0, 8),
                         StudentNo = loginId,
                         FullName = fullName,
+                        FirstName = firstName,
+                        MiddleName = middleName,
+                        LastName = lastName,
+                        Suffix = suffix,
                         Email = email,
                         PasswordHash = hash,
                         Salt = salt,

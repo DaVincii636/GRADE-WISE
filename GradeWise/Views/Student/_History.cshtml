@@ -43,8 +43,7 @@
     {
         <div class="gw-panel-body gw-history-note">
             <p class="gw-muted gw-small">
-                @Model.HistoryHidden earlier @(Model.HistoryHidden == 1 ? "entry was" : "entries were") saved before Midterm and Final Term were tracked separately;
-                @(Model.HistoryHidden == 1 ? "it appears" : "they appear") under Final Grade.
+                @Model.HistoryHidden older @(Model.HistoryHidden == 1 ? "entry predates" : "entries predate") separate Midterm and Final Term tracking and @(Model.HistoryHidden == 1 ? "appears" : "appear") under Final Grade.
             </p>
         </div>
     }
@@ -54,7 +53,7 @@
         <div class="gw-panel-body gw-empty-state">
             <img src="@Url.Content("~/Content/img/stickers/mascot-cat.svg")" alt="" class="gw-empty-mascot" width="72" height="72" />
             <p class="gw-empty-title">No history yet</p>
-            <p class="gw-muted">A snapshot of your @(Model.Scope == GradeWise.Models.GradeScopes.FinalGrade ? "Final Grade" : Model.ScopeLabel + " grade") is saved each time your instructor updates your scores.</p>
+            <p class="gw-muted">A snapshot is saved each time your instructor updates your scores.</p>
         </div>
     }
     else
@@ -64,25 +63,32 @@
             <div class="gw-panel-body">
                 <svg class="gw-chart" viewBox="0 0 @W @H" role="img"
                      aria-label="Line chart of your @gradeHead over time, from @GradeCalculator.Format(points[0].Earned) to @GradeCalculator.Format(points[points.Count - 1].Earned) out of 100. Passing is @(pass.ToString("0")).">
-                    @foreach (var tick in new[] { 0, 50, 100 })
+                    @foreach (var tick in new[] { 0, 100 })
                     {
                         <line class="gw-chart-grid" x1="@GradeCalculator.Raw(L)" x2="@GradeCalculator.Raw(W - R)" y1="@GradeCalculator.Raw(py(tick))" y2="@GradeCalculator.Raw(py(tick))" />
                         @Html.Raw(label(L - 6, py(tick) + 4, "end", tick.ToString()))
                     }
                     <line class="gw-chart-pass" x1="@GradeCalculator.Raw(L)" x2="@GradeCalculator.Raw(W - R)" y1="@GradeCalculator.Raw(py(pass))" y2="@GradeCalculator.Raw(py(pass))" />
                     @Html.Raw(label(L - 6, py(pass) + 4, "end", pass.ToString("0")))
-                    @Html.Raw(label(W - R, py(pass) - 4, "end", "passing " + pass.ToString("0")))
 
                     <polygon class="gw-chart-area" points="@areaPoints" />
                     <polyline class="gw-chart-line" points="@linePoints" />
 
+                    @* Each point gets a tall hover band (like the faculty Analytics charts): hover or focus it to see the grade. *@
                     @for (var i = 0; i < points.Count; i++)
                     {
-                        <circle class="gw-chart-dot" cx="@GradeCalculator.Raw(px(i))" cy="@GradeCalculator.Raw(py(points[i].Earned))" r="4">
-                            <title>@points[i].Label: @gradeHead @GradeCalculator.Format(points[i].Earned)</title>
-                        </circle>
+                        var step = (W - L - R) / (points.Count - 1);
+                        // Plain words only, no symbols: "11/23/2026 3:39 AM, Midterm grade 66.75, Equivalent 3.00, up 2.00".
+                        var tip = points[i].Label + ", " + gradeHead + " " + GradeCalculator.Format(points[i].Earned)
+                                  + ", Equivalent " + (points[i].HasGrades ? GradeCalculator.Format(points[i].Equivalent) : "none yet")
+                                  + (points[i].Change.HasValue ? ", " + (points[i].Change.Value >= 0 ? "up " : "down ") + GradeCalculator.Format(Math.Abs(points[i].Change.Value)) : "");
+                        <g class="gw-hit gw-history-hit" data-tooltip="@tip" data-iso="@points[i].Iso" tabindex="0" role="img" aria-label="@tip">
+                            <rect class="gw-hit-area" x="@GradeCalculator.Raw(px(i) - step / 2)" y="@GradeCalculator.Raw(T)" width="@GradeCalculator.Raw(step)" height="@GradeCalculator.Raw(H - T - B)" />
+                            <circle class="gw-chart-dot" cx="@GradeCalculator.Raw(px(i))" cy="@GradeCalculator.Raw(py(points[i].Earned))" r="4" />
+                        </g>
                     }
                 </svg>
+                <p class="gw-chart-legend"><span class="gw-chart-key" aria-hidden="true"></span>Dashed line: passing grade (@(pass.ToString("0")))</p>
             </div>
         }
 
@@ -150,9 +156,48 @@
 
 <script>
     (function () {
+        // Hover tooltip for the chart (anything with class gw-hit and a data-tooltip), same as faculty Analytics.
+        (function () {
+            var tip = document.createElement("div");
+            tip.className = "gw-tip";
+            tip.setAttribute("role", "tooltip");
+            tip.hidden = true;
+            document.body.appendChild(tip);
+
+            function place(x, y) {
+                var w = tip.offsetWidth, h = tip.offsetHeight;
+                var left = Math.max(8, Math.min(x - w / 2, window.innerWidth - w - 8));
+                var top = y - h - 14;
+                if (top < 8) top = y + 20;
+                tip.style.left = left + "px";
+                tip.style.top = top + "px";
+            }
+            function hit(node) {
+                return node && node.closest ? node.closest(".gw-hit[data-tooltip]") : null;
+            }
+            document.addEventListener("mousemove", function (e) {
+                var el = hit(e.target);
+                if (!el) { tip.hidden = true; return; }
+                tip.textContent = el.getAttribute("data-tooltip");
+                tip.hidden = false;
+                place(e.clientX, e.clientY);
+            });
+            document.addEventListener("focusin", function (e) {
+                var el = hit(e.target);
+                if (!el) return;
+                var r = el.getBoundingClientRect();
+                tip.textContent = el.getAttribute("data-tooltip");
+                tip.hidden = false;
+                place(r.left + r.width / 2, r.top);
+            });
+            document.addEventListener("focusout", function () { tip.hidden = true; });
+            window.addEventListener("scroll", function () { tip.hidden = true; }, true);
+        })();
+
         function pad(n) { return n < 10 ? "0" + n : String(n); }
 
         // Show each time in the viewer's own time zone as MM/DD/YYYY h:mm AM/PM.
+        var localTimes = {};
         var times = document.querySelectorAll("time.gw-history-time[datetime]");
         for (var t = 0; t < times.length; t++) {
             var d = new Date(times[t].getAttribute("datetime"));
@@ -161,8 +206,22 @@
             var suffix = hours >= 12 ? "PM" : "AM";
             hours = hours % 12;
             if (hours === 0) hours = 12;
-            times[t].textContent = pad(d.getMonth() + 1) + "/" + pad(d.getDate()) + "/" + d.getFullYear() +
+            var shown = pad(d.getMonth() + 1) + "/" + pad(d.getDate()) + "/" + d.getFullYear() +
                 " " + hours + ":" + pad(d.getMinutes()) + " " + suffix;
+            times[t].textContent = shown;
+            localTimes[times[t].getAttribute("datetime")] = shown;
+        }
+
+        // The chart tooltips start with the same time, so they show the viewer's own time too.
+        var hits = document.querySelectorAll(".gw-history-hit[data-iso]");
+        for (var k = 0; k < hits.length; k++) {
+            var local = localTimes[hits[k].getAttribute("data-iso")];
+            var text = hits[k].getAttribute("data-tooltip") || "";
+            var cut = text.indexOf(", ");
+            if (!local || cut < 0) continue;
+            var fixed = local + text.substring(cut);
+            hits[k].setAttribute("data-tooltip", fixed);
+            hits[k].setAttribute("aria-label", fixed);
         }
 
         // "and N more" in the What changed column: show the full list, "show less" folds it back.

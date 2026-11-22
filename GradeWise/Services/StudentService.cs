@@ -44,6 +44,38 @@ namespace GradeWise.Services
             return model;
         }
 
+        /// <summary>The "My courses" list: every course with what the student has earned so far in its shown term.</summary>
+        public static StudentDashboardViewModel GetCourseList(string studentId)
+        {
+            var model = new StudentDashboardViewModel { MinClassSize = MinClassSize };
+            var db = new MongoDbContext();
+
+            var mine = db.Courses
+                .Find(c => c.StudentIds.Contains(studentId))
+                .SortBy(c => c.Code)
+                .ThenBy(c => c.Name)
+                .ToList();
+
+            model.Courses = CourseOptions(db, mine);
+            model.HasCourse = mine.Count > 0;
+
+            for (var i = 0; i < mine.Count; i++)
+            {
+                var course = mine[i];
+                var scope = GradeScopes.Normalize(course.ReflectedScope);
+                var result = GradeCalculator.CalculateScope(course.Categories, ScoresOf(db, course, studentId), scope);
+                var option = model.Courses[i];
+                option.ScopeLabel = GradeScopes.Label(scope);
+                option.Earned = result.Earned;
+                option.EarnedGrade = result.EarnedOrNull;
+                option.RemainingWeight = result.RemainingWeight;
+                option.Ready = GradeCalculator.ScopeCategories(course.Categories, scope).Any()
+                    && GradeCalculator.ScopeReady(course.Categories, scope);
+            }
+
+            return model;
+        }
+
         public static WhatIfViewModel GetWhatIf(string studentId, string requestedCourseId)
         {
             var model = new WhatIfViewModel();
@@ -84,17 +116,26 @@ namespace GradeWise.Services
                 ? Math.Max(0, Math.Min(100, Math.Round(result.Average.Value)))
                 : 75;
 
+            var perTerm = new Dictionary<string, int>();
             foreach (var category in GradeCalculator.ScopeCategories(course.Categories, scope))
             {
                 var own = FindScore(scores, category.Name);
                 var weight = GradeCalculator.ScopeWeight(category, scope);
+                var period = GradePeriods.Normalize(category.Period);
+                var group = GradeGroups.Normalize(category.Group);
+
+                int position;
+                perTerm.TryGetValue(period, out position);
+                perTerm[period] = position + 1;
+                model.Positions[period + "|" + category.Name] = position;
 
                 if (own.HasValue)
                 {
                     model.Graded.Add(new BreakdownRow
                     {
                         Category = category.Name,
-                        Period = GradePeriods.Normalize(category.Period),
+                        Period = period,
+                        Group = group,
                         Weight = weight,
                         Score = own,
                         WeightedPoints = weight * own.Value / 100.0
@@ -102,7 +143,7 @@ namespace GradeWise.Services
                 }
                 else
                 {
-                    model.Ungraded.Add(new GradeCategory { Name = category.Name, Period = GradePeriods.Normalize(category.Period), Weight = weight });
+                    model.Ungraded.Add(new GradeCategory { Name = category.Name, Period = period, Group = group, Weight = weight });
                 }
             }
 
@@ -187,6 +228,7 @@ namespace GradeWise.Services
             model.Earned = result.Earned;
             model.EarnedGrade = result.EarnedOrNull;
             model.RemainingWeight = result.RemainingWeight;
+            model.Incomplete = scope == GradeScopes.FinalGrade && GradeCalculator.IsIncomplete(course.Categories, mine);
 
             model.History = historyPoints;
             model.HistoryHidden = hiddenCount;
@@ -196,6 +238,8 @@ namespace GradeWise.Services
             var summary = GradeCalculator.Summarize(earned);
             model.ClassGraded = summary.Graded;
             model.ClassAverage = summary.Graded >= MinClassSize ? summary.Average : null;
+
+            FillTerms(model, course, mine, everyone, scope);
 
             foreach (var category in GradeCalculator.ScopeCategories(course.Categories, scope))
             {
@@ -217,6 +261,98 @@ namespace GradeWise.Services
                     WeightedPoints = own.HasValue ? (double?)(weight * own.Value / 100.0) : null,
                     ClassAverage = classScores.Count >= MinClassSize ? (double?)classScores.Average() : null
                 });
+            }
+        }
+
+        /// <summary>
+        /// Builds the term tables the same way the faculty score table is built: Class Standing then Exam,
+        /// every assessment box, Total, PS, and the Earned grade and Eq. of each term.
+        /// </summary>
+        private static void FillTerms(StudentDashboardViewModel model, Course course, List<ScoreEntry> mine, List<List<ScoreEntry>> everyone, string scope)
+        {
+            model.ActiveTab = scope;
+            model.ShowFinalGrade = scope == GradeScopes.FinalGrade;
+
+            var midterm = GradeCalculator.CalculatePeriod(course.Categories, mine, GradePeriods.Midterm);
+            var finalTerm = GradeCalculator.CalculatePeriod(course.Categories, mine, GradePeriods.FinalTerm);
+            model.MidtermEarned = midterm.EarnedOrNull;
+            model.MidtermEquivalent = GradeCalculator.EquivalentFromEarned(midterm);
+            model.FinalTermEarned = finalTerm.EarnedOrNull;
+            model.FinalTermEquivalent = GradeCalculator.EquivalentFromEarned(finalTerm);
+
+            foreach (var period in GradePeriods.All)
+            {
+                // Only what the instructor released: one term, or both for the Final Grade.
+                if (!GradeScopes.Includes(scope, new GradeCategory { Period = period })) continue;
+
+                var result = period == GradePeriods.Midterm ? midterm : finalTerm;
+                var table = new StudentTermTable
+                {
+                    Period = period,
+                    Key = period == GradePeriods.Midterm ? GradeScopes.Midterm : GradeScopes.FinalTerm,
+                    WeightTotal = GradeCalculator.PeriodTotal(course.Categories, period),
+                    Earned = result.EarnedOrNull,
+                    Equivalent = GradeCalculator.EquivalentFromEarned(result)
+                };
+
+                var categories = course.Categories
+                    .Where(c => GradePeriods.Normalize(c.Period) == period)
+                    .OrderBy(c => GradeGroups.Normalize(c.Group) == GradeGroups.Exam ? 1 : 0)
+                    .ToList();
+
+                foreach (var category in categories)
+                {
+                    var entry = mine.FirstOrDefault(s => string.Equals(s.Category, category.Name, StringComparison.OrdinalIgnoreCase));
+                    var cell = new StudentCategoryCell
+                    {
+                        Name = category.Name,
+                        Group = GradeGroups.Normalize(category.Group),
+                        Weight = category.Weight
+                    };
+
+                    double total = 0, gradedMax = 0;
+                    var any = false;
+
+                    foreach (var assessment in CourseService.OrderedAssessments(category))
+                    {
+                        var own = entry == null || entry.AssessmentScores == null
+                            ? null
+                            : entry.AssessmentScores.FirstOrDefault(a => a.AssessmentId == assessment.Id);
+
+                        cell.Assessments.Add(new StudentAssessmentCell
+                        {
+                            Name = assessment.Name,
+                            MaxScore = assessment.MaxScore,
+                            Score = own != null ? own.Score : null
+                        });
+                        cell.HighestTotal += assessment.MaxScore;
+
+                        if (own != null && own.Score.HasValue)
+                        {
+                            any = true;
+                            total += own.Score.Value;
+                            gradedMax += assessment.MaxScore;
+                        }
+                    }
+
+                    cell.GradedMax = gradedMax;
+                    cell.Total = any ? (double?)Math.Round(total, 2) : null;
+                    cell.Percent = any && gradedMax > 0 ? (double?)(total / gradedMax * 100.0) : null;
+                    table.Categories.Add(cell);
+
+                    // Anonymous class average of the category's PS, only when enough students have a score.
+                    var classScores = everyone
+                        .Select(s => FindScore(s, category.Name))
+                        .Where(v => v.HasValue)
+                        .Select(v => v.Value)
+                        .ToList();
+                    if (classScores.Count >= MinClassSize)
+                    {
+                        model.CategoryAverages.Add(new CategoryAverage { Name = category.Name, Period = period, Average = classScores.Average() });
+                    }
+                }
+
+                model.Terms.Add(table);
             }
         }
 

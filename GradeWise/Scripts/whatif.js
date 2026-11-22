@@ -47,7 +47,7 @@
         return { status: status, required: required };
     }
 
-    // scale: [{ min: 97, grade: 1 }, ...] highest first. Below the last line is 5.00.
+    // scale: [{ min: 96.5, grade: 1 }, ...] highest first. Below the last line is 5.00.
     function equivalentGrade(average, scale) {
         var value = Math.round(average * 1e6) / 1e6;
         for (var i = 0; i < scale.length; i++) {
@@ -90,7 +90,7 @@
         var remaining = parseFloat(host.getAttribute("data-remaining"));
         var defaultScore = parseFloat(host.getAttribute("data-default"));
         var targetAttr = parseFloat(host.getAttribute("data-target"));
-        var defaultTarget = isFinite(targetAttr) ? targetAttr : 65;   // 65 = GradeCalculator.PassingAverage
+        var defaultTarget = isFinite(targetAttr) ? targetAttr : 64.5;   // 64.5 = GradeCalculator.PassingAverage
 
         var finalOut = document.getElementById("sim-final");
         var gradeOut = document.getElementById("sim-grade");
@@ -173,14 +173,14 @@
             });
 
             if (projected === null) {
-                calcSum.textContent = "Enter a score from 0 to 100 in each highlighted box to see the total.";
+                calcSum.textContent = "Enter 0 to 100 in each highlighted box.";
                 calcTotal.textContent = "\u2014";
                 calcGrade.textContent = "\u2014";
                 return;
             }
 
             calcSum.textContent = parts.join(" + ") + " = " + fmt(projected);
-            calcTotal.textContent = fmt(projected) + "%";
+            calcTotal.textContent = fmt(projected);
             calcGrade.textContent = fmt(equivalentGrade(projected, scale));
         }
 
@@ -204,14 +204,14 @@
             var projected = null;
             if (allValid) {
                 projected = projectFinal(earned, weights, scores);
-                finalOut.textContent = fmt(projected) + "%";
+                finalOut.textContent = fmt(projected);
                 gradeOut.textContent = fmt(equivalentGrade(projected, scale));
                 setMessage(scenarioMsg, "", "");
                 scenarioMsg.style.display = "none";
             } else {
                 finalOut.textContent = "\u2014";
                 gradeOut.textContent = "\u2014";
-                setMessage(scenarioMsg, "", "Enter a score from 0 to 100 in each highlighted box.");
+                setMessage(scenarioMsg, "", "Enter 0 to 100 in each highlighted box.");
                 scenarioMsg.style.display = "";
             }
 
@@ -239,15 +239,14 @@
             var head = "Target " + fmt(target) + "% (grade " + targetGrade + "). ";
 
             if (result.status === "Secured") {
-                setMessage(targetMsg, "ok", head + "Already secured: your " + fmt(earned) +
-                    " points meet it, even if the rest of your work scored 0.");
+                setMessage(targetMsg, "ok", head + "Secured. Your " + fmt(earned) + " points already meet it.");
             } else if (result.status === "OutOfReach") {
                 var best = earned + remaining;
-                setMessage(targetMsg, "warn", head + "Out of reach: even 100 on everything left gives at most " +
-                    fmt(best) + "% (grade " + fmt(equivalentGrade(best, scale)) + ").");
+                setMessage(targetMsg, "warn", head + "Out of reach. Even 100 on everything left gives " +
+                    fmt(best) + "% at most (grade " + fmt(equivalentGrade(best, scale)) + ").");
             } else if (result.status === "Reachable") {
                 setMessage(targetMsg, "info", head + "You need an average of " + fmt(result.required) +
-                    "% across the remaining " + fmt(remaining) + "% of the course.");
+                    "% on the remaining " + fmt(remaining) + "%.");
                 applyBtn.style.display = "";
                 applyBtn.setAttribute("data-required", String(roundUpScore(result.required)));
             }
@@ -255,10 +254,10 @@
             if (projected !== null) {
                 var gap = projected - target;
                 if (gap >= -TARGET_TOLERANCE) {
-                    compareMsg.textContent = "Your scenario finishes at " + fmt(projected) + "%, which meets this target.";
+                    compareMsg.textContent = "Your scenario ends at " + fmt(projected) + "%. Target met.";
                 } else {
-                    compareMsg.textContent = "Your scenario finishes at " + fmt(projected) + "%, which is " +
-                        fmt(-gap) + " points short of this target.";
+                    compareMsg.textContent = "Your scenario ends at " + fmt(projected) + "%, " +
+                        fmt(-gap) + " points short.";
                 }
             }
         }
@@ -299,13 +298,64 @@
             update();
         });
 
+        // The target is the student's goal. It is kept in this browser under the key the page gives us, so the Course
+        // page and My courses show the same goal. Reset only puts the boxes back; it never clears the saved goal.
+        var goalKey = host.getAttribute("data-goal-key");
+        var goalNote = document.getElementById("sim-goal-note");
+        var clearGoalBtn = document.getElementById("sim-goal-clear");
+
+        function readSavedGoal() {
+            if (!goalKey) return null;
+            try {
+                var v = parseFloat(localStorage.getItem(goalKey));
+                return isFinite(v) && v >= 0 && v <= 100 ? v : null;
+            } catch (e) { return null; }
+        }
+        function showGoalNote() {
+            var saved = readSavedGoal() !== null;
+            if (goalNote) {
+                goalNote.textContent = saved
+                    ? "Saved as your goal. It shows on this course's page and on My courses."
+                    : "Not saved yet. Pick a grade or move the slider to save it as your goal.";
+            }
+            if (clearGoalBtn) clearGoalBtn.hidden = !saved;
+        }
+        function saveGoal() {
+            var t = readNumber(targetNum);
+            if (!goalKey || t === null) return;
+            try { localStorage.setItem(goalKey, String(t)); } catch (e) { }
+            showGoalNote();
+        }
+
+        var firstGoal = readSavedGoal();
+        if (firstGoal !== null) {
+            targetNum.value = String(firstGoal);
+            targetRange.value = String(firstGoal);
+        }
+        showGoalNote();
+
+        targetRange.addEventListener("input", saveGoal);
+        targetNum.addEventListener("input", saveGoal);
+        chips.forEach(function (chip) { chip.addEventListener("click", saveGoal); });
+
+        if (clearGoalBtn) {
+            clearGoalBtn.addEventListener("click", function () {
+                try { localStorage.removeItem(goalKey); } catch (e) { }
+                targetNum.value = String(defaultTarget);
+                targetRange.value = String(defaultTarget);
+                showGoalNote();
+                update();
+            });
+        }
+
         resetBtn.addEventListener("click", function () {
             rows.forEach(function (row) {
                 row.num.value = String(defaultScore);
                 row.range.value = String(defaultScore);
             });
-            targetNum.value = String(defaultTarget);
-            targetRange.value = String(defaultTarget);
+            var keep = readSavedGoal();
+            targetNum.value = String(keep !== null ? keep : defaultTarget);
+            targetRange.value = targetNum.value;
             update();
         });
 

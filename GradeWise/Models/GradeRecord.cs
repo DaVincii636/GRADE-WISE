@@ -9,6 +9,15 @@ namespace GradeWise.Models
         public string Category { get; set; }
 
         public double? Score { get; set; }
+
+        /// <summary>Individual scores keyed by the assessment definition on the course.</summary>
+        public List<AssessmentScoreEntry> AssessmentScores { get; set; } = new List<AssessmentScoreEntry>();
+    }
+
+    public class AssessmentScoreEntry
+    {
+        public string AssessmentId { get; set; }
+        public double? Score { get; set; }
     }
 
     /// <summary>Grades of one student in one course.</summary>

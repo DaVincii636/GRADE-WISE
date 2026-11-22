@@ -11,6 +11,21 @@ namespace GradeWise.Models
 
         /// <summary>The instructor's full name, or "Unassigned" when the course has none.</summary>
         public string FacultyName { get; set; }
+
+        /// <summary>"Midterm", "Final Term" or "Final Grade": what the instructor currently shows.</summary>
+        public string ScopeLabel { get; set; } = "Midterm";
+
+        /// <summary>Points earned out of 100 in that scope, or null until something is graded.</summary>
+        public double? EarnedGrade { get; set; }
+
+        /// <summary>Points earned so far (0 when nothing is graded), used for the goal sum on My courses.</summary>
+        public double Earned { get; set; }
+
+        /// <summary>Weight not graded yet.</summary>
+        public double RemainingWeight { get; set; }
+
+        /// <summary>True when the scope has categories and its weights total 100, so a goal can be worked out.</summary>
+        public bool Ready { get; set; }
     }
 
     /// <summary>One line of the assessment breakdown. Only the student's own score is here.</summary>
@@ -20,6 +35,9 @@ namespace GradeWise.Models
 
         /// <summary>"Midterm" or "Final Term".</summary>
         public string Period { get; set; }
+
+        /// <summary>"Class Standing" or "Exam".</summary>
+        public string Group { get; set; }
 
         /// <summary>Effective weight: the category's weight inside its period x the period's share (so the course totals 100).</summary>
         public double Weight { get; set; }
@@ -32,6 +50,72 @@ namespace GradeWise.Models
 
         /// <summary>Anonymous class average for this category. Null when too few students have a score.</summary>
         public double? ClassAverage { get; set; }
+    }
+
+    /// <summary>One assessment box of a category (Quiz 1, Quiz 2, ...), like a column of the faculty score table.</summary>
+    public class StudentAssessmentCell
+    {
+        public string Name { get; set; }
+
+        /// <summary>Highest possible score of this assessment.</summary>
+        public double MaxScore { get; set; }
+
+        /// <summary>The student's own score, or null while it is not graded.</summary>
+        public double? Score { get; set; }
+    }
+
+    /// <summary>One category block of the student's score table: its boxes, Total and PS (same numbers the faculty table shows).</summary>
+    public class StudentCategoryCell
+    {
+        public string Name { get; set; }
+
+        /// <summary>"Class Standing" or "Exam".</summary>
+        public string Group { get; set; }
+
+        /// <summary>Weight inside its period (raw, the weights of a period total 100).</summary>
+        public double Weight { get; set; }
+
+        public List<StudentAssessmentCell> Assessments { get; set; } = new List<StudentAssessmentCell>();
+
+        /// <summary>Highest possible total of every assessment (the HIGHEST POSSIBLE SCORE row).</summary>
+        public double HighestTotal { get; set; }
+
+        /// <summary>Sum of the scores entered. Null when nothing is entered.</summary>
+        public double? Total { get; set; }
+
+        /// <summary>Highest possible total of the assessments that have a score entered.</summary>
+        public double GradedMax { get; set; }
+
+        /// <summary>PS: Total / GradedMax x 100. Null when nothing is entered.</summary>
+        public double? Percent { get; set; }
+    }
+
+    /// <summary>One term's table (Midterm or Final Term), laid out like the faculty score table.</summary>
+    public class StudentTermTable
+    {
+        /// <summary>"Midterm" or "Final Term".</summary>
+        public string Period { get; set; }
+
+        /// <summary>Tab key: "midterm" or "final-term".</summary>
+        public string Key { get; set; }
+
+        /// <summary>Class Standing categories first, then Exam.</summary>
+        public List<StudentCategoryCell> Categories { get; set; } = new List<StudentCategoryCell>();
+
+        public double WeightTotal { get; set; }
+
+        /// <summary>Points earned in this term out of 100 (ungraded work counts as 0). Null until something is graded.</summary>
+        public double? Earned { get; set; }
+
+        public double? Equivalent { get; set; }
+    }
+
+    /// <summary>Anonymous class average (PS) of one category. Only filled when enough students have a score.</summary>
+    public class CategoryAverage
+    {
+        public string Name { get; set; }
+        public string Period { get; set; }
+        public double Average { get; set; }
     }
 
     /// <summary>Everything the student dashboard shows. It never contains another student's name or score.</summary>
@@ -75,7 +159,27 @@ namespace GradeWise.Models
 
         public double RemainingWeight { get; set; }
 
+        /// <summary>Final Grade scope only: the class record would mark this grade INC (Final Term exam still blank).</summary>
+        public bool Incomplete { get; set; }
+
         public List<BreakdownRow> Rows { get; set; } = new List<BreakdownRow>();
+
+        /// <summary>The term tables the instructor has released: Midterm scope shows Midterm, Final Term scope shows Final Term, Final Grade shows both.</summary>
+        public List<StudentTermTable> Terms { get; set; } = new List<StudentTermTable>();
+
+        /// <summary>Tab that opens first: "midterm", "final-term" or "final-grade" (the course scope).</summary>
+        public string ActiveTab { get; set; } = GradeScopes.Midterm;
+
+        /// <summary>True when the scope is Final Grade, so the Midterm / Final Term / Final Grade summary table is shown.</summary>
+        public bool ShowFinalGrade { get; set; }
+
+        public double? MidtermEarned { get; set; }
+        public double? MidtermEquivalent { get; set; }
+        public double? FinalTermEarned { get; set; }
+        public double? FinalTermEquivalent { get; set; }
+
+        /// <summary>Anonymous class average of each category (PS), for the categories shown.</summary>
+        public List<CategoryAverage> CategoryAverages { get; set; } = new List<CategoryAverage>();
 
         /// <summary>Anonymous class average of Earned Grade. Null when too few students have scores to keep it anonymous.</summary>
         public double? ClassAverage { get; set; }
@@ -107,6 +211,7 @@ namespace GradeWise.Models
 
         public bool HasCourse { get; set; }
         public string SelectedId { get; set; }
+        public string StudentNo { get; set; }
         public string Code { get; set; }
         public string Name { get; set; }
         public string Term { get; set; }
@@ -145,5 +250,8 @@ namespace GradeWise.Models
         public List<GradeCategory> Ungraded { get; set; } = new List<GradeCategory>();
 
         public List<GradeStep> Scale { get; set; } = new List<GradeStep>();
+
+        /// <summary>Place of each category inside its term (keyed "Period|Name"), so colours match the score table.</summary>
+        public Dictionary<string, int> Positions { get; set; } = new Dictionary<string, int>();
     }
 }

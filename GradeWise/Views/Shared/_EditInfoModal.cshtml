@@ -1,137 +1,185 @@
 @model GradeWise.Models.ProfileInfo
 @{
-    // The student's own profile. Opened by the profile button in the top bar (see _Layout).
-    // After a failed save the controller redirects here with the problems in TempData, and the
-    // modal opens again by itself so the student can read them.
+    // Keep the original GradeWise profile modal structure and styling.
     var errors = TempData["EditInfoErrors"] as List<string> ?? new List<string>();
     var which = TempData["EditInfoForm"] as string;
-    var typedEmail = TempData["EditInfoEmail"] as string ?? string.Empty;
-    var typedName = TempData["EditInfoName"] as string;
-    var nameValue = typedName ?? Model.FullName;
+    var posted = TempData["EditInfoProfile"] as Dictionary<string, string> ?? new Dictionary<string, string>();
+    Func<string, string, string> value = (key, fallback) => posted.ContainsKey(key) ? posted[key] : fallback;
 
-    var nameErrors = which == "name" ? errors : new List<string>();
-    var emailErrors = which == "email" ? errors : new List<string>();
+    var suffixes = new[] { "Jr.", "Sr.", "II", "III", "IV", "V" };
+    var legacyParts = (Model.FullName ?? string.Empty).Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries).ToList();
+    var legacySuffix = legacyParts.Count > 0 && suffixes.Contains(legacyParts[legacyParts.Count - 1]) ? legacyParts[legacyParts.Count - 1] : string.Empty;
+    if (!string.IsNullOrEmpty(legacySuffix))
+    {
+        legacyParts.RemoveAt(legacyParts.Count - 1);
+    }
+    var fallbackFirst = Model.FirstName;
+    var fallbackMiddle = Model.MiddleName;
+    var fallbackLast = Model.LastName;
+    if (string.IsNullOrWhiteSpace(fallbackFirst) && legacyParts.Count > 0)
+    {
+        fallbackFirst = legacyParts[0];
+        fallbackLast = legacyParts.Count > 1 ? legacyParts[legacyParts.Count - 1] : string.Empty;
+        fallbackMiddle = legacyParts.Count > 2 ? string.Join(" ", legacyParts.Skip(1).Take(legacyParts.Count - 2)) : string.Empty;
+    }
+    var firstName = value("FirstName", fallbackFirst ?? string.Empty);
+    var middleName = value("MiddleName", fallbackMiddle ?? string.Empty);
+    var lastName = value("LastName", fallbackLast ?? string.Empty);
+    var suffix = value("Suffix", Model.Suffix ?? legacySuffix);
+    var loginId = value("LoginId", Model.StudentNo ?? string.Empty);
+    var email = value("Email", Model.Email ?? string.Empty);
+    var profileErrors = which == "profile" ? errors : new List<string>();
     var passwordErrors = which == "password" ? errors : new List<string>();
-    var reopen = nameErrors.Count > 0 || emailErrors.Count > 0 || passwordErrors.Count > 0;
-    var focusEmail = emailErrors.Count > 0;
-    var focusPassword = passwordErrors.Count > 0;
-    var focusName = !focusEmail && !focusPassword;
+    var reopen = profileErrors.Count > 0 || passwordErrors.Count > 0;
+    var isFaculty = string.Equals(Model.Role, GradeWise.Models.Roles.Faculty, StringComparison.OrdinalIgnoreCase);
+    var accountIdLabel = isFaculty ? "Faculty username" : "Student number";
+    var accountIdHint = isFaculty
+        ? "Your faculty username is used to sign in (e.g. fac_juan)."
+        : "Your student number is used to sign in (e.g. 26-0001).";
 }
 
 <div id="gw-editinfo-modal" class="gw-modal-backdrop" hidden @(reopen ? "data-open-on-load" : null)>
-    <div class="gw-panel gw-card-raised gw-modal-card" role="dialog" aria-modal="true" aria-labelledby="gw-editinfo-title">
+    <div class="gw-panel gw-card-raised gw-modal-card gw-profile-card" role="dialog" aria-modal="true" aria-labelledby="gw-editinfo-title">
         <div class="gw-panel-head">
             <h2 id="gw-editinfo-title" class="gw-panel-title">My profile</h2>
         </div>
         <div class="gw-modal-top">
             <div class="gw-modal-meta gw-modal-meta-stack">
                 <strong class="gw-profile-name">@Model.FullName</strong>
-                <span>ID number: @Model.StudentNo</span>
-                <span class="gw-muted">Change your name, email, or password.</span>
+                <span>@accountIdLabel: @Model.StudentNo</span>
+                <span class="gw-muted">@(isFaculty ? "Update your faculty account details or password." : "Update your student account details or password.")</span>
             </div>
             <button type="button" class="gw-iconbtn gw-modal-close" data-modal-close aria-label="Close" title="Close">
                 <img src="@Url.Content("~/Content/img/icons/close.svg")" alt="" width="20" height="20" />
             </button>
         </div>
 
-        <div class="gw-panel-body gw-editinfo-body">
-            <section class="gw-editinfo-section" aria-labelledby="gw-ei-name-h">
-                <h3 id="gw-ei-name-h" class="gw-editinfo-heading">Change name</h3>
+        @* Same form style as the admin Add user page (the .gw-user-* classes). *@
+        <div class="gw-panel-body gw-editinfo-body gw-user-form">
+            <div class="gw-user-locked">
+                <span class="gw-user-locked-label">Role</span>
+                <span class="gw-badge gw-user-locked-badge">@Model.Role</span>
+                <span class="gw-user-locked-note">Managed by the administrator</span>
+            </div>
 
-                @if (nameErrors.Count > 0)
+            <section class="gw-user-form-block" aria-labelledby="gw-ei-profile-h">
+                @if (profileErrors.Count > 0)
                 {
                     <div class="gw-alert" role="alert">
-                        <strong>Your name was not changed.</strong>
+                        <strong>Your profile was not updated.</strong>
                         <ul class="gw-error-list">
-                            @foreach (var e in nameErrors)
-                            {
-                                <li>@e</li>
-                            }
+                            @foreach (var e in profileErrors) { <li>@e</li> }
                         </ul>
                     </div>
                 }
-
-                @using (Html.BeginForm("ChangeName", "Account", FormMethod.Post))
+                @using (Html.BeginForm("UpdateProfile", "Account", FormMethod.Post))
                 {
                     @Html.AntiForgeryToken()
-                    <div class="gw-field">
-                        <label for="gw-ei-newname">Name</label>
-                        <input type="text" id="gw-ei-newname" name="newName" value="@nameValue" maxlength="100" required autocomplete="name" @(focusName ? "data-autofocus" : null) />
-                    </div>
-                    <div class="gw-form-buttons">
-                        <button type="submit" class="gw-btn">Update name</button>
+                    <h3 id="gw-ei-profile-h" class="gw-sr-only">Personal and account details</h3>
+
+                    <fieldset class="gw-user-step">
+                        <legend class="gw-user-legend"><span class="gw-user-step-no">1</span> Name</legend>
+                        <div class="gw-user-grid">
+                            <div class="gw-user-control">
+                                <label for="gw-ei-first">First name <span class="gw-user-req">required</span></label>
+                                <input type="text" id="gw-ei-first" name="firstName" value="@firstName" maxlength="40" required autocomplete="given-name" />
+                            </div>
+                            <div class="gw-user-control">
+                                <label for="gw-ei-middle">Middle name <span class="gw-user-opt">optional</span></label>
+                                <input type="text" id="gw-ei-middle" name="middleName" value="@middleName" maxlength="40" autocomplete="additional-name" />
+                            </div>
+                            <div class="gw-user-control">
+                                <label for="gw-ei-last">Last name <span class="gw-user-req">required</span></label>
+                                <input type="text" id="gw-ei-last" name="lastName" value="@lastName" maxlength="40" required autocomplete="family-name" />
+                            </div>
+                            <div class="gw-user-control">
+                                <label for="gw-ei-suffix">Suffix <span class="gw-user-opt">optional</span></label>
+                                <select id="gw-ei-suffix" name="suffix">
+                                    <option value="" @(string.IsNullOrEmpty(suffix) ? "selected" : null)>None</option>
+                                    @foreach (var item in suffixes)
+                                    {
+                                        <option value="@item" @(suffix == item ? "selected" : null)>@item</option>
+                                    }
+                                </select>
+                            </div>
+                        </div>
+                        <p class="gw-user-preview">
+                            <span class="gw-user-preview-label">Full name</span>
+                            <strong id="gw-ei-name-preview">@Model.FullName</strong>
+                        </p>
+                    </fieldset>
+
+                    <fieldset class="gw-user-step">
+                        <legend class="gw-user-legend"><span class="gw-user-step-no">2</span> Sign-in and contact</legend>
+                        <div class="gw-user-grid">
+                            <div class="gw-user-control">
+                                <label for="gw-ei-login">@accountIdLabel <span class="gw-user-req">required</span></label>
+                                <input type="text" id="gw-ei-login" name="loginId" value="@loginId" maxlength="50" required autocomplete="username" spellcheck="false" autocapitalize="off" />
+                                <p class="gw-user-help">@accountIdHint</p>
+                            </div>
+                            <div class="gw-user-control">
+                                <label for="gw-ei-email">Email <span class="gw-user-req">required</span></label>
+                                <input type="email" id="gw-ei-email" name="email" value="@email" maxlength="254" required autocomplete="email" spellcheck="false" autocapitalize="off" />
+                            </div>
+                        </div>
+                    </fieldset>
+
+                    <fieldset class="gw-user-step">
+                        <legend class="gw-user-legend"><span class="gw-user-step-no">3</span> Confirm</legend>
+                        <div class="gw-user-grid">
+                            <div class="gw-user-control">
+                                <label for="gw-ei-profile-password">Current password <span class="gw-user-req">required to save</span></label>
+                                <input type="password" id="gw-ei-profile-password" name="currentPassword" maxlength="128" required autocomplete="current-password" />
+                            </div>
+                        </div>
+                    </fieldset>
+
+                    <div class="gw-user-actions">
+                        <p class="gw-note">Your password is needed to save these changes.</p>
+                        <div class="gw-form-buttons">
+                            <button type="submit" class="gw-btn">Save profile changes</button>
+                        </div>
                     </div>
                 }
             </section>
 
-            <section class="gw-editinfo-section" aria-labelledby="gw-ei-email-h">
-                <h3 id="gw-ei-email-h" class="gw-editinfo-heading">Change email</h3>
-                <p class="gw-muted gw-editinfo-current">Current email: <strong>@Model.Email</strong></p>
-
-                @if (emailErrors.Count > 0)
-                {
-                    <div class="gw-alert" role="alert">
-                        <strong>Your email was not changed.</strong>
-                        <ul class="gw-error-list">
-                            @foreach (var e in emailErrors)
-                            {
-                                <li>@e</li>
-                            }
-                        </ul>
-                    </div>
-                }
-
-                @using (Html.BeginForm("ChangeEmail", "Account", FormMethod.Post))
-                {
-                    @Html.AntiForgeryToken()
-                    <div class="gw-field">
-                        <label for="gw-ei-newemail">New email</label>
-                        <input type="email" id="gw-ei-newemail" name="newEmail" value="@typedEmail" maxlength="254" required autocomplete="email" @(focusEmail ? "data-autofocus" : null) />
-                    </div>
-                    <div class="gw-field">
-                        <label for="gw-ei-emailpw">Current password</label>
-                        <input type="password" id="gw-ei-emailpw" name="currentPassword" maxlength="128" required autocomplete="current-password" />
-                    </div>
-                    <div class="gw-form-buttons">
-                        <button type="submit" class="gw-btn">Update email</button>
-                    </div>
-                }
-            </section>
-
-            <section class="gw-editinfo-section" aria-labelledby="gw-ei-pw-h">
-                <h3 id="gw-ei-pw-h" class="gw-editinfo-heading">Change password</h3>
-                <p class="gw-field-hint gw-hint-block">At least 8 characters, with at least one letter and one number.</p>
-
+            <section class="gw-user-form-block" aria-labelledby="gw-ei-pw-h">
                 @if (passwordErrors.Count > 0)
                 {
                     <div class="gw-alert" role="alert">
                         <strong>Your password was not changed.</strong>
                         <ul class="gw-error-list">
-                            @foreach (var e in passwordErrors)
-                            {
-                                <li>@e</li>
-                            }
+                            @foreach (var e in passwordErrors) { <li>@e</li> }
                         </ul>
                     </div>
                 }
-
                 @using (Html.BeginForm("ChangePassword", "Account", FormMethod.Post))
                 {
                     @Html.AntiForgeryToken()
-                    <div class="gw-field">
-                        <label for="gw-ei-pwcurrent">Current password</label>
-                        <input type="password" id="gw-ei-pwcurrent" name="currentPassword" maxlength="128" required autocomplete="current-password" @(focusPassword ? "data-autofocus" : null) />
-                    </div>
-                    <div class="gw-field">
-                        <label for="gw-ei-pwnew">New password</label>
-                        <input type="password" id="gw-ei-pwnew" name="newPassword" maxlength="128" required autocomplete="new-password" />
-                    </div>
-                    <div class="gw-field">
-                        <label for="gw-ei-pwconfirm">Confirm new password</label>
-                        <input type="password" id="gw-ei-pwconfirm" name="confirmPassword" maxlength="128" required autocomplete="new-password" />
-                    </div>
-                    <div class="gw-form-buttons">
-                        <button type="submit" class="gw-btn">Update password</button>
+                    <fieldset class="gw-user-step">
+                        <legend class="gw-user-legend" id="gw-ei-pw-h">Change password</legend>
+                        <div class="gw-user-grid">
+                            <div class="gw-user-control">
+                                <label for="gw-ei-pwcurrent">Current password</label>
+                                <input type="password" id="gw-ei-pwcurrent" name="currentPassword" maxlength="128" required autocomplete="current-password" />
+                            </div>
+                            <div></div>
+                            <div class="gw-user-control">
+                                <label for="gw-ei-pwnew">New password</label>
+                                <input type="password" id="gw-ei-pwnew" name="newPassword" maxlength="128" required autocomplete="new-password" />
+                                <p class="gw-user-help">At least 8 characters, with a letter and a number.</p>
+                            </div>
+                            <div class="gw-user-control">
+                                <label for="gw-ei-pwconfirm">Confirm new password</label>
+                                <input type="password" id="gw-ei-pwconfirm" name="confirmPassword" maxlength="128" required autocomplete="new-password" />
+                            </div>
+                        </div>
+                    </fieldset>
+                    <div class="gw-user-actions">
+                        <p class="gw-note">The new password must differ from your current one.</p>
+                        <div class="gw-form-buttons">
+                            <button type="submit" class="gw-btn">Update password</button>
+                        </div>
                     </div>
                 }
             </section>
@@ -142,3 +190,28 @@
         </div>
     </div>
 </div>
+
+<script>
+(function () {
+    var modal = document.getElementById('gw-editinfo-modal');
+    if (!modal || modal.getAttribute('data-profile-preview-bound') === '1') return;
+    modal.setAttribute('data-profile-preview-bound', '1');
+    var ids = ['gw-ei-first', 'gw-ei-middle', 'gw-ei-last', 'gw-ei-suffix'];
+    var preview = document.getElementById('gw-ei-name-preview');
+    function updatePreview() {
+        var parts = ids.map(function (id) {
+            var el = document.getElementById(id);
+            return el ? el.value.trim() : '';
+        }).filter(Boolean);
+        if (preview) preview.textContent = parts.join(' ') || 'Enter your first and last name';
+    }
+    ids.forEach(function (id) {
+        var el = document.getElementById(id);
+        if (el) {
+            el.addEventListener('input', updatePreview);
+            el.addEventListener('change', updatePreview);
+        }
+    });
+    updatePreview();
+})();
+</script>

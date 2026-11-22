@@ -4971,3 +4971,2246 @@ html.gw-loading button {
         margin-top: 24px;
     }
 }
+
+
+/* ---------- Student What-If goal beside the dashboard date ---------- */
+.gw-page-head-right {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 18px;
+    flex: 0 0 auto;
+}
+
+.gw-grade-goal {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+    min-width: 170px;
+    max-width: 260px;
+    padding: 7px 11px;
+    border: 1px dashed var(--gw-ink, #222);
+    background: var(--gw-lime-pale);
+    line-height: 1.25;
+}
+
+.gw-grade-goal[hidden] { display: none !important; }
+.gw-grade-goal-kicker {
+    color: var(--gw-muted);
+    font-family: var(--gw-font-pixel);
+    font-size: .66rem;
+    letter-spacing: .08em;
+}
+.gw-grade-goal-grade {
+    font-size: 1.15rem;
+    font-weight: 700;
+}
+.gw-grade-goal-detail {
+    color: var(--gw-muted);
+    font-size: .78rem;
+}
+
+@media (max-width: 575.98px) {
+    .gw-page-head-right {
+        width: 100%;
+        justify-content: space-between;
+        gap: 10px;
+        margin: 8px 0 12px;
+    }
+    .gw-grade-goal { min-width: 0; flex: 1 1 auto; }
+    .gw-page-head-date { flex-direction: column; }
+}
+
+
+/* ---------- Grouped grade tables (student summary, faculty analytics) and class record hierarchy ----------
+   Class Standing / Exam groups open and close inside one table. The inner table uses the same column
+   widths as the outer one (set with <colgroup> in the views), so headings and numbers stay lined up. */
+.gw-table-grouped {
+    table-layout: fixed;
+    min-width: 560px;
+}
+
+.gw-table td.gw-group-cell,
+.gw-table tbody tr:hover td.gw-group-cell {
+    padding: 0;
+    background: transparent;
+}
+
+.gw-student-major {
+    margin: 0;
+}
+
+    .gw-student-major > summary,
+    .gw-hierarchy-major > summary,
+    .gw-hierarchy-category > summary {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        cursor: pointer;
+        list-style: none;
+    }
+
+        .gw-student-major > summary::-webkit-details-marker,
+        .gw-hierarchy-major > summary::-webkit-details-marker,
+        .gw-hierarchy-category > summary::-webkit-details-marker,
+        .gw-student-category > summary::-webkit-details-marker {
+            display: none;
+        }
+
+    .gw-student-major > summary {
+        padding: 10px 14px;
+        background: var(--gw-head);
+        font-weight: 700;
+    }
+
+        .gw-student-major > summary::before,
+        .gw-student-category > summary::before {
+            content: "\25B8";
+            display: inline-block;
+            margin-right: 8px;
+            transition: transform .12s ease;
+        }
+
+        .gw-student-major > summary > strong {
+            flex: 1 1 auto;
+        }
+
+        .gw-student-major > summary > span {
+            font-family: var(--gw-font-pixel);
+            font-size: .75rem;
+        }
+
+    .gw-student-major[open] > summary::before,
+    .gw-student-category[open] > summary::before {
+        transform: rotate(90deg);
+    }
+
+    /* the nested table sits flush inside the group, with a rule above it */
+    .gw-student-major > .gw-table {
+        border-top: 1.5px solid var(--gw-ink);
+    }
+
+        .gw-student-major > .gw-table td {
+            vertical-align: top;
+        }
+
+        .gw-student-major > .gw-table tbody tr:last-child td {
+            border-bottom: 0;
+        }
+
+.gw-student-category > summary {
+    cursor: pointer;
+    list-style: none;
+    font-weight: 700;
+}
+
+.gw-student-assessments {
+    margin: 8px 0 0;
+    padding: 0;
+    list-style: none;
+}
+
+    .gw-student-assessments li {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 4px 0;
+        border-top: 1.5px dashed var(--gw-line);
+        font-size: .88rem;
+    }
+
+        .gw-student-assessments li strong {
+            font-weight: 500;
+            white-space: nowrap;
+        }
+
+/* Faculty class record: component > category > assessment */
+.gw-hierarchy-panel .gw-panel-head p {
+    margin: 4px 0 0;
+}
+
+.gw-hierarchy-major {
+    border-top: 1.5px solid var(--gw-ink);
+}
+
+    .gw-hierarchy-major > summary {
+        padding: 10px 14px;
+        background: var(--gw-head);
+        font-weight: 700;
+    }
+
+.gw-hierarchy-category {
+    border-top: 1.5px dashed var(--gw-ink);
+}
+
+    .gw-hierarchy-category > summary {
+        padding: 9px 14px 9px 28px;
+        font-weight: 500;
+    }
+
+.gw-hierarchy-weight {
+    font-family: var(--gw-font-pixel);
+    font-size: .75rem;
+}
+
+.gw-hierarchy-children > .gw-muted {
+    margin: 0;
+    padding: 10px 14px 10px 28px;
+}
+
+.gw-assessment-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    padding: 8px 14px 8px 44px;
+    border-top: 1.5px dashed var(--gw-line);
+}
+
+.gw-assessment-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.gw-inline-form {
+    display: inline;
+    margin: 0;
+}
+
+@media (max-width: 575.98px) {
+    .gw-assessment-item { padding-left: 28px; }
+}
+
+@media print {
+    .gw-student-major > summary::before,
+    .gw-student-category > summary::before { display: none; }
+}
+
+/* ---------- Class record columns (1, 2, 3 ... with Total and PS) ---------- */
+.gw-classrecord .gw-score-input {
+    width: 4.5em;
+    min-width: 3.5em;
+    padding: 6px 6px;
+}
+
+.gw-classrecord th.gw-group-head {
+    text-align: center;
+    background: var(--gw-lime-pale);
+    border-left: var(--gw-outline);
+    white-space: nowrap;
+}
+
+.gw-classrecord thead th.gw-num {
+    text-align: center;
+}
+
+.gw-classrecord thead tr:nth-child(2) th:not(.gw-sticky-col):first-child,
+.gw-classrecord tbody td.gw-num:first-of-type {
+    border-left: 0;
+}
+
+/* the HIGHEST POSSIBLE SCORE row of the class record */
+.gw-classrecord .gw-hps-row td {
+    background: var(--gw-head);
+    border-bottom: var(--gw-outline);
+}
+
+.gw-classrecord .gw-hps-row td.gw-sticky-col {
+    background: var(--gw-head);
+}
+
+.gw-classrecord .gw-hps-input {
+    font-weight: 700;
+}
+
+/* add and remove columns */
+.gw-col-manage {
+    padding: 12px 0;
+    border-top: 1.5px dashed var(--gw-line);
+}
+
+.gw-col-manage:first-of-type {
+    border-top: 0;
+}
+
+.gw-col-title {
+    margin-bottom: 8px;
+}
+
+.gw-col-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.gw-inline-form {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+}
+
+.gw-col-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 4px 4px 10px;
+    border: var(--gw-outline);
+    background: var(--gw-paper);
+}
+
+.gw-col-add input[type="text"],
+.gw-col-add input[type="number"] {
+    border: var(--gw-outline);
+    border-radius: 0;
+    background: var(--gw-paper);
+    color: var(--gw-ink);
+    font-family: inherit;
+    padding: 6px 8px;
+}
+
+.gw-col-add input[type="text"] { width: 15em; }
+.gw-col-add input[type="number"] { width: 6em; }
+
+/* =====================================================================
+   Faculty > My courses: colour and variety
+   Borrows the accents of the admin Accounts page (blue, gold, lime, ink
+   outlines, pixel-font chips, tinted filter bar). Scoped to
+   .gw-faculty-courses so no other page changes.
+   ===================================================================== */
+.gw-faculty-courses,
+.gw-fcourse {
+    --gw-acct-blue: #cddff4;
+    --gw-acct-blue-pale: #edf3fb;
+    --gw-acct-gold: #f1d48a;
+    --gw-acct-gold-pale: #fbf3dc;
+    --gw-fc-lav: #d9d6fb;
+    --gw-fc-lav-pale: #f3f2fe;
+    --gw-fc-orange: #f9c9a8;
+    --gw-fc-orange-pale: #fdeee3;
+}
+
+/* ---------- Stat cards: one tint each ---------- */
+.gw-faculty-courses .gw-stat-lime { background: var(--gw-lime-pale); }
+.gw-faculty-courses .gw-stat-blue { background: var(--gw-acct-blue-pale); }
+.gw-faculty-courses .gw-stat-gold { background: var(--gw-acct-gold-pale); }
+
+.gw-faculty-courses .gw-stat-lime[data-tab]::before { background: var(--gw-lime); }
+.gw-faculty-courses .gw-stat-blue[data-tab]::before { background: var(--gw-acct-blue); }
+.gw-faculty-courses .gw-stat-gold[data-tab]::before { background: var(--gw-acct-gold); }
+
+.gw-faculty-courses .gw-stat-blue .gw-stat-value { text-shadow: 3px 3px 0 var(--gw-acct-blue); }
+.gw-faculty-courses .gw-stat-gold .gw-stat-value { text-shadow: 3px 3px 0 var(--gw-acct-gold); }
+
+/* ---------- Filter bar (same tinted bar as Accounts) ---------- */
+.gw-faculty-courses .gw-fc-controls[hidden] {
+    display: none;
+}
+
+.gw-faculty-courses .gw-fc-filters {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 12px 14px;
+    padding: 12px 14px;
+    background: var(--gw-acct-blue-pale);
+    border: var(--gw-outline);
+}
+
+.gw-faculty-courses .gw-fc-filter label {
+    display: block;
+    margin: 0 0 4px;
+    font-size: 0.85rem;
+    font-weight: 700;
+}
+
+.gw-faculty-courses .gw-fc-filter-search {
+    flex: 1 1 260px;
+}
+
+.gw-faculty-courses .gw-fc-filter-search input {
+    width: 100%;
+    height: 38px;
+    padding-left: 34px;
+    background: var(--gw-paper) url(img/icons/search.svg) 9px center / 18px 18px no-repeat;
+}
+
+.gw-faculty-courses .gw-fc-filter input:focus {
+    outline: 3px solid var(--gw-ink);
+    outline-offset: 0;
+    box-shadow: 0 0 0 6px var(--gw-lime);
+}
+
+.gw-faculty-courses .gw-fc-filters .gw-btn {
+    height: 38px;
+    margin: 0;
+}
+
+.gw-faculty-courses .gw-fc-count {
+    margin: 10px 0 0;
+    color: var(--gw-muted);
+    font-family: var(--gw-font-pixel);
+    font-size: 0.7rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+/* ---------- Course rows: coloured sticker + matching edge ---------- */
+.gw-faculty-courses .gw-fc-row-lime   { --fc-tone: var(--gw-lime);       --fc-tone-pale: var(--gw-lime-pale); }
+.gw-faculty-courses .gw-fc-row-blue   { --fc-tone: var(--gw-acct-blue);  --fc-tone-pale: var(--gw-acct-blue-pale); }
+.gw-faculty-courses .gw-fc-row-gold   { --fc-tone: var(--gw-acct-gold);  --fc-tone-pale: var(--gw-acct-gold-pale); }
+.gw-faculty-courses .gw-fc-row-lav    { --fc-tone: var(--gw-fc-lav);     --fc-tone-pale: var(--gw-fc-lav-pale); }
+.gw-faculty-courses .gw-fc-row-orange { --fc-tone: var(--gw-fc-orange);  --fc-tone-pale: var(--gw-fc-orange-pale); }
+
+.gw-faculty-courses .gw-fc-row {
+    box-shadow: inset 6px 0 0 var(--fc-tone);
+    padding-left: 22px;
+}
+
+.gw-faculty-courses .gw-fc-row:hover,
+.gw-faculty-courses .gw-fc-row:focus-within {
+    background: var(--fc-tone-pale);
+}
+
+/* square sticker like the Accounts avatars, tinted per row */
+.gw-faculty-courses .gw-fc-sticker {
+    flex-basis: 44px;
+    width: 44px;
+    height: 44px;
+    border-radius: 0;
+    background: var(--fc-tone);
+    font-size: 0.8rem;
+    box-shadow: 3px 3px 0 var(--gw-ink);
+}
+
+.gw-faculty-courses .gw-fc-row .gw-collection-go:hover {
+    background: var(--fc-tone);
+}
+
+/* ---------- Meta chips ---------- */
+.gw-faculty-courses .gw-fc-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 8px;
+    margin-top: 4px;
+    overflow: visible;
+    white-space: normal;
+}
+
+.gw-faculty-courses .gw-fc-chip {
+    display: inline-block;
+    padding: 1px 8px;
+    background: var(--gw-head);
+    color: var(--gw-ink);
+    border: 1.5px solid var(--gw-ink);
+    font-size: 0.8rem;
+    line-height: 1.5;
+    white-space: nowrap;
+}
+
+.gw-faculty-courses .gw-fc-chip-term     { background: var(--gw-paper); }
+.gw-faculty-courses .gw-fc-chip-students { background: var(--gw-acct-blue); }
+.gw-faculty-courses .gw-fc-chip-section  { background: var(--gw-acct-gold); }
+.gw-faculty-courses .gw-fc-chip-plain    { background: var(--gw-head); color: var(--gw-muted); border-color: var(--gw-line); }
+
+/* class average chip: lime = 75 and up, gold = passing, orange = below 65 */
+.gw-faculty-courses .gw-fc-avg-high { background: var(--gw-lime); font-weight: 700; }
+.gw-faculty-courses .gw-fc-avg-mid  { background: var(--gw-note); font-weight: 700; }
+.gw-faculty-courses .gw-fc-avg-low  { background: var(--gw-fc-orange); font-weight: 700; }
+.gw-faculty-courses .gw-fc-avg-none { background: var(--gw-head); color: var(--gw-muted); border-color: var(--gw-line); }
+
+/* ---------- No search results ---------- */
+.gw-faculty-courses .gw-fc-empty {
+    padding: 18px 16px;
+    border-bottom: var(--gw-outline);
+    background: var(--gw-paper);
+    text-align: center;
+}
+
+.gw-faculty-courses .gw-fc-empty[hidden],
+.gw-faculty-courses .gw-collection > li[hidden] {
+    display: none;
+}
+
+.gw-faculty-courses .gw-fc-linkbtn {
+    margin-left: 8px;
+    padding: 0;
+    background: none;
+    border: 0;
+    color: var(--gw-ink);
+    font: inherit;
+    font-weight: 700;
+    text-decoration: underline;
+    cursor: pointer;
+}
+
+@media (max-width: 767.98px) {
+    .gw-faculty-courses .gw-fc-row .gw-collection-buttons {
+        padding-left: 0;
+    }
+}
+
+@media (max-width: 575.98px) {
+    .gw-faculty-courses .gw-fc-row {
+        padding-left: 18px;
+    }
+
+    .gw-faculty-courses .gw-fc-sticker {
+        flex-basis: 36px;
+        width: 36px;
+        height: 36px;
+        font-size: 0.7rem;
+    }
+}
+
+/* =====================================================================
+   Faculty > Course scores page (.gw-fcourse, used together with
+   .gw-faculty-courses for the shared chips, stat tints and filter bar)
+   Score table: one category is open at a time and the rest show only
+   their PS, so the table always fits the page (no sideways scrollbar).
+   ===================================================================== */
+
+/* ---------- Header chips, scope bar, toolbar ---------- */
+.gw-fcourse .gw-fcourse-sub {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+}
+
+.gw-fcourse .gw-fcourse-scopebar {
+    margin: 0 0 20px;
+    padding: 12px 14px;
+    background: var(--gw-acct-blue-pale);
+    border: var(--gw-outline);
+}
+
+.gw-fcourse .gw-fcourse-scopebar .gw-scope-form {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 14px;
+}
+
+.gw-fcourse .gw-fcourse-scopelabel {
+    font-family: var(--gw-font-pixel);
+    font-size: 0.7rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+.gw-fcourse .gw-fcourse-scopebar .gw-scope-note {
+    margin: 0;
+}
+
+.gw-fcourse .gw-stat-lav { background: var(--gw-fc-lav-pale); }
+.gw-fcourse .gw-stat-orange { background: var(--gw-fc-orange-pale); }
+.gw-fcourse .gw-stat-lav[data-tab]::before { background: var(--gw-fc-lav); }
+.gw-fcourse .gw-stat-orange[data-tab]::before { background: var(--gw-fc-orange); }
+.gw-fcourse .gw-stat-lav .gw-stat-value { text-shadow: 3px 3px 0 var(--gw-fc-lav); }
+.gw-fcourse .gw-stat-orange .gw-stat-value { text-shadow: 3px 3px 0 var(--gw-fc-orange); }
+
+.gw-fcourse .gw-tone-blue { background: var(--gw-acct-blue); }
+.gw-fcourse .gw-tone-gold { background: var(--gw-acct-gold); }
+.gw-fcourse .gw-tone-lav { background: var(--gw-fc-lav); }
+.gw-fcourse .gw-tone-lime { background: var(--gw-lime); }
+.gw-fcourse .gw-tone-orange { background: var(--gw-fc-orange); }
+
+/* ---------- Category bar ---------- */
+.gw-fcourse .gw-sr-bar {
+    display: flex;
+    flex-wrap: nowrap;          /* label, groups and chips stay on one line */
+    align-items: center;
+    gap: 8px 12px;
+    padding-top: 12px;
+    padding-bottom: 12px;
+    overflow-x: auto;           /* safety net for very many categories on a narrow screen */
+}
+
+.gw-fcourse .gw-sr-bar-label {
+    flex: none;
+    white-space: nowrap;
+    font-family: var(--gw-font-pixel);
+    font-size: 0.7rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+.gw-fcourse .gw-sr-chips {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 6px;
+}
+
+.gw-fcourse .gw-sr-chip {
+    padding: 4px 9px;
+    white-space: nowrap;
+    font-size: 0.9rem;
+    background: var(--gw-paper);
+    color: var(--gw-ink);
+    border: var(--gw-outline);
+    border-radius: 0;
+    font: inherit;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.gw-fcourse .gw-sr-chip-w {
+    margin-left: 6px;
+    font-family: var(--gw-font-pixel);
+    font-size: 0.65rem;
+    font-weight: 400;
+}
+
+.gw-fcourse .gw-sr-chip[aria-pressed="true"] {
+    box-shadow: 3px 3px 0 var(--gw-ink);
+    transform: translate(-1px, -1px);
+}
+
+.gw-fcourse .gw-sr-chip-lime   { --sr-tone: var(--gw-lime); }
+.gw-fcourse .gw-sr-chip-blue   { --sr-tone: var(--gw-acct-blue); }
+.gw-fcourse .gw-sr-chip-gold   { --sr-tone: var(--gw-acct-gold); }
+.gw-fcourse .gw-sr-chip-lav    { --sr-tone: var(--gw-fc-lav); }
+.gw-fcourse .gw-sr-chip-orange { --sr-tone: var(--gw-fc-orange); }
+.gw-fcourse .gw-sr-chip[aria-pressed="true"],
+.gw-fcourse .gw-sr-chip:hover { background: var(--sr-tone); }
+
+/* a category that holds a box with a bad value */
+.gw-fcourse .gw-sr-chip-bad {
+    border: 2px dashed var(--gw-orange);
+}
+
+/* ---------- The table ---------- */
+.gw-fcourse .gw-sr-table {
+    table-layout: fixed;
+    width: 100%;
+    border-top: var(--gw-outline);
+}
+
+.gw-fcourse .gw-sr-table th,
+.gw-fcourse .gw-sr-table td {
+    padding: 8px 8px;
+    vertical-align: middle;
+    overflow-wrap: anywhere;
+}
+
+.gw-fcourse .gw-sr-table thead th {
+    background: var(--gw-head);
+    vertical-align: top;
+    font-size: 0.9rem;
+}
+
+.gw-fcourse .gw-sr-table .gw-sr-student { width: 200px; }
+.gw-fcourse .gw-sr-table thead .gw-sr-student { vertical-align: middle; }
+.gw-fcourse .gw-sr-table .gw-sr-fin { width: 78px; text-align: center; }
+.gw-fcourse .gw-sr-table .gw-sr-eq { width: 62px; }
+.gw-fcourse .gw-sr-table th.gw-sr-cat:not(.is-open),
+.gw-fcourse .gw-sr-table td.gw-sr-cat:not(.is-open) { text-align: center; }
+.gw-fcourse .gw-sr-table th.gw-sr-cat:not(.is-open) { padding-left: 4px; padding-right: 4px; }
+/* closed categories are 96px wide; the open one takes the rest (widths are set on the <col> elements) */
+.gw-fcourse .gw-sr-table col.gw-sr-cat:not(.is-open) { width: 96px; }
+
+/* tone of each category: coloured top edge on the header, tinted open column */
+.gw-fcourse .gw-sr-tone-lime   { --sr-tone: var(--gw-lime);      --sr-pale: var(--gw-lime-pale); }
+.gw-fcourse .gw-sr-tone-blue   { --sr-tone: var(--gw-acct-blue); --sr-pale: var(--gw-acct-blue-pale); }
+.gw-fcourse .gw-sr-tone-gold   { --sr-tone: var(--gw-acct-gold); --sr-pale: var(--gw-acct-gold-pale); }
+.gw-fcourse .gw-sr-tone-lav    { --sr-tone: var(--gw-fc-lav);    --sr-pale: var(--gw-fc-lav-pale); }
+.gw-fcourse .gw-sr-tone-orange { --sr-tone: var(--gw-fc-orange); --sr-pale: var(--gw-fc-orange-pale); }
+
+.gw-fcourse .gw-sr-table thead th.gw-sr-cat {
+    background: var(--sr-tone);
+}
+
+.gw-fcourse .gw-sr-table tbody td.gw-sr-cat {
+    background: var(--sr-pale);
+}
+
+.gw-fcourse .gw-sr-table tbody td.gw-sr-cat:not(.is-open) {
+    background: var(--gw-paper);
+}
+
+/* header button: category name and weight */
+.gw-fcourse .gw-sr-cathead {
+    display: block;
+    width: 100%;
+    padding: 0;
+    background: none;
+    border: 0;
+    color: var(--gw-ink);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+.gw-fcourse .gw-sr-table th.gw-sr-cat:not(.is-open) .gw-sr-cathead { text-align: center; }
+
+.gw-fcourse .gw-sr-catname {
+    display: block;
+    font-weight: 700;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.gw-fcourse .gw-sr-catsub {
+    display: block;
+    font-family: var(--gw-font-pixel);
+    font-size: 0.65rem;
+    font-weight: 400;
+    letter-spacing: 0.04em;
+}
+
+/* Closed category: the whole header square is the click target (the button is stretched over it). */
+.gw-fcourse .gw-sr-table th.gw-sr-cat:not(.is-open) { position: relative; cursor: pointer; }
+.gw-fcourse .gw-sr-table th.gw-sr-cat:not(.is-open) .gw-sr-cathead::before {
+    content: "";
+    position: absolute;
+    top: 0; right: 0; bottom: 0; left: 0;
+}
+.gw-fcourse .gw-sr-table th.gw-sr-cat:not(.is-open):hover,
+.gw-fcourse .gw-sr-table th.gw-sr-cat:not(.is-open):focus-within { filter: brightness(0.94); }
+.gw-fcourse .gw-sr-table th.gw-sr-cat:not(.is-open) .gw-sr-cathead:focus-visible { outline: 2px solid var(--gw-ink); outline-offset: -4px; }
+
+.gw-fcourse .gw-sr-table th.gw-sr-cat:not(.is-open) .gw-sr-catgroup { display: none; }
+
+/* a closed category shows its whole name (it wraps onto a second line) instead of being cut with "..." */
+.gw-fcourse .gw-sr-table th.gw-sr-cat:not(.is-open) .gw-sr-catname {
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    font-size: 0.85rem;
+    line-height: 1.15;
+}
+
+/* open / closed content */
+.gw-fcourse .gw-sr-table th.gw-sr-cat:not(.is-open) .gw-sr-open-only,
+.gw-fcourse .gw-sr-table td.gw-sr-cat:not(.is-open) .gw-sr-grid,
+.gw-fcourse .gw-sr-table td.gw-sr-cat.is-open .gw-sr-sum {
+    display: none;
+}
+
+/* The boxes of a category sit on a grid that wraps, so any number of columns fits the width. */
+.gw-fcourse .gw-sr-grid {
+    --sr-n: 5;
+    display: grid;
+    grid-template-columns: repeat(var(--sr-n), minmax(0, 1fr));
+    gap: 6px;
+}
+
+.gw-fcourse .gw-sr-open-only .gw-sr-grid {
+    margin-top: 8px;
+}
+
+.gw-fcourse .gw-sr-gi {
+    min-width: 0;
+    text-align: center;
+}
+
+/* Column labels above the score boxes: one tidy box per column, same grid as the boxes below.
+   Names wrap onto two lines instead of being cut off. */
+.gw-fcourse .gw-sr-grid-head .gw-sr-gi {
+    display: flex;
+    align-items: stretch;
+    justify-content: center;
+    min-height: 32px;
+    background: var(--gw-paper);
+    border: 1.5px solid var(--gw-ink);
+    font-size: 0.78rem;
+    font-weight: 700;
+    line-height: 1.2;
+    overflow: hidden;
+    white-space: nowrap;
+}
+
+/* the page script sizes this text so it spans the tile; it shrinks as columns are added */
+.gw-fcourse .gw-sr-fit { display: inline-block; white-space: nowrap; line-height: 1.1; }
+.gw-fcourse .gw-sr-grid-head .gw-sr-fit-wrap { white-space: normal; overflow-wrap: anywhere; text-align: center; }
+.gw-fcourse .gw-sr-grid-head .gw-sr-fit-wrap .gw-sr-fit { white-space: normal; }
+
+.gw-fcourse .gw-sr-grid-head .gw-sr-gi a {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 1 1 auto;
+    min-width: 0;
+    padding: 3px 2px;
+    color: var(--gw-ink);
+    text-decoration: none;
+}
+
+.gw-fcourse .gw-sr-grid-head .gw-sr-gi a:hover,
+.gw-fcourse .gw-sr-grid-head .gw-sr-gi a:focus-visible {
+    background: var(--gw-acct-gold);
+}
+
+/* Total and PS are worked out, not typed: dashed box like the cells below */
+.gw-fcourse .gw-sr-grid-head .gw-sr-gi-calc {
+    align-items: center;
+    background: transparent;
+    border-style: dashed;
+    font-family: var(--gw-font-pixel);
+    font-size: 0.62rem;
+    font-weight: 400;
+    letter-spacing: 0;
+    text-transform: uppercase;
+}
+
+/* "+" tile after the last column: add a column */
+.gw-fcourse .gw-sr-grid-head .gw-sr-gi-add {
+    border: 0;
+    background: transparent;
+}
+
+.gw-fcourse .gw-sr-addtile {
+    flex: 1 1 auto;
+    min-width: 0;
+    padding: 0 2px;
+    background: var(--gw-acct-gold-pale);
+    color: var(--gw-ink);
+    border: 1.5px solid var(--gw-ink);
+    border-radius: 0;
+    font: inherit;
+    font-size: 1.1rem;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.gw-fcourse .gw-sr-addtile:hover,
+.gw-fcourse .gw-sr-addtile:focus-visible {
+    background: var(--gw-lime);
+}
+
+/* title row of the open category: name on the left, small "Columns" button on the right */
+.gw-fcourse .gw-sr-headtop {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+}
+
+.gw-fcourse .gw-sr-headtop .gw-sr-cathead {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.gw-fcourse .gw-sr-tool {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 8px;
+    background: var(--gw-paper);
+    color: var(--gw-ink);
+    border: 1.5px solid var(--gw-ink);
+    border-radius: 0;
+    font: inherit;
+    font-size: 0.75rem;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.gw-fcourse .gw-sr-tool:hover,
+.gw-fcourse .gw-sr-tool:focus-visible {
+    background: var(--gw-acct-gold);
+}
+
+.gw-fcourse .gw-sr-input {
+    width: 100%;
+    min-width: 0;
+    padding: 6px 2px;
+    text-align: center;
+}
+
+.gw-fcourse .gw-sr-gi-calc {
+    align-self: center;
+    font-size: 0.9rem;
+}
+
+/* Total and PS are not typed in: shown as small chips */
+.gw-fcourse td .gw-sr-gi-calc {
+    padding: 5px 2px;
+    background: var(--gw-paper);
+    border: 1.5px dashed var(--gw-ink);
+}
+
+/* spacer under the "+" tile so every row uses the same columns as the header */
+.gw-fcourse .gw-sr-gi-pad { visibility: hidden; }
+
+/* more columns: smaller numbers, so each row stays on one line like the header */
+.gw-fcourse .gw-sr-grid .gw-sr-input,
+.gw-fcourse td .gw-sr-gi-calc { font-size: clamp(0.62rem, calc(1.05rem - 0.07rem * var(--sr-n)), 0.9rem); }
+.gw-fcourse .gw-sr-grid { gap: clamp(2px, calc(8px - 0.5px * var(--sr-n)), 6px); }
+
+/* highest possible score row */
+.gw-fcourse .gw-sr-hps td {
+    background: var(--gw-acct-gold-pale);
+    border-bottom: var(--gw-outline);
+}
+
+.gw-fcourse .gw-sr-table tbody .gw-sr-hps td.gw-sr-cat,
+.gw-fcourse .gw-sr-table tbody .gw-sr-hps td.gw-sr-cat:not(.is-open) {
+    background: var(--gw-acct-gold-pale);
+}
+
+.gw-fcourse .gw-hps-input {
+    font-weight: 700;
+}
+
+/* student: coloured avatar by standing, name, number chip */
+.gw-fcourse .gw-sr-person {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+}
+
+.gw-fcourse .gw-sr-avatar {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    border: var(--gw-outline);
+    background: var(--gw-head);
+    font-family: var(--gw-font-pixel);
+    font-size: 0.7rem;
+}
+
+.gw-fcourse .gw-sr-avatar-high { background: var(--gw-lime); }
+.gw-fcourse .gw-sr-avatar-mid  { background: var(--gw-note); }
+.gw-fcourse .gw-sr-avatar-low  { background: var(--gw-fc-orange); }
+
+.gw-fcourse .gw-sr-person-text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.gw-fcourse .gw-sr-name {
+    font-weight: 700;
+    line-height: 1.25;
+}
+
+.gw-fcourse .gw-sr-id {
+    align-self: flex-start;
+    padding: 0 6px;
+    background: var(--gw-head);
+    color: var(--gw-ink);
+    border: 1.5px solid var(--gw-line);
+    font-size: 0.8rem;
+}
+
+/* PS and earned chips use the same standing colours as the course list */
+.gw-fcourse .gw-sr-ps-high { background: var(--gw-lime); }
+.gw-fcourse .gw-sr-ps-mid  { background: var(--gw-note); }
+.gw-fcourse .gw-sr-ps-low  { background: var(--gw-fc-orange); }
+.gw-fcourse .gw-sr-ps-none { background: var(--gw-head); color: var(--gw-muted); border-color: var(--gw-line); }
+
+/* Final Grade table headers */
+.gw-fcourse .gw-sr-final thead th.gw-sr-tone-blue { background: var(--gw-acct-blue); }
+.gw-fcourse .gw-sr-final thead th.gw-sr-tone-gold { background: var(--gw-acct-gold); }
+.gw-fcourse .gw-sr-final thead th.gw-sr-tone-lime { background: var(--gw-lime); }
+.gw-fcourse .gw-sr-final thead th.gw-num { text-align: center !important; }
+.gw-fcourse .gw-sr-final tbody td.gw-num { text-align: center !important; }
+
+.gw-fcourse .gw-sr-table tr[hidden] { display: none; }
+
+/* save bar */
+.gw-fcourse .gw-sr-savebar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px 16px;
+    background: var(--gw-acct-gold-pale);
+    border-top: var(--gw-outline);
+}
+
+.gw-fcourse .gw-sr-savebar .gw-form-buttons { margin: 0; }
+
+.gw-fcourse .gw-sr-savehint {
+    color: var(--gw-muted);
+    font-size: 0.9rem;
+}
+
+/* ---------- Narrow screens: only the open category is shown next to the student ---------- */
+@media (max-width: 991.98px) {
+    .gw-fcourse .gw-sr-table .gw-sr-student { width: 150px; }
+    .gw-fcourse .gw-sr-table .gw-sr-eq { display: none; }
+    .gw-fcourse .gw-sr-final .gw-sr-eq { display: none; }
+    .gw-fcourse .gw-sr-table col.gw-sr-eq { display: none; }
+}
+
+@media (max-width: 767.98px) {
+    .gw-fcourse .gw-sr-table th.gw-sr-cat:not(.is-open),
+    .gw-fcourse .gw-sr-table td.gw-sr-cat:not(.is-open),
+    .gw-fcourse .gw-sr-table col.gw-sr-cat:not(.is-open) { display: none; }
+
+    /* only the open category is shown here, so the Class Standing / Exam row has nothing to span */
+    .gw-fcourse .gw-sr-table .gw-sr-grouprow { display: none; }
+
+    .gw-fcourse .gw-sr-table .gw-sr-student { width: 42%; }
+    .gw-fcourse .gw-sr-table .gw-sr-fin { width: 62px; }
+    .gw-fcourse .gw-sr-avatar { display: none; }
+    .gw-fcourse .gw-sr-table th,
+    .gw-fcourse .gw-sr-table td { padding: 6px 4px; font-size: 0.85rem; }
+    .gw-fcourse .gw-sr-grid { gap: 3px; }
+}
+
+@media (max-width: 575.98px) {
+    .gw-fcourse .gw-sr-final .gw-sr-eq,
+    .gw-fcourse .gw-sr-final th:nth-child(3),
+    .gw-fcourse .gw-sr-final td:nth-child(3),
+    .gw-fcourse .gw-sr-final th:nth-child(5),
+    .gw-fcourse .gw-sr-final td:nth-child(5) { display: none; }
+    .gw-fcourse .gw-sr-final .gw-sr-student { width: 36%; }
+}
+
+/* ---------- Class Standing / Exam division of the score table ---------- */
+.gw-fcourse .gw-sr-chipgroup {
+    display: flex;
+    flex: none;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 6px 8px;
+    padding: 4px 8px;
+    border: var(--gw-outline);
+}
+
+.gw-fcourse .gw-sr-chipgroup-cs { background: var(--gw-lime-pale); }
+.gw-fcourse .gw-sr-chipgroup-ex { background: var(--gw-acct-gold-pale); }
+
+.gw-fcourse .gw-sr-chipgroup-name {
+    font-size: 0.85rem;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+/* on phones there is no room for one line, so the bar wraps again */
+@media (max-width: 767.98px) {
+    .gw-fcourse .gw-sr-bar,
+    .gw-fcourse .gw-sr-chips,
+    .gw-fcourse .gw-sr-chipgroup { flex-wrap: wrap; }
+    .gw-fcourse .gw-sr-bar { overflow-x: visible; }
+}
+
+.gw-fcourse .gw-sr-chipgroup-name .gw-sr-chip-w { margin-left: 4px; }
+
+/* the row above the category headers: one cell per group, spanning that group's columns */
+.gw-fcourse .gw-sr-table thead .gw-sr-grouprow th {
+    padding: 6px 8px;
+    vertical-align: middle;
+    text-align: center;
+    border-bottom: 1.5px solid var(--gw-ink);
+}
+
+/* the empty cells above Student, Earned and Eq. join the header cells under them */
+.gw-fcourse .gw-sr-table thead .gw-sr-grouprow th.gw-sr-groupblank {
+    padding-top: 0;
+    padding-bottom: 0;
+    border-bottom-style: hidden;
+}
+
+.gw-fcourse .gw-sr-table thead th.gw-sr-group-cs { background: var(--gw-lime-pale); }
+.gw-fcourse .gw-sr-table thead th.gw-sr-group-ex { background: var(--gw-acct-gold-pale); }
+
+.gw-fcourse .gw-sr-group-name {
+    display: block;
+    font-size: 0.85rem;
+    font-weight: 700;
+    line-height: 1.2;
+}
+
+.gw-fcourse .gw-sr-group-w {
+    display: block;
+    font-family: var(--gw-font-pixel);
+    font-size: 0.65rem;
+    font-weight: 400;
+    letter-spacing: 0.04em;
+}
+
+/* text next to "Read only" on the Final Grade tab */
+.gw-fcourse .gw-sr-bar-text { font-size: 0.95rem; }
+
+/* short legend under each score table */
+.gw-fcourse .gw-sr-legend {
+    padding-top: 14px;
+    padding-bottom: 16px;
+    border-top: var(--gw-outline);
+}
+
+.gw-fcourse .gw-sr-legend-lead {
+    margin: 0 0 12px;
+    font-size: 0.95rem;
+}
+
+.gw-fcourse .gw-sr-legend-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 12px 24px;
+    margin: 0;
+}
+
+.gw-fcourse .gw-sr-legend-list > div {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+}
+
+.gw-fcourse .gw-sr-legend-list dt {
+    padding: 0 8px;
+    background: var(--gw-head);
+    border: 1.5px solid var(--gw-ink);
+    font-family: var(--gw-font-pixel);
+    font-size: 0.7rem;
+    font-weight: 400;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+.gw-fcourse .gw-sr-legend-list dd {
+    margin: 0;
+    font-size: 0.9rem;
+    line-height: 1.35;
+}
+
+/* ---------- Edit columns window ---------- */
+.gw-fcourse .gw-colm-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.gw-fcourse .gw-colm-note {
+    margin: 0 0 12px;
+}
+
+.gw-fcourse .gw-colm-list {
+    list-style: none;
+    margin: 0 0 18px;
+    padding: 0;
+    border: var(--gw-outline);
+    max-height: 40vh;
+    overflow-y: auto;
+}
+
+.gw-fcourse .gw-colm-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 10px;
+    padding: 8px 12px;
+    background: var(--gw-paper);
+    border-bottom: 1.5px solid var(--gw-ink);
+}
+
+.gw-fcourse .gw-colm-row:last-child { border-bottom: 0; }
+.gw-fcourse .gw-colm-row:nth-child(even) { background: var(--gw-acct-blue-pale); }
+
+.gw-fcourse .gw-colm-name {
+    flex: 1 1 8em;
+    min-width: 0;
+    font-weight: 700;
+    overflow-wrap: anywhere;
+}
+
+.gw-fcourse .gw-colm-actions {
+    display: inline-flex;
+    gap: 6px;
+}
+
+.gw-fcourse .gw-colm-actions .gw-inline-form { margin: 0; }
+.gw-fcourse .gw-colm-actions a.gw-btn { text-decoration: none; }
+
+.gw-fcourse .gw-colm-add {
+    padding: 12px 14px;
+    background: var(--gw-acct-gold-pale);
+    border: var(--gw-outline);
+}
+
+.gw-fcourse .gw-colm-add-title {
+    margin: 0 0 10px;
+    font-family: var(--gw-font-pixel);
+    font-size: 0.7rem;
+    font-weight: 400;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+.gw-fcourse .gw-colm-addform {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 10px 12px;
+    margin: 0;
+}
+
+.gw-fcourse .gw-colm-field {
+    flex: 1 1 10em;
+}
+
+.gw-fcourse .gw-colm-field-max {
+    flex: 0 1 8em;
+}
+
+.gw-fcourse .gw-colm-field label {
+    display: block;
+    margin: 0 0 4px;
+    font-size: 0.85rem;
+    font-weight: 700;
+}
+
+.gw-fcourse .gw-colm-field input {
+    width: 100%;
+    height: 36px;
+    padding: 4px 8px;
+    border: var(--gw-outline);
+    border-radius: 0;
+    background: var(--gw-paper);
+    color: var(--gw-ink);
+    font-family: inherit;
+}
+
+.gw-fcourse .gw-colm-field input:focus {
+    outline: 3px solid var(--gw-ink);
+    outline-offset: 0;
+    box-shadow: 0 0 0 6px var(--gw-lime);
+}
+
+.gw-fcourse .gw-colm-addform .gw-btn { height: 36px; margin: 0; }
+
+/* ---------- Assessment scores page (.gw-fassess, on top of .gw-fcourse) ---------- */
+.gw-fassess .gw-as-fields {
+    align-items: flex-end;
+}
+
+.gw-fassess .gw-as-field {
+    flex: 1 1 220px;
+}
+
+.gw-fassess .gw-as-field-max {
+    flex: 0 1 240px;
+}
+
+.gw-fassess .gw-as-field input {
+    width: 100%;
+    height: 38px;
+}
+
+.gw-fassess .gw-as-field input:focus {
+    outline: 3px solid var(--gw-ink);
+    outline-offset: 0;
+    box-shadow: 0 0 0 6px var(--gw-lime);
+}
+
+.gw-fassess .gw-as-hint {
+    font-family: inherit;
+    font-size: 0.85rem;
+    letter-spacing: 0;
+    text-transform: none;
+}
+
+.gw-fassess .gw-as-table .gw-sr-student { width: auto; }
+.gw-fassess .gw-as-table .gw-as-col-score { width: 170px; text-align: center; }
+.gw-fassess .gw-as-table .gw-as-col-pct { width: 120px; text-align: center; }
+.gw-fassess .gw-as-table thead th { background: var(--gw-head); }
+.gw-fassess .gw-as-table thead th.gw-as-col-score { box-shadow: inset 0 5px 0 var(--gw-acct-blue); }
+.gw-fassess .gw-as-table thead th.gw-as-col-pct { box-shadow: inset 0 5px 0 var(--gw-lime); }
+
+.gw-fassess .gw-as-input {
+    width: 100%;
+    max-width: 120px;
+    padding: 7px 6px;
+    text-align: center;
+}
+
+@media (max-width: 575.98px) {
+    .gw-fassess .gw-as-table .gw-as-col-score { width: 96px; }
+    .gw-fassess .gw-as-table .gw-as-col-pct { width: 74px; }
+    .gw-fassess .gw-as-table .gw-th-sub { display: none; }
+}
+
+/* ---------- Slim search bar (class record and assessment page) ---------- */
+.gw-fcourse .gw-sr-tools {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    background: var(--gw-acct-blue-pale);
+    border-bottom: var(--gw-outline);
+}
+
+.gw-fcourse .gw-sr-tools[hidden] {
+    display: none;
+}
+
+.gw-fcourse .gw-sr-tools-search {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.gw-fcourse .gw-sr-tools-search input {
+    width: 100%;
+    height: 36px;
+    padding: 4px 10px 4px 34px;
+    background: var(--gw-paper) url(img/icons/search.svg) 9px center / 18px 18px no-repeat;
+    border: var(--gw-outline);
+    border-radius: 0;
+    color: var(--gw-ink);
+    font-family: inherit;
+}
+
+.gw-fcourse .gw-sr-tools-search input:focus {
+    outline: 3px solid var(--gw-ink);
+    outline-offset: 0;
+    box-shadow: 0 0 0 6px var(--gw-lime);
+}
+
+.gw-fcourse .gw-sr-tools .gw-fc-chip {
+    flex: 0 0 auto;
+    background: var(--gw-paper);
+    font-family: var(--gw-font-pixel);
+    font-size: 0.65rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.gw-fcourse .gw-sr-tools .gw-btn {
+    flex: 0 0 auto;
+    height: 36px;
+    margin: 0;
+}
+
+/* tidier assessment table */
+.gw-fassess .gw-as-table td,
+.gw-fassess .gw-as-table th {
+    padding-top: 8px;
+    padding-bottom: 8px;
+}
+
+.gw-fassess .gw-as-table thead th {
+    font-size: 0.9rem;
+}
+
+@media (max-width: 575.98px) {
+    .gw-fcourse .gw-sr-tools {
+        flex-wrap: wrap;
+    }
+
+    .gw-fcourse .gw-sr-tools-search {
+        flex-basis: 100%;
+    }
+
+    .gw-fcourse .gw-sr-tool span {
+        display: none;
+    }
+}
+
+/* =====================================================================
+   Faculty > Students, Categories and Analytics pages (.gw-fpage, used with
+   .gw-faculty-courses .gw-fcourse) and the Edit course window (.gw-ec-*).
+   They reuse the course-page pieces: chips, tinted stats, icon toolbar,
+   slim search bar, avatars, panels and the Class Standing / Exam group bars.
+   ===================================================================== */
+
+/* the page you are on, in the icon toolbar */
+.gw-fpage .gw-iconbtn[aria-current="page"] {
+    box-shadow: inset 0 -4px 0 var(--gw-ink);
+}
+
+/* short explanation at the top of a panel */
+.gw-fpage .gw-fp-note {
+    background: var(--gw-acct-gold-pale);
+    border-bottom: var(--gw-outline);
+    color: var(--gw-ink);
+    font-size: 0.92rem;
+    line-height: 1.5;
+}
+
+.gw-fpage .gw-fp-note .gw-hint-block { margin: 0; }
+
+/* ---------- Class Standing / Exam group bars (Categories and Analytics) ----------
+   One look in both places: lime bar for Class Standing, gold bar for Exam, share of the term on the right. */
+.gw-student-major.gw-grp-cs > summary { background: var(--gw-lime-pale); }
+.gw-student-major.gw-grp-ex > summary { background: var(--gw-acct-gold-pale); }
+.gw-student-major.gw-grp-cs > summary > span,
+.gw-student-major.gw-grp-ex > summary > span { letter-spacing: 0.04em; }
+
+/* the group bars of the analytics table fill the panel edge to edge */
+.gw-fpage .gw-table-grouped { min-width: 0; }
+.gw-fpage .gw-student-major > summary { border-top: var(--gw-outline); }
+
+/* ---------- Students page ---------- */
+.gw-fpage .gw-fp-table { width: 100%; table-layout: fixed; border-top: var(--gw-outline); }
+.gw-fpage .gw-fp-table thead th { background: var(--gw-head); box-shadow: inset 0 5px 0 var(--gw-acct-blue); }
+.gw-fpage .gw-fp-table th,
+.gw-fpage .gw-fp-table td { padding: 10px 14px; vertical-align: middle; overflow-wrap: anywhere; }
+.gw-fpage .gw-fp-table tbody tr:nth-child(even) td { background: var(--gw-acct-blue-pale); }
+.gw-fpage .gw-fp-table tbody tr:hover td { background: var(--gw-lime-pale); }
+.gw-fpage .gw-fp-table .gw-empty,
+.gw-fpage .gw-fp-table tr:hover td.gw-empty { background: var(--gw-paper); text-align: center; }
+.gw-fpage .gw-fp-table tr[hidden] { display: none; }
+.gw-fpage .gw-fp-col-student { width: 34%; }
+.gw-fpage .gw-fp-col-action { width: 120px; text-align: right; }
+.gw-fpage .gw-fp-table .gw-row-form { margin: 0; display: inline-block; }
+.gw-fpage .gw-fp-email { color: var(--gw-muted); }
+.gw-fpage .gw-fp-table .gw-status { align-self: flex-start; }
+
+.gw-fpage .gw-fp-avatar-lime   { background: var(--gw-lime); }
+.gw-fpage .gw-fp-avatar-blue   { background: var(--gw-acct-blue); }
+.gw-fpage .gw-fp-avatar-gold   { background: var(--gw-acct-gold); }
+.gw-fpage .gw-fp-avatar-lav    { background: var(--gw-fc-lav); }
+.gw-fpage .gw-fp-avatar-orange { background: var(--gw-fc-orange); }
+
+/* students that can be added: a grid of tick cards */
+.gw-fpage .gw-fp-picks {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 10px;
+}
+
+.gw-fpage .gw-fp-pick {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0;
+    padding: 8px 12px;
+    background: var(--gw-paper);
+    border: var(--gw-outline);
+    cursor: pointer;
+}
+
+.gw-fpage .gw-fp-pick[hidden] { display: none; }
+.gw-fpage .gw-fp-pick:hover { background: var(--gw-lime-pale); }
+.gw-fpage .gw-fp-pick:has(input:checked) { background: var(--gw-lime-pale); box-shadow: inset 0 0 0 2px var(--gw-ink); }
+.gw-fpage .gw-fp-pick input { flex: 0 0 auto; width: 18px; height: 18px; margin: 0; accent-color: var(--gw-ink); }
+
+.gw-fpage .gw-fp-nomatch-add { margin: 12px 0 0; color: var(--gw-muted); text-align: center; }
+.gw-fpage .gw-fp-nomatch-add[hidden] { display: none; }
+.gw-fpage .gw-sr-savebar .gw-btn[disabled] { opacity: 0.5; cursor: not-allowed; }
+
+/* ---------- Categories page ---------- */
+.gw-fpage .gw-cat-totals { grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); margin-bottom: 0; }
+.gw-fpage .gw-cat-of { font-size: 1.1rem; font-weight: 400; text-shadow: none; }
+.gw-fpage .gw-cat-split { margin-top: 6px; color: var(--gw-ink); font-size: 0.85rem; }
+
+/* Class Standing and Exam sit side by side on wide screens and stack on narrow ones */
+.gw-fpage .gw-cat-groups {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+    gap: 20px;
+    align-items: start;
+}
+
+.gw-fpage .gw-cat-groups .gw-student-major {
+    background: var(--gw-paper);
+    border: var(--gw-outline);
+}
+
+.gw-fpage .gw-cat-groups .gw-student-major > summary { border-top: 0; }
+.gw-fpage .gw-student-major.is-full > summary > span { background: var(--gw-lime); padding: 0 6px; border: 1.5px solid var(--gw-ink); }
+.gw-fpage .gw-student-major.is-over > summary > span { background: var(--gw-fc-orange); padding: 0 6px; border: 1.5px solid var(--gw-ink); }
+.gw-fpage .gw-cat-groups .gw-student-major > summary > span b { font-weight: 700; }
+
+.gw-fpage .gw-cat-list { border-top: var(--gw-outline); }
+
+.gw-fpage .gw-cat-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 104px auto;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    border-bottom: 1.5px solid var(--gw-ink);
+}
+
+.gw-fpage .gw-cat-row:nth-child(even) { background: var(--gw-head); }
+.gw-fpage .gw-cat-row[hidden] { display: none; }
+
+.gw-fpage .gw-cat-row input[type="text"],
+.gw-fpage .gw-cat-weight {
+    height: 38px;
+    background: var(--gw-paper);
+    border: var(--gw-outline);
+    border-radius: 0;
+}
+
+.gw-fpage .gw-cat-row input[type="text"] {
+    width: 100%;
+    min-width: 0;
+    padding: 4px 10px;
+    color: var(--gw-ink);
+    font-family: inherit;
+    font-size: 1rem;
+}
+
+.gw-fpage .gw-cat-weight {
+    display: flex;
+    align-items: center;
+    margin: 0;
+    padding-right: 8px;
+}
+
+.gw-fpage .gw-cat-weight input {
+    flex: 1 1 auto;
+    width: 100%;
+    min-width: 0;
+    height: 100%;
+    padding: 4px 8px;
+    border: 0;
+    background: transparent;
+    color: var(--gw-ink);
+    font-family: inherit;
+    font-size: 1rem;
+    text-align: right;
+}
+
+.gw-fpage .gw-cat-weight span { color: var(--gw-muted); font-weight: 700; }
+
+.gw-fpage .gw-cat-row input:focus,
+.gw-fpage .gw-cat-weight:focus-within {
+    outline: 3px solid var(--gw-ink);
+    outline-offset: 0;
+    box-shadow: 0 0 0 6px var(--gw-lime);
+}
+
+.gw-fpage .gw-cat-weight input:focus { outline: 0; box-shadow: none; }
+
+.gw-fpage .gw-cat-empty {
+    margin: 0;
+    padding: 14px;
+    border-bottom: 1.5px solid var(--gw-ink);
+    color: var(--gw-muted);
+    text-align: center;
+}
+
+.gw-fpage .gw-cat-empty[hidden] { display: none; }
+
+.gw-fpage .gw-cat-actions { padding: 10px; background: var(--gw-paper); }
+
+.gw-fpage .gw-cat-copybar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 14px;
+    margin-top: 16px;
+}
+
+.gw-fpage .gw-cat-copybar .gw-note { margin: 0; }
+
+@media (max-width: 575.98px) {
+    .gw-fpage .gw-cat-groups { grid-template-columns: minmax(0, 1fr); }
+    .gw-fpage .gw-cat-row { grid-template-columns: minmax(0, 1fr) 96px; }
+    .gw-fpage .gw-cat-row .gw-btn { grid-column: auto; }
+}
+
+@media (max-width: 767.98px) {
+    .gw-fpage .gw-fp-col-student { width: 60%; }
+    .gw-fpage .gw-fp-email { display: none; }
+    .gw-fpage .gw-fp-table thead th:nth-child(2) { display: none; }
+    .gw-fpage .gw-fp-col-action { width: 96px; }
+}
+
+/* ---------- Edit course window ----------
+   Same look as the Add user form: numbered steps with a dashed rule, label above a full-width box. */
+.gw-ec-body { overflow-y: auto; }
+
+.gw-ec-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 0 0 16px;
+}
+
+.gw-ec-step {
+    min-width: 0;
+    margin: 0 0 20px;
+    padding: 0;
+    border: 0;
+}
+
+.gw-ec-step:last-child { margin-bottom: 0; }
+
+.gw-ec-legend {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    margin: 0 0 12px;
+    padding: 0 0 8px;
+    border-bottom: 1.5px dashed var(--gw-ink);
+    font-size: 1.05rem;
+    font-weight: 700;
+}
+
+.gw-ec-no {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    background: var(--gw-ink);
+    color: var(--gw-paper);
+    font-family: var(--gw-font-pixel);
+    font-size: 0.75rem;
+}
+
+.gw-ec-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px 14px;
+}
+
+.gw-ec-grid-course { grid-template-columns: minmax(96px, 0.45fr) minmax(0, 2fr); }
+.gw-ec-grid-term { grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr); }
+
+.gw-ec-control label {
+    display: block;
+    margin: 0 0 4px;
+    font-size: 0.88rem;
+    font-weight: 700;
+}
+
+.gw-ec-control input,
+.gw-ec-control select {
+    display: block;
+    width: 100%;
+    min-width: 0;
+    height: 42px;
+    padding: 6px 12px;
+    background: var(--gw-paper);
+    border: var(--gw-outline);
+    border-radius: 0;
+    color: var(--gw-ink);
+    font-family: inherit;
+    font-size: 1rem;
+}
+
+.gw-ec-control input:focus,
+.gw-ec-control select:focus {
+    outline: 3px solid var(--gw-ink);
+    outline-offset: 0;
+    box-shadow: 0 0 0 6px var(--gw-lime);
+}
+
+.gw-ec-static {
+    display: flex;
+    align-items: center;
+    height: 42px;
+    padding: 6px 12px;
+    background: var(--gw-head);
+    border: 1.5px dashed var(--gw-ink);
+    color: var(--gw-muted);
+}
+
+@media (max-width: 575.98px) {
+    .gw-ec-grid,
+    .gw-ec-grid-course,
+    .gw-ec-grid-term { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* ---------- Faculty pages: short notes and the extra Analytics panels ---------- */
+.gw-fpage .gw-fp-note p { margin: 0; }
+.gw-fpage .gw-fp-note p + p { margin-top: 4px; }
+
+/* two panels side by side (Top performers, Needs attention); stacked on small screens */
+.gw-fpage .gw-an-pair {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 20px;
+    margin-bottom: 28px;
+}
+
+.gw-fpage .gw-an-pair > .gw-panel { margin-bottom: 0; }
+
+.gw-fpage .gw-an-foot {
+    border-top: var(--gw-outline);
+    font-size: 0.9rem;
+}
+
+@media (max-width: 767.98px) {
+    .gw-fpage .gw-an-pair { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* ---------- Analytics charts: donut, columns, range chart, tooltip, info button ---------- */
+.gw-chart-scroll { overflow-x: auto; }
+.gw-chart-pad { padding: 8px 18px 16px; }
+.gw-chart-min { min-width: 560px; }
+
+/* anything hoverable in a chart */
+.gw-hit { outline: none; }
+.gw-hit[data-modal-target] { cursor: pointer; }
+.gw-hit .gw-hit-area { fill: transparent; }
+.gw-hit:hover .gw-hit-area,
+.gw-hit:focus-visible .gw-hit-area { fill: var(--gw-lime-pale); }
+
+/* floating tooltip (same look as the bar tooltips) */
+.gw-tip {
+    position: fixed;
+    z-index: 1100;
+    max-width: 320px;
+    padding: 4px 10px;
+    background: var(--gw-ink);
+    color: var(--gw-paper);
+    border: var(--gw-outline);
+    box-shadow: 3px 3px 0 var(--gw-lime);
+    font-size: 0.8rem;
+    font-weight: 700;
+    line-height: 1.3;
+    pointer-events: none;
+}
+.gw-tip[hidden] { display: none; }
+
+/* shared chart text */
+.gw-chart-xtick { text-anchor: middle; }
+.gw-chart-ytick { text-anchor: end; }
+.gw-chart-axis-line { stroke: var(--gw-ink); stroke-width: 1.5; }
+.gw-chart-passlabel { fill: var(--gw-orange); font-weight: 700; }
+
+/* column chart */
+.gw-col-bar { fill: var(--gw-lime); stroke: var(--gw-ink); stroke-width: 1.5; }
+.gw-col-fail { fill: var(--gw-orange); }
+.gw-hit:hover .gw-col-bar,
+.gw-hit:focus-visible .gw-col-bar { fill: var(--gw-note); }
+.gw-hit:hover .gw-col-fail,
+.gw-hit:focus-visible .gw-col-fail { fill: #ff8a4d; }
+.gw-col-value { fill: var(--gw-ink); font-size: 12px; font-weight: 700; text-anchor: middle; }
+
+/* range chart */
+.gw-range-line { stroke: var(--gw-ink); stroke-width: 3; }
+.gw-range-cap { stroke: var(--gw-ink); stroke-width: 2; }
+.gw-range-dot { fill: var(--gw-lime); stroke: var(--gw-ink); stroke-width: 2; }
+.gw-hit:hover .gw-range-dot,
+.gw-hit:focus-visible .gw-range-dot { fill: var(--gw-note); }
+.gw-range-name { fill: var(--gw-ink); font-size: 12.5px; font-weight: 700; }
+.gw-range-avg { fill: var(--gw-ink); font-weight: 700; }
+
+/* donut chart with its legend */
+.gw-donut-wrap {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 16px 36px;
+    padding: 8px 18px 18px;
+}
+.gw-donut-svg { flex: 0 0 auto; width: 210px; max-width: 100%; }
+.gw-donut-bg { fill: none; stroke: var(--gw-head); stroke-width: 26; }
+.gw-donut-seg { fill: none; stroke-width: 26; transition: stroke-width 0.1s ease; }
+.gw-donut-seg:hover,
+.gw-donut-seg:focus-visible { stroke-width: 32; }
+.gw-donut-ring { fill: none; stroke: var(--gw-ink); stroke-width: 1.5; pointer-events: none; }
+.gw-donut-big { fill: var(--gw-ink); font-size: 26px; font-weight: 700; text-anchor: middle; }
+.gw-donut-small { fill: var(--gw-muted); font-size: 11px; text-anchor: middle; }
+
+.gw-donut-seg.gw-seg-pass,
+.gw-donut-seg.gw-seg-up { stroke: var(--gw-lime); }
+.gw-donut-seg.gw-seg-fail,
+.gw-donut-seg.gw-seg-down { stroke: var(--gw-orange); }
+.gw-donut-seg.gw-seg-none { stroke: var(--gw-line); }
+.gw-donut-seg.gw-seg-same { stroke: var(--gw-lavender); }
+
+.gw-legend {
+    flex: 1 1 240px;
+    display: grid;
+    gap: 8px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+.gw-legend-btn {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 8px 12px;
+    background: var(--gw-paper);
+    border: var(--gw-outline);
+    color: var(--gw-ink);
+    font: inherit;
+    text-align: left;
+}
+button.gw-legend-btn { cursor: pointer; }
+button.gw-legend-btn:hover,
+button.gw-legend-btn:focus-visible { box-shadow: 3px 3px 0 var(--gw-ink); background: var(--gw-lime-pale); }
+.gw-legend-static { color: var(--gw-muted); }
+.gw-legend-num { margin-left: auto; font-weight: 700; white-space: nowrap; }
+.gw-swatch { flex: 0 0 auto; width: 14px; height: 14px; border: var(--gw-outline); }
+.gw-swatch.gw-seg-pass,
+.gw-swatch.gw-seg-up { background: var(--gw-lime); }
+.gw-swatch.gw-seg-fail,
+.gw-swatch.gw-seg-down { background: var(--gw-orange); }
+.gw-swatch.gw-seg-none { background: var(--gw-line); }
+.gw-swatch.gw-seg-same { background: var(--gw-lavender); }
+
+/* the "i" button beside a note, and the box it opens */
+.gw-fpage .gw-fp-note-info {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+}
+.gw-info-btn {
+    flex: 0 0 auto;
+    width: 26px;
+    height: 26px;
+    padding: 0;
+    background: var(--gw-note);
+    border: var(--gw-outline);
+    border-radius: 50%;
+    color: var(--gw-ink);
+    font: 700 0.9rem/1 var(--gw-font);
+    cursor: pointer;
+}
+.gw-info-btn:hover,
+.gw-info-btn:focus-visible { box-shadow: 2px 2px 0 var(--gw-ink); }
+.gw-info-btn[aria-expanded="true"] { background: var(--gw-lime); }
+.gw-fpage .gw-info-pop { background: var(--gw-lime-pale); border-top: 1.5px dashed var(--gw-ink); font-size: 0.92rem; }
+.gw-fpage .gw-info-pop[hidden] { display: none; }
+.gw-fpage .gw-info-pop p { margin: 0 0 6px; }
+.gw-fpage .gw-info-pop p:last-child { margin-bottom: 0; }
+
+@media (max-width: 575.98px) {
+    .gw-donut-svg { width: 180px; margin: 0 auto; }
+}
+
+/* ---------- Profile modal and Create course use the Add user form style ---------- */
+.gw-profile-card { max-width: 760px; }
+.gw-profile-card .gw-editinfo-body { padding: 18px 22px; }
+.gw-profile-card .gw-user-form-block + .gw-user-form-block {
+    margin-top: 24px;
+    padding-top: 20px;
+    border-top: 1.5px dashed var(--gw-ink);
+}
+.gw-profile-card .gw-user-locked { margin-bottom: 18px; }
+.gw-user-form .gw-alert { margin-bottom: 16px; }
+.gw-user-form .gw-user-single { max-width: 50%; }
+
+@media (max-width: 767.98px) {
+    .gw-user-form .gw-user-single { max-width: 100%; }
+}
+
+/* ---------- Scroll bars in the GradeWise theme: ink outline, lime thumb, square corners ---------- */
+/* Chrome, Edge, Safari */
+::-webkit-scrollbar {
+    width: 14px;
+    height: 14px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--gw-head);
+    border-left: var(--gw-outline);
+}
+
+::-webkit-scrollbar-track:horizontal {
+    border-left: 0;
+    border-top: var(--gw-outline);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--gw-lime);
+    border: var(--gw-outline);
+    border-radius: 0;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--gw-note);
+}
+
+::-webkit-scrollbar-thumb:active {
+    background: var(--gw-orange);
+}
+
+::-webkit-scrollbar-corner {
+    background: var(--gw-head);
+}
+
+/* Firefox (browsers that do not support the rules above) */
+@supports not selector(::-webkit-scrollbar) {
+    * {
+        scrollbar-width: auto;
+        scrollbar-color: var(--gw-lime) var(--gw-head);
+    }
+}
+
+/* =====================================================================
+   Student > My grades (.gw-student-grades, used together with
+   .gw-faculty-courses for the shared stat tints, course rows, chips and
+   filter bar). Scoped so no other page changes.
+   ===================================================================== */
+.gw-student-grades .gw-stat-lav { background: var(--gw-fc-lav-pale); }
+
+/* the course list: the arrow still points down to the numbers */
+.gw-student-grades .gw-fc-row .gw-collection-chevron {
+    transform: rotate(90deg);
+}
+
+.gw-student-grades .gw-fc-row[aria-current="true"] {
+    background: var(--fc-tone-pale);
+}
+
+.gw-student-grades .gw-fc-row:hover .gw-collection-chevron,
+.gw-student-grades .gw-fc-row:focus-visible .gw-collection-chevron {
+    transform: rotate(90deg) translateX(3px);
+}
+
+/* the panel head holds a title and a chip */
+.gw-student-grades .gw-sg-breakdown .gw-panel-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px 12px;
+}
+
+/* breakdown table: tinted header like the faculty tables */
+.gw-student-grades .gw-sg-breakdown .gw-table thead th {
+    background: var(--gw-acct-blue-pale);
+}
+
+.gw-student-grades .gw-sg-breakdown .gw-table tfoot th {
+    background: var(--gw-acct-gold-pale);
+}
+
+.gw-student-grades .gw-sg-cat {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 700;
+}
+
+.gw-student-grades .gw-sg-dot {
+    flex: 0 0 auto;
+    width: 14px;
+    height: 14px;
+    border: 1.5px solid var(--gw-ink);
+    background: var(--gw-lime);
+}
+
+.gw-student-grades .gw-sg-dot-lime   { background: var(--gw-lime); }
+.gw-student-grades .gw-sg-dot-blue   { background: var(--gw-acct-blue); }
+.gw-student-grades .gw-sg-dot-gold   { background: var(--gw-acct-gold); }
+.gw-student-grades .gw-sg-dot-lav    { background: var(--gw-fc-lav); }
+.gw-student-grades .gw-sg-dot-orange { background: var(--gw-fc-orange); }
+
+.gw-student-grades .gw-sg-period-mid   { background: var(--gw-fc-lav); }
+.gw-student-grades .gw-sg-period-final { background: var(--gw-fc-orange); }
+
+.gw-student-grades .gw-sg-pending {
+    border-style: dashed;
+    font-style: italic;
+}
+
+/* class benchmark: lavender note card */
+.gw-student-grades .gw-benchmark {
+    background: var(--gw-fc-lav-pale);
+}
+
+.gw-student-grades .gw-benchmark .gw-stat-value {
+    text-shadow: 3px 3px 0 var(--gw-fc-lav);
+}
+
+.gw-student-grades .gw-benchmark-empty {
+    background: var(--gw-head);
+}
+
+/* =====================================================================
+   Student > What-if simulator (.gw-student-whatif, used together with
+   .gw-faculty-courses for the shared stat tints, chips and filter bar).
+   Scoped so no other page changes.
+   ===================================================================== */
+.gw-student-whatif .gw-stat-lav { background: var(--gw-fc-lav-pale); }
+.gw-student-whatif .gw-stat-orange { background: var(--gw-fc-orange-pale); }
+.gw-student-whatif .gw-stat-lav[data-tab]::before { background: var(--gw-fc-lav); }
+.gw-student-whatif .gw-stat-orange[data-tab]::before { background: var(--gw-fc-orange); }
+.gw-student-whatif .gw-stat-lav .gw-stat-value { text-shadow: 3px 3px 0 var(--gw-fc-lav); }
+.gw-student-whatif .gw-stat-orange .gw-stat-value { text-shadow: 3px 3px 0 var(--gw-fc-orange); }
+
+/* course picker sits in the same tinted bar as the faculty filters */
+.gw-student-whatif .gw-fc-filter-search select {
+    width: 100%;
+    height: 38px;
+}
+
+.gw-student-whatif .gw-fc-filter select:focus {
+    outline: 3px solid var(--gw-ink);
+    outline-offset: 0;
+    box-shadow: 0 0 0 6px var(--gw-lime);
+}
+
+/* category cells with a coloured square */
+.gw-student-whatif .gw-sg-cat {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 700;
+}
+
+.gw-student-whatif .gw-sg-dot {
+    flex: 0 0 auto;
+    width: 14px;
+    height: 14px;
+    border: 1.5px solid var(--gw-ink);
+    background: var(--gw-lime);
+}
+
+.gw-student-whatif .gw-sg-dot-lime   { background: var(--gw-lime); }
+.gw-student-whatif .gw-sg-dot-blue   { background: var(--gw-acct-blue); }
+.gw-student-whatif .gw-sg-dot-gold   { background: var(--gw-acct-gold); }
+.gw-student-whatif .gw-sg-dot-lav    { background: var(--gw-fc-lav); }
+.gw-student-whatif .gw-sg-dot-orange { background: var(--gw-fc-orange); }
+
+/* tinted table headers and totals, one tint per panel */
+.gw-student-whatif .gw-sw-scenario .gw-table thead th { background: var(--gw-fc-lav-pale); }
+.gw-student-whatif .gw-sw-graded .gw-table thead th   { background: var(--gw-acct-blue-pale); }
+.gw-student-whatif .gw-calc .gw-table thead th        { background: var(--gw-acct-gold-pale); }
+.gw-student-whatif .gw-calc .gw-table tfoot th,
+.gw-student-whatif .gw-calc .gw-table tfoot td        { background: var(--gw-lime-pale); }
+
+/* target grade chips: pixel-edged buttons that fill with the accents */
+.gw-student-whatif .gw-sw-target .gw-chip {
+    border: 1.5px solid var(--gw-ink);
+    border-radius: 0;
+    box-shadow: 2px 2px 0 var(--gw-ink);
+}
+
+.gw-student-whatif .gw-sw-target .gw-chip:hover { background: var(--gw-acct-blue); }
+.gw-student-whatif .gw-sw-target .gw-chip.gw-chip-on { background: var(--gw-lime); }
+
+.gw-student-whatif .gw-sw-target {
+    background: var(--gw-acct-blue-pale);
+}
+
+.gw-student-whatif .gw-sw-target .gw-panel-head {
+    background: var(--gw-paper);
+}
+
+/* =====================================================================
+   Student pages: short explanation notes, same look as the faculty
+   gold note band (.gw-fp-note). Scoped to the student pages only.
+   ===================================================================== */
+.gw-student-grades .gw-fp-note,
+.gw-student-whatif .gw-fp-note {
+    background: var(--gw-acct-gold-pale);
+    border-bottom: var(--gw-outline);
+    color: var(--gw-ink);
+    font-size: 0.92rem;
+    line-height: 1.5;
+}
+
+.gw-student-grades .gw-fp-note p,
+.gw-student-whatif .gw-fp-note p {
+    margin: 0;
+}
+
+/* the What-if notes sit inside a panel body, so pull them to the panel edges */
+.gw-student-whatif .gw-sw-note {
+    margin: -8px -18px 16px;
+    padding: 10px 18px;
+}
+
+/* the notes on the grades page are full-width bands under the panel head */
+.gw-student-grades .gw-fp-note.gw-panel-body {
+    padding-top: 10px;
+    padding-bottom: 10px;
+}
+
+/* =====================================================================
+   Student score tables: the same table as the faculty Course page
+   (.gw-sr-table inside .gw-fcourse), read only. Scoped to the student pages.
+   ===================================================================== */
+.gw-student-grades .gw-sg-scores .gw-panel-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px 12px;
+}
+
+.gw-student-grades .gw-sg-termhead {
+    padding-top: 12px;
+    padding-bottom: 8px;
+    border-bottom: var(--gw-outline);
+    background: var(--gw-acct-blue-pale);
+}
+
+/* column names above the boxes are plain text here (faculty has links) */
+.gw-fcourse .gw-sr-grid-head .gw-sr-gi > .gw-sr-fit {
+    align-self: center;
+    margin: 0 auto;
+    padding: 3px 2px;
+}
+
+/* a score shown as a read-only box, same size and spacing as the faculty score boxes */
+.gw-fcourse .gw-sr-val {
+    display: block;
+    padding: 6px 2px;
+    background: var(--gw-paper);
+    border: 1.5px solid var(--gw-ink);
+    text-align: center;
+    font-size: clamp(0.62rem, calc(1.05rem - 0.07rem * var(--sr-n)), 0.9rem);
+}
+
+.gw-fcourse .gw-sr-val-empty {
+    color: var(--gw-muted);
+    border-style: dashed;
+    border-color: var(--gw-line);
+}
+
+.gw-fcourse .gw-sr-hps .gw-sr-gi {
+    font-size: clamp(0.62rem, calc(1.05rem - 0.07rem * var(--sr-n)), 0.9rem);
+}
+
+/* the printout lists every score under the table */
+.gw-student-grades .gw-sg-detail {
+    margin-top: 8px;
+}
+
+/* class PS per category, under the class comparison */
+.gw-student-grades .gw-sg-cat-avgs {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 8px;
+}
+
+.gw-student-grades .gw-sg-cat-avgs-label {
+    font-family: var(--gw-font-pixel);
+    font-size: 0.7rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+/* =====================================================================
+   Student What-if: category rows grouped like the faculty score table
+   (Class Standing lime, Exam gold). Scoped to the What-if page only.
+   ===================================================================== */
+.gw-student-whatif .gw-sw-grouprow td {
+    padding: 6px 12px;
+    font-weight: 700;
+    border-top: 1.5px solid var(--gw-ink);
+    border-bottom: 1.5px solid var(--gw-ink);
+}
+
+.gw-student-whatif .gw-sw-group-cs td { background: var(--gw-lime-pale); }
+.gw-student-whatif .gw-sw-group-ex td { background: var(--gw-acct-gold-pale); }
+
+.gw-student-whatif .gw-sw-group-name {
+    font-size: 0.85rem;
+    line-height: 1.2;
+}
+
+.gw-student-whatif .gw-sw-group-w {
+    margin-left: 6px;
+    font-family: var(--gw-font-pixel);
+    font-size: 0.65rem;
+    font-weight: 400;
+    letter-spacing: 0.04em;
+}
+
+/* =====================================================================
+   Student pages: visual hierarchy. All the colours stay; what changes is the
+   order and the weight. Top to bottom on the Course page:
+     1. which course, and what can I do here (title, buttons)
+     2. alerts: a problem first, then my goal
+     3. where I stand (the Earned number is the biggest thing on the page)
+     4. the scores behind it
+     5. my progress, then how I compare (least urgent, so last)
+   Rules used: the most important thing is the largest and sits top left;
+   one primary button, the rest outlined; more space between sections than
+   inside them; emphasis is kept for a few things so it still stands out.
+   ===================================================================== */
+.gw-student-whatif [hidden] { display: none !important; }
+
+.gw-student-grades .gw-page-head { margin-bottom: 20px; flex-wrap: wrap; align-items: flex-end; }
+.gw-student-grades .gw-page-head .gw-form-buttons { margin: 0; }
+
+/* goal alert: one line, label on the left, answer in the middle, the way to change it on the right */
+.gw-student-grades .gw-goal-alert {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 12px;
+    margin-bottom: 24px;
+}
+.gw-student-grades .gw-goal-label {
+    font-family: var(--gw-font-pixel);
+    font-size: 0.7rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+.gw-student-grades .gw-goal-text { flex: 1 1 260px; font-weight: 700; }
+.gw-student-grades .gw-goal-link {
+    margin-left: auto;
+    color: var(--gw-ink);
+    font-weight: 700;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+}
+.gw-student-grades .gw-goal-link:hover { background: var(--gw-note); }
+
+/* the Earned number leads: biggest card, biggest number */
+.gw-student-grades .gw-sg-hero { grid-template-columns: 1.5fr 1fr 1fr; margin-bottom: 28px; }
+.gw-student-grades .gw-sg-hero .gw-stat:first-child .gw-stat-value { font-size: 3.4rem; }
+.gw-student-grades .gw-sg-hero .gw-stat:not(:first-child) .gw-stat-value { font-size: 2.1rem; }
+@media (max-width: 720px) {
+    .gw-student-grades .gw-sg-hero { grid-template-columns: 1fr; }
+}
+
+/* more room between sections than inside them */
+.gw-student-grades > .gw-panel,
+.gw-student-whatif .gw-panel,
+.gw-student-whatif .gw-stats { margin-bottom: 28px; }
+
+/* My courses: two short lines of text under each course (earned so far, then the goal) */
+.gw-student-grades .gw-sg-rowtext {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    margin-top: 8px;
+    font-size: 0.92rem;
+    line-height: 1.4;
+    color: var(--gw-ink);
+}
+.gw-student-grades .gw-sg-earned strong { font-size: 1.05rem; font-weight: 700; }
+.gw-student-grades .gw-sg-goaltext {
+    color: var(--gw-muted);
+    padding-left: 8px;
+    border-left: 4px solid var(--gw-line);
+}
+.gw-student-grades .gw-sg-goal-ok   { color: var(--gw-ink); border-left-color: var(--gw-lime); }
+.gw-student-grades .gw-sg-goal-info { color: var(--gw-ink); border-left-color: var(--gw-ink); }
+.gw-student-grades .gw-sg-goal-warn { color: var(--gw-ink); border-left-color: var(--gw-orange); }
+
+/* What-if: saved-goal note, room under the table and above the buttons */
+.gw-student-whatif .gw-goal-note { margin: 4px 0 0; font-size: 0.88rem; color: var(--gw-muted); }
+.gw-student-whatif .gw-sw-scenario .gw-table-wrap { margin-bottom: 16px; }
+.gw-student-whatif .gw-sw-scenario .gw-form-buttons,
+.gw-student-whatif .gw-sw-target .gw-form-buttons { margin-top: 16px; }
+
+/* =====================================================================
+   Student pages: progress history chart. Hovering only shades the column
+   and shows the tooltip (plain words, no symbols); the dots do not change.
+   A one-line key under the chart names the dashed passing line.
+   ===================================================================== */
+.gw-history-panel .gw-chart-legend {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 8px 0 0;
+    font-size: 0.85rem;
+    color: var(--gw-muted);
+}
+.gw-history-panel .gw-chart-key {
+    width: 22px;
+    border-top: 2px dashed var(--gw-orange);
+}

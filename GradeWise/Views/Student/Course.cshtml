@@ -1,0 +1,141 @@
+@model GradeWise.Models.StudentDashboardViewModel
+@using System.Globalization
+@using System.Linq
+@using GradeWise.Models
+@using GradeWise.Services
+@{
+    ViewBag.Title = Model.Code + " grades";
+    // Final Grade shows INC (incomplete) while the Final Term exam is still blank, like the class record.
+    var equivalentText = Model.Incomplete ? "INC" : GradeCalculator.Format(Model.Equivalent);
+
+    // The goal is picked on the What-If simulator and kept in this browser under this key (student-goal.js reads it).
+    var goalKey = "gw.goal." + Model.StudentNo + "." + Model.SelectedId;
+    var scaleText = string.Join(";", GradeCalculator.Scale().Select(st => GradeCalculator.Raw(st.MinAverage) + ":" + GradeCalculator.Raw(st.Grade)));
+    var canShowGoal = Model.HasCategories && Model.WeightsOk;
+}
+
+@section scripts {
+    @* Tabs and the open category work exactly like the faculty Course page, so its script is shared. *@
+    <script src="@Url.Content("~/Scripts/faculty-course.js")?v=@System.IO.File.GetLastWriteTimeUtc(Server.MapPath("~/Scripts/faculty-course.js")).Ticks"></script>
+    @* The goal alert reuses the What-If formulas (whatif.js does nothing on this page by itself). *@
+    <script src="@Url.Content("~/Scripts/whatif.js")?v=@System.IO.File.GetLastWriteTimeUtc(Server.MapPath("~/Scripts/whatif.js")).Ticks"></script>
+    <script src="@Url.Content("~/Scripts/student-goal.js")?v=@System.IO.File.GetLastWriteTimeUtc(Server.MapPath("~/Scripts/student-goal.js")).Ticks"></script>
+}
+
+<div class="gw-faculty-courses gw-fcourse gw-student-grades">
+
+@* Reading order, top to bottom: 1. which course and what can I do here, 2. alerts (problems, then my goal),
+   3. where I stand (the big number first), 4. the scores behind it, 5. my progress, 6. how I compare. *@
+<div class="gw-page-head">
+    <div>
+        <h1 class="gw-page-title">@Model.Code &middot; @Model.Name</h1>
+        <p class="gw-page-sub">
+            <span class="gw-badge">@Model.Term</span>
+            <span class="gw-badge">Showing: @Model.ScopeLabel</span>
+        </p>
+    </div>
+    <div class="gw-form-buttons">
+        @Html.ActionLink("What-If simulator", "WhatIf", "Student", new { id = Model.SelectedId }, new { @class = "gw-btn gw-btn-small" })
+        @Html.ActionLink("Printable summary", "Summary", "Student", new { id = Model.SelectedId }, new { @class = "gw-btn gw-btn-small gw-btn-outline" })
+        @Html.ActionLink("All courses", "Index", "Student", null, new { @class = "gw-btn gw-btn-small gw-btn-outline" })
+    </div>
+</div>
+
+@if (!Model.HasCategories)
+{
+    <div class="gw-alert gw-alert-warn" role="status">
+        No @Model.ScopeLabel grading categories are set for this course yet, so there is nothing to calculate.
+    </div>
+}
+else if (!Model.WeightsOk)
+{
+    <div class="gw-alert gw-alert-warn" role="status">
+        The @Model.ScopeLabel weights add up to <strong>@GradeCalculator.Format(Model.WeightTotal)%</strong>, not 100%. Your numbers may change once they are fixed.
+    </div>
+}
+
+@* Your goal from the What-If simulator. Without JavaScript (or without a saved goal) it just invites you to set one. *@
+@if (canShowGoal)
+{
+    <div class="gw-alert gw-alert-info gw-goal-alert" id="gw-goal-alert" role="status" aria-live="polite"
+         data-key="@goalKey"
+         data-earned="@GradeCalculator.Raw(Model.Earned)"
+         data-remaining="@GradeCalculator.Raw(Model.RemainingWeight)"
+         data-scale="@scaleText">
+        <span class="gw-goal-label">@Model.ScopeLabel goal</span>
+        <span class="gw-goal-text" id="gw-goal-text">No goal set yet. Pick one in the What-If simulator to see what your remaining work must average.</span>
+        @Html.ActionLink("Set goal", "WhatIf", "Student", new { id = Model.SelectedId }, new { @class = "gw-goal-link", id = "gw-goal-link" })
+    </div>
+}
+
+<section class="gw-stats gw-sg-hero" id="course-summary" aria-label="Summary">
+    <div class="gw-stat gw-stat-lime" data-tab="Earned">
+        <div class="gw-stat-value">@GradeCalculator.Format(Model.EarnedGrade)</div>
+        <div class="gw-stat-label">@Model.ScopeLabel earned so far <span class="gw-th-sub">/100</span></div>
+    </div>
+    <div class="gw-stat gw-stat-blue" data-tab="Equivalent">
+        <div class="gw-stat-value">@equivalentText</div>
+        <div class="gw-stat-label">Equivalent</div>
+    </div>
+    <div class="gw-stat gw-stat-gold" data-tab="Remaining">
+        <div class="gw-stat-value">@(Model.HasCategories ? GradeCalculator.Format(Model.RemainingWeight) + "%" : "\u2014")</div>
+        <div class="gw-stat-label">Remaining weight</div>
+    </div>
+</section>
+
+@Html.Partial("_GradeTables", Model)
+
+@Html.Partial("_History", Model)
+
+@{
+    var hasClass = Model.ClassAverage.HasValue;
+    string gapText = null;
+    if (hasClass && Model.EarnedGrade.HasValue)
+    {
+        var diff = Model.EarnedGrade.Value - Model.ClassAverage.Value;
+        gapText = System.Math.Abs(diff) < 0.005
+            ? "the same as the class"
+            : GradeCalculator.Format(System.Math.Abs(diff)) + " points " + (diff > 0 ? "above" : "below") + " the class";
+    }
+}
+
+<section class="@(hasClass ? "gw-panel gw-benchmark" : "gw-panel gw-benchmark gw-benchmark-empty")" aria-labelledby="benchmark-title">
+    @if (hasClass)
+    {
+        <div class="gw-benchmark-figure">
+            <img src="@Url.Content("~/Content/img/icons/quote.svg")" alt="" class="gw-quote" width="28" height="28" />
+            <div class="gw-stat-value">@GradeCalculator.Format(Model.ClassAverage)</div>
+        </div>
+        <div class="gw-benchmark-body">
+            <h2 id="benchmark-title" class="gw-panel-title">How you compare</h2>
+            <p>
+                Class @Model.ScopeLabel average: <strong>@GradeCalculator.Format(Model.ClassAverage)</strong> (@Model.ClassGraded students).
+                @if (gapText != null)
+                {
+                    <span>You: <strong>@GradeCalculator.Format(Model.EarnedGrade)</strong>, <strong>@gapText</strong>.</span>
+                }
+            </p>
+        </div>
+        <p class="gw-benchmark-note">Only averages are shown, never other students' scores.</p>
+        if (Model.CategoryAverages.Count > 0)
+        {
+            <div class="gw-sg-cat-avgs">
+                <span class="gw-sg-cat-avgs-label">Class PS by category</span>
+                @foreach (var ca in Model.CategoryAverages)
+                {
+                    <span class="gw-fc-chip gw-fc-chip-term">@ca.Name @GradeCalculator.Format(ca.Average)</span>
+                }
+            </div>
+        }
+    }
+    else
+    {
+        <div class="gw-benchmark-body">
+            <h2 id="benchmark-title" class="gw-panel-title">How you compare</h2>
+            <p class="gw-muted">
+                Shown once @Model.MinClassSize or more students have scores, to keep grades private.
+            </p>
+        </div>
+    }
+</section>
+</div>

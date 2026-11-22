@@ -296,6 +296,11 @@
     <Content Include="Scripts\admin-accounts.js" />
     <Content Include="Scripts\admin-create-user.js" />
     <Content Include="Scripts\admin-terms.js" />
+    <Content Include="Scripts\faculty-assessment.js" />
+    <Content Include="Scripts\faculty-course.js" />
+    <Content Include="Scripts\faculty-courses.js" />
+    <Content Include="Scripts\student-grades.js" />
+    <Content Include="Scripts\student-goal.js" />
     <Content Include="Scripts\gw-modal.js" />
     <Content Include="Scripts\gw-notifications.js" />
     <Content Include="Scripts\whatif.js" />
@@ -337,6 +342,7 @@
     <Content Include="Views\Admin\Index.cshtml" />
     <Content Include="Views\Admin\Terms.cshtml" />
     <Content Include="Views\Faculty\Categories.cshtml" />
+    <Content Include="Views\Faculty\Assessment.cshtml" />
     <Content Include="Views\Faculty\Course.cshtml" />
     <Content Include="Views\Faculty\Analytics.cshtml" />
     <Content Include="Views\Faculty\CreateCourse.cshtml" />
@@ -345,6 +351,8 @@
     <Content Include="Views\Notifications\Bell.cshtml" />
     <Content Include="Views\Student\Index.cshtml" />
     <Content Include="Views\Student\Summary.cshtml" />
+    <Content Include="Views\Student\_GradeTables.cshtml" />
+    <Content Include="Views\Student\Course.cshtml" />
     <Content Include="Views\Student\_History.cshtml" />
     <Content Include="Views\Student\WhatIf.cshtml" />
     <Content Include="Views\Account\ForceChangePassword.cshtml" />

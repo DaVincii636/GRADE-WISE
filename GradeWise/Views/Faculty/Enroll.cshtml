@@ -4,10 +4,25 @@
 
     var message = TempData["Message"] as string;
     var error = TempData["Error"] as string;
+
+    // Avatar colours cycle through the same accents the course pages use.
+    var tones = new[] { "lime", "blue", "gold", "lav", "orange" };
+
+    Func<string, string> initialsOf = n =>
+    {
+        var parts = (n ?? "").Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+        return parts.Length == 0 ? "?" : (parts[0].Substring(0, 1) + (parts.Length > 1 ? parts[parts.Length - 1].Substring(0, 1) : "")).ToUpperInvariant();
+    };
 }
 
+<div class="gw-faculty-courses gw-fcourse gw-fpage">
+
 <h1 class="gw-page-title">@Model.Code &middot; Students</h1>
-<p class="gw-page-sub">@Model.Name, @Model.Term</p>
+<p class="gw-page-sub gw-fcourse-sub">
+    <span class="gw-fc-chip gw-fc-chip-term">@Model.Name</span>
+    <span class="gw-fc-chip gw-fc-chip-section">@Model.Term</span>
+    <span class="gw-fc-chip gw-fc-chip-students">@Model.Enrolled.Count enrolled</span>
+</p>
 
 @if (!string.IsNullOrEmpty(error))
 {
@@ -18,44 +33,87 @@
     <div class="gw-alert gw-alert-ok" role="status">@message</div>
 }
 
-<div class="gw-toolbar">
-    @Html.ActionLink("Back to scores", "Course", "Faculty", new { id = Model.CourseId }, new { @class = "gw-btn gw-btn-outline" })
+<div class="gw-toolbar gw-fcourse-toolbar">
+    <a href="@Url.Action("Course", "Faculty", new { id = Model.CourseId })" class="gw-iconbtn gw-iconbtn-text" title="Back to scores">
+        <img src="@Url.Content("~/Content/img/icons/back.svg")" alt="" width="24" height="24" />
+        <span>Back to scores</span>
+    </a>
+    <a href="@Url.Action("Enroll", "Faculty", new { id = Model.CourseId })" class="gw-iconbtn gw-iconbtn-text gw-tone-blue" aria-current="page" title="Students">
+        <img src="@Url.Content("~/Content/img/icons/user.svg")" alt="" width="24" height="24" />
+        <span>Students</span>
+    </a>
+    <a href="@Url.Action("Categories", "Faculty", new { id = Model.CourseId })" class="gw-iconbtn gw-iconbtn-text gw-tone-gold" title="Categories and weights">
+        <img src="@Url.Content("~/Content/img/icons/list.svg")" alt="" width="24" height="24" />
+        <span>Categories</span>
+    </a>
+    <a href="@Url.Action("Analytics", "Faculty", new { id = Model.CourseId })" class="gw-iconbtn gw-iconbtn-text gw-tone-lav" title="Analytics">
+        <img src="@Url.Content("~/Content/img/icons/calendar.svg")" alt="" width="24" height="24" />
+        <span>Analytics</span>
+    </a>
 </div>
 
-<section class="gw-panel gw-enroll-card">
-    <div class="gw-panel-head">
-        <h2 class="gw-panel-title">Enrolled (@Model.Enrolled.Count)</h2>
+<section class="gw-stats" aria-label="Class summary">
+    <div class="gw-stat gw-stat-blue" data-tab="Enrolled">
+        <div class="gw-stat-value">@Model.Enrolled.Count</div>
+        <div class="gw-stat-label">Enrolled students</div>
     </div>
+    <div class="gw-stat gw-stat-lime" data-tab="Available">
+        <div class="gw-stat-value">@Model.Available.Count</div>
+        <div class="gw-stat-label">Available to add</div>
+    </div>
+</section>
+
+<section class="gw-panel gw-sr-panel gw-enroll-card" aria-labelledby="gw-en-title">
+    <div class="gw-panel-head">
+        <h2 class="gw-panel-title" id="gw-en-title">Enrolled (@Model.Enrolled.Count)</h2>
+    </div>
+
+    @if (Model.Enrolled.Count > 0)
+    {
+        <div class="gw-sr-tools" id="gw-en-tools" role="search" aria-label="Filter enrolled students" hidden>
+            <div class="gw-sr-tools-search">
+                <input type="search" id="gw-en-search" placeholder="Search enrolled students" aria-label="Search enrolled students" autocomplete="off" spellcheck="false" />
+            </div>
+            <span class="gw-fc-chip gw-sr-tools-count" id="gw-en-count" aria-live="polite"></span>
+            <button type="button" class="gw-btn gw-btn-small gw-btn-outline" id="gw-en-clear">Clear</button>
+        </div>
+    }
+
     <div class="gw-table-wrap">
-        <table class="gw-table">
+        <table class="gw-table gw-fp-table" id="gw-en-table">
             <thead>
                 <tr>
-                    <th>Name</th>
-                    <th>ID</th>
-                    <th>Email</th>
-                    <th>Action</th>
+                    <th scope="col" class="gw-fp-col-student">Student</th>
+                    <th scope="col">Email</th>
+                    <th scope="col" class="gw-fp-col-action">Action</th>
                 </tr>
             </thead>
             <tbody>
                 @if (Model.Enrolled.Count == 0)
                 {
                     <tr>
-                        <td colspan="4" class="gw-empty">No students enrolled yet. Add some below.</td>
+                        <td colspan="3" class="gw-empty">No students enrolled yet. Add some below.</td>
                     </tr>
                 }
-                @foreach (var s in Model.Enrolled)
+                @for (var i = 0; i < Model.Enrolled.Count; i++)
                 {
-                    <tr>
-                        <td>
-                            @s.FullName
-                            @if (!s.IsActive)
-                            {
-                                <span class="gw-status gw-status-off">Disabled</span>
-                            }
+                    var s = Model.Enrolled[i];
+                    <tr data-student="@((s.FullName + " " + s.StudentNo + " " + s.Email).ToLowerInvariant())">
+                        <td class="gw-fp-col-student">
+                            <div class="gw-sr-person">
+                                <span class="gw-sr-avatar gw-fp-avatar-@tones[i % tones.Length]" aria-hidden="true">@initialsOf(s.FullName)</span>
+                                <span class="gw-sr-person-text">
+                                    <span class="gw-sr-name">@s.FullName</span>
+                                    <code class="gw-sr-id">@s.StudentNo</code>
+                                    @if (!s.IsActive)
+                                    {
+                                        <span class="gw-status gw-status-off">Disabled</span>
+                                    }
+                                </span>
+                            </div>
                         </td>
-                        <td>@s.StudentNo</td>
-                        <td>@s.Email</td>
-                        <td>
+                        <td class="gw-fp-email">@s.Email</td>
+                        <td class="gw-fp-col-action">
                             @using (Html.BeginForm("Unenroll", "Faculty", new { id = Model.CourseId }, FormMethod.Post, new { @class = "gw-row-form", data_confirm = "Remove " + s.FullName + " from this course? Their scores for it are deleted.", data_confirm_title = "Remove student?", data_confirm_ok = "Remove", data_confirm_tone = "danger" }))
                             {
                                 @Html.AntiForgeryToken()
@@ -65,60 +123,161 @@
                         </td>
                     </tr>
                 }
+                <tr class="gw-fp-nomatch" hidden>
+                    <td colspan="3" class="gw-empty">
+                        No enrolled student matches this search.
+                        <button type="button" class="gw-fc-linkbtn" data-en-clear>Clear search</button>
+                    </td>
+                </tr>
             </tbody>
         </table>
     </div>
 </section>
 
-<section class="gw-panel gw-form-narrow gw-enroll-card">
+<section class="gw-panel gw-sr-panel gw-enroll-card" aria-labelledby="gw-add-title">
     <div class="gw-panel-head">
-        <h2 class="gw-panel-title">Add students</h2>
+        <h2 class="gw-panel-title" id="gw-add-title">Add students</h2>
     </div>
-    <div class="gw-panel-body">
-        @if (Model.Available.Count == 0)
-        {
-            <p class="gw-empty-block">
-                @if (Model.Enrolled.Count == 0)
-                {
-                    @:There are no active student accounts yet. Ask an administrator to create them.
-                }
-                else
-                {
-                    @:Every active student account is already enrolled in this course.
-                }
-            </p>
-        }
-        else
-        {
-            using (Html.BeginForm("EnrollStudents", "Faculty", new { id = Model.CourseId }, FormMethod.Post))
+
+    @if (Model.Available.Count == 0)
+    {
+        <div class="gw-panel-body gw-empty-block">
+            @if (Model.Enrolled.Count == 0)
             {
-                @Html.AntiForgeryToken()
-                <div class="gw-check-list gw-enroll-list">
-                    @foreach (var s in Model.Available)
+                @:No active student accounts yet. Ask an administrator to create some.
+            }
+            else
+            {
+                @:All active students are already enrolled.
+            }
+        </div>
+    }
+    else
+    {
+        using (Html.BeginForm("EnrollStudents", "Faculty", new { id = Model.CourseId }, FormMethod.Post, new { id = "gw-add-form" }))
+        {
+            @Html.AntiForgeryToken()
+
+            <div class="gw-sr-tools" id="gw-add-tools" role="search" aria-label="Filter available students" hidden>
+                <div class="gw-sr-tools-search">
+                    <input type="search" id="gw-add-search" placeholder="Search student name or number" aria-label="Search available students" autocomplete="off" spellcheck="false" />
+                </div>
+                <span class="gw-fc-chip gw-sr-tools-count" id="gw-add-count" aria-live="polite"></span>
+            </div>
+
+            <div class="gw-panel-body">
+                <div class="gw-fp-picks" id="gw-add-list">
+                    @for (var i = 0; i < Model.Available.Count; i++)
                     {
-                        <label>
+                        var s = Model.Available[i];
+                        <label class="gw-fp-pick" data-student="@((s.FullName + " " + s.StudentNo).ToLowerInvariant())">
                             <input type="checkbox" name="studentIds" value="@s.Id" />
-                            @s.FullName <span class="gw-muted">(@s.StudentNo)</span>
+                            <span class="gw-sr-avatar gw-fp-avatar-@tones[i % tones.Length]" aria-hidden="true">@initialsOf(s.FullName)</span>
+                            <span class="gw-sr-person-text">
+                                <span class="gw-sr-name">@s.FullName</span>
+                                <code class="gw-sr-id">@s.StudentNo</code>
+                            </span>
                         </label>
                     }
                 </div>
+                <p class="gw-fp-nomatch-add" id="gw-add-nomatch" hidden>No available student matches this search.</p>
+            </div>
+
+            <div class="gw-panel-body gw-sr-savebar">
+                <span class="gw-sr-savehint" id="gw-add-selected" aria-live="polite">Select students to add.</span>
                 <div class="gw-form-buttons">
-                    <button type="submit" class="gw-btn">Enroll selected</button>
                     <button type="button" class="gw-btn gw-btn-outline" id="select-all">Select all</button>
+                    <button type="submit" class="gw-btn" id="gw-add-submit">Enroll selected</button>
                 </div>
-            }
+            </div>
         }
-    </div>
+    }
 </section>
+
+</div>
 
 @section scripts {
     <script>
-        var selectAll = document.getElementById("select-all");
-        if (selectAll) {
+        (function () {
+            function plural(n, word) { return n + " " + word + (n === 1 ? "" : "s"); }
+
+            // ---------- enrolled students: search ----------
+            var enTools = document.getElementById("gw-en-tools");
+            var enSearch = document.getElementById("gw-en-search");
+            var enCount = document.getElementById("gw-en-count");
+            if (enTools && enSearch && enCount) {
+                var rows = [].slice.call(document.querySelectorAll("#gw-en-table tr[data-student]"));
+                var noMatch = document.querySelector(".gw-fp-nomatch");
+                var applyEn = function () {
+                    var q = enSearch.value.trim().toLowerCase();
+                    var shown = 0;
+                    rows.forEach(function (r) {
+                        var hit = q === "" || (r.getAttribute("data-student") || "").indexOf(q) !== -1;
+                        r.hidden = !hit;
+                        if (hit) { shown++; }
+                    });
+                    if (noMatch) { noMatch.hidden = shown !== 0; }
+                    enCount.textContent = q === "" ? plural(rows.length, "student") : shown + " of " + plural(rows.length, "student");
+                };
+                var clearEn = function () { enSearch.value = ""; applyEn(); enSearch.focus(); };
+                enSearch.addEventListener("input", applyEn);
+                document.getElementById("gw-en-clear").addEventListener("click", clearEn);
+                [].forEach.call(document.querySelectorAll("[data-en-clear]"), function (b) { b.addEventListener("click", clearEn); });
+                enTools.hidden = false;
+                applyEn();
+            }
+
+            // ---------- available students: search, select all, selected count ----------
+            var addForm = document.getElementById("gw-add-form");
+            if (!addForm) { return; }
+            var addTools = document.getElementById("gw-add-tools");
+            var addSearch = document.getElementById("gw-add-search");
+            var addCount = document.getElementById("gw-add-count");
+            var addSelected = document.getElementById("gw-add-selected");
+            var addSubmit = document.getElementById("gw-add-submit");
+            var addNoMatch = document.getElementById("gw-add-nomatch");
+            var selectAll = document.getElementById("select-all");
+            var picks = [].slice.call(addForm.querySelectorAll(".gw-fp-pick"));
+
+            var checkedCount = function () {
+                return picks.filter(function (p) { return p.querySelector("input").checked; }).length;
+            };
+
+            var refreshAdd = function () {
+                var n = checkedCount();
+                addSelected.textContent = n === 0 ? "Select students to add." : plural(n, "student") + " selected.";
+                addSubmit.disabled = n === 0;
+                var visible = picks.filter(function (p) { return !p.hidden; });
+                var allVisibleOn = visible.length > 0 && visible.every(function (p) { return p.querySelector("input").checked; });
+                selectAll.textContent = allVisibleOn ? "Clear selection" : "Select all";
+                var q = addSearch ? addSearch.value.trim().toLowerCase() : "";
+                if (addCount) { addCount.textContent = q === "" ? plural(picks.length, "student") : visible.length + " of " + plural(picks.length, "student"); }
+                if (addNoMatch) { addNoMatch.hidden = visible.length !== 0; }
+            };
+
+            var applyAdd = function () {
+                var q = addSearch.value.trim().toLowerCase();
+                picks.forEach(function (p) {
+                    p.hidden = !(q === "" || (p.getAttribute("data-student") || "").indexOf(q) !== -1);
+                });
+                refreshAdd();
+            };
+
+            if (addSearch) {
+                addSearch.addEventListener("input", applyAdd);
+                if (addTools) { addTools.hidden = false; }
+            }
+
+            // "Select all" only touches the students that match the search
             selectAll.addEventListener("click", function () {
-                var boxes = document.querySelectorAll("input[name=studentIds]");
-                for (var i = 0; i < boxes.length; i++) { boxes[i].checked = true; }
+                var visible = picks.filter(function (p) { return !p.hidden; });
+                var allVisibleOn = visible.length > 0 && visible.every(function (p) { return p.querySelector("input").checked; });
+                visible.forEach(function (p) { p.querySelector("input").checked = !allVisibleOn; });
+                refreshAdd();
             });
-        }
+
+            addForm.addEventListener("change", refreshAdd);
+            refreshAdd();
+        })();
     </script>
 }

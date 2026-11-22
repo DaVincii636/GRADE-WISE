@@ -15,6 +15,46 @@ namespace GradeWise.Models
 
         /// <summary>"Midterm" or "Final Term". Documents saved before periods existed have no value and load as Midterm.</summary>
         public string Period { get; set; } = GradePeriods.Midterm;
+
+        /// <summary>Top-level grading group: Class Standing or Exam.</summary>
+        public string Group { get; set; } = GradeGroups.ClassStanding;
+
+        /// <summary>Individual assessment columns inside this category (Quiz 1, Quiz 2, etc.).</summary>
+        public List<GradeAssessment> Assessments { get; set; } = new List<GradeAssessment>();
+    }
+
+    public class GradeAssessment
+    {
+        public string Id { get; set; }
+        public string Name { get; set; }
+        public int Order { get; set; }
+
+        /// <summary>Highest possible score (HPS) of this assessment, like the HIGHEST POSSIBLE SCORE row of the class record.</summary>
+        public double MaxScore { get; set; } = 100;
+    }
+
+    /// <summary>
+    /// The two major grading groups inside a period. Class Standing must total 60 and Exam 40
+    /// (100 combined), so the period still totals 100.
+    /// </summary>
+    public static class GradeGroups
+    {
+        public const string ClassStanding = "Class Standing";
+        public const string Exam = "Exam";
+
+        public static readonly string[] All = { ClassStanding, Exam };
+
+        /// <summary>Anything that is not "Exam" (including a missing value from an old document) is Class Standing.</summary>
+        public static string Normalize(string group)
+        {
+            return string.Equals((group ?? string.Empty).Trim(), Exam, System.StringComparison.OrdinalIgnoreCase) ? Exam : ClassStanding;
+        }
+
+        /// <summary>The weight a group must total inside one period.</summary>
+        public static double RequiredTotal(string group)
+        {
+            return Normalize(group) == Exam ? 40 : 60;
+        }
     }
 
     /// <summary>A course.</summary>

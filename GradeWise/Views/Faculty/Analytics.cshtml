@@ -1,59 +1,233 @@
 @model GradeWise.Models.AnalyticsViewModel
+@using System.Collections.Generic
+@using System.Linq
 @using GradeWise.Models
 @using GradeWise.Services
 @{
     ViewBag.Title = Model.Code + " analytics";
     var graded = Model.Summary.Graded;
+
+    // ---- chart helpers (the SVG is built as text so Razor never sees the <text> tag) ----
+    var inv = System.Globalization.CultureInfo.InvariantCulture;
+    Func<double, string> n2 = v => v.ToString("0.####", inv);
+    Func<string, string> enc = t => System.Web.HttpUtility.HtmlAttributeEncode(t ?? "");
+    var sw = Model.StudentCount == 1 ? "student" : "students";
+    Func<string, double, double, string, string> svgText = (c0, x0, y0, body) =>
+        "<text class=\"" + c0 + "\" x=\"" + n2(x0) + "\" y=\"" + n2(y0) + "\">" + System.Web.HttpUtility.HtmlEncode(body) + "</text>";
+    Func<string, int, int, bool, string> tipOf = (label, count, total, clickable) =>
+        label + ": " + count + " of " + total + " " + (total == 1 ? "student" : "students")
+        + " (" + n2(total > 0 ? Math.Round(count * 100.0 / total, 2) : 0) + "%)" + (clickable ? ". Click to view students" : "");
+
+    // ---- popups opened by clicking a chart (rendered once, at the bottom of the page) ----
+    var modalDefs = new List<StudentModalDef>();
+    Action<string, string, string, string, string, string, List<StudentModalRow>> addModal =
+        (mid, mtitle, mbadge, mmeta, mvalue, mempty, mrows) => modalDefs.Add(new StudentModalDef
+        {
+            Id = mid, Title = mtitle, Badge = mbadge, Meta = mmeta, ValueHeader = mvalue, EmptyText = mempty, Rows = mrows
+        });
+    Func<IEnumerable<DistributionStudent>, List<StudentModalRow>> gradeRows = list => list.Select(x => new StudentModalRow
+    {
+        FullName = x.FullName,
+        StudentNo = x.StudentNo,
+        Value = GradeCalculator.Format(x.Average) + (GradeCalculator.EquivalentGrade(x.Average).HasValue ? " (eq. " + GradeCalculator.Format(GradeCalculator.EquivalentGrade(x.Average)) + ")" : "")
+    }).ToList();
+    Func<IEnumerable<DistributionStudent>, List<StudentModalRow>> scoreRows = list => list.Select(x => new StudentModalRow
+    {
+        FullName = x.FullName,
+        StudentNo = x.StudentNo,
+        Value = GradeCalculator.Format(x.Average) + "%"
+    }).ToList();
+
+    // ---- donut chart and its clickable legend ----
+    Func<string, string[], int[], string[], string[], string, string, string> donut = (aria, cls, counts, targets, tips, big, small) =>
+    {
+        var total = counts.Sum();
+        var live = counts.Count(v => v > 0);
+        var sb = new System.Text.StringBuilder();
+        sb.Append("<svg class=\"gw-chart gw-donut-svg\" viewBox=\"0 0 200 200\" role=\"img\" aria-label=\"" + enc(aria) + "\">");
+        sb.Append("<circle class=\"gw-donut-bg\" cx=\"100\" cy=\"100\" r=\"70\"></circle>");
+        double done = 0;
+        for (var k = 0; k < counts.Length; k++)
+        {
+            if (counts[k] <= 0 || total <= 0) continue;
+            var pct = counts[k] * 100.0 / total;
+            var len = live > 1 ? Math.Max(pct - 0.7, 0.2) : pct;
+            sb.Append("<circle class=\"gw-hit gw-donut-seg " + cls[k] + "\" cx=\"100\" cy=\"100\" r=\"70\" pathLength=\"100\" transform=\"rotate(-90 100 100)\""
+                + " stroke-dasharray=\"" + n2(len) + " " + n2(100 - len) + "\" stroke-dashoffset=\"" + n2(0 - done) + "\""
+                + " data-tooltip=\"" + enc(tips[k]) + "\""
+                + (targets[k] != null ? " data-modal-target=\"" + targets[k] + "\" role=\"button\" tabindex=\"0\" aria-label=\"" + enc(tips[k]) + "\"" : "")
+                + "></circle>");
+            done += pct;
+        }
+        sb.Append("<circle class=\"gw-donut-ring\" cx=\"100\" cy=\"100\" r=\"83\"></circle>");
+        sb.Append("<circle class=\"gw-donut-ring\" cx=\"100\" cy=\"100\" r=\"57\"></circle>");
+        sb.Append(svgText("gw-donut-big", 100, 103, big));
+        sb.Append(svgText("gw-donut-small", 100, 121, small));
+        sb.Append("</svg>");
+        return sb.ToString();
+    };
+    Func<string[], string[], int[], string[], string[], string> legend = (labels, cls, counts, targets, tips) =>
+    {
+        var total = counts.Sum();
+        var sb = new System.Text.StringBuilder();
+        for (var k = 0; k < counts.Length; k++)
+        {
+            var inner = "<span class=\"gw-swatch " + cls[k] + "\"></span><span class=\"gw-legend-name\">" + System.Web.HttpUtility.HtmlEncode(labels[k]) + "</span>"
+                + "<span class=\"gw-legend-num\">" + counts[k] + " <span class=\"gw-muted\">(" + n2(total > 0 ? Math.Round(counts[k] * 100.0 / total, 2) : 0) + "%)</span></span>";
+            if (targets[k] != null)
+            {
+                sb.Append("<li><button type=\"button\" class=\"gw-legend-btn\" data-modal-target=\"" + targets[k] + "\" title=\"" + enc(tips[k]) + "\">" + inner + "</button></li>");
+            }
+            else
+            {
+                sb.Append("<li><div class=\"gw-legend-btn gw-legend-static\">" + inner + "</div></li>");
+            }
+        }
+        return sb.ToString();
+    };
+
+    if (graded > 0)
+    {
+        addModal("gw-pass-modal", Model.ScopeLabel + " grade: passing", n2(Math.Round(Model.Passing * 100.0 / graded, 2)) + "%",
+            Model.Passing + " of " + graded + " graded pass (64.5 and up)", "Grade (eq.)", "Nobody is at or above passing yet.", gradeRows(Model.PassingStudents));
+        addModal("gw-fail-modal", Model.ScopeLabel + " grade: below passing", n2(Math.Round(Model.Failing * 100.0 / graded, 2)) + "%",
+            Model.Failing + " of " + graded + " graded are below 64.5", "Grade (eq.)", "Nobody is below passing.", gradeRows(Model.FailingStudents));
+
+        for (var ei = 0; ei < Model.EquivalentBins.Count; ei++)
+        {
+            var ebin = Model.EquivalentBins[ei];
+            if (ebin.Count == 0) { continue; }
+            addModal("gw-eq-modal-" + ei, "Equivalent grade " + ebin.Label, ebin.PercentText,
+                ebin.Count + " of " + graded + " graded " + (graded == 1 ? "student" : "students"), "Grade", "No students.", gradeRows(ebin.Students));
+        }
+    }
+
+    if (Model.HasTermComparison)
+    {
+        var termNames = new[] { "Improved", "Declined", "Unchanged" };
+        var termMeta = new[] { "Final Term is higher than Midterm", "Final Term is lower than Midterm", "Final Term is the same as Midterm" };
+        for (var ti = 0; ti < termNames.Length; ti++)
+        {
+            var tname = termNames[ti];
+            var tlist = Model.TermStudents.Where(x => x.Status == tname);
+            tlist = tname == "Improved" ? tlist.OrderByDescending(x => x.Change).ThenBy(x => x.FullName)
+                : tname == "Declined" ? tlist.OrderBy(x => x.Change).ThenBy(x => x.FullName)
+                : tlist.OrderBy(x => x.FullName);
+            var trows = tlist.Select(x => new StudentModalRow
+            {
+                FullName = x.FullName,
+                StudentNo = x.StudentNo,
+                Value = GradeCalculator.Format(x.Midterm) + " to " + GradeCalculator.Format(x.FinalTerm) + " (" + (x.Change > 0 ? "+" : "") + GradeCalculator.Format(x.Change) + ")"
+            }).ToList();
+            addModal("gw-term-modal-" + ti, tname, trows.Count + " of " + Model.TermCompared, termMeta[ti], "Midterm to Final Term", "No students.", trows);
+        }
+    }
+
+    for (var ci0 = 0; ci0 < Model.Categories.Count; ci0++)
+    {
+        var cat0 = Model.Categories[ci0];
+        if (cat0.Graded == 0) { continue; }
+        addModal("gw-cat-modal-" + ci0, cat0.Name + " (" + cat0.Period + ")", cat0.Graded + " of " + Model.StudentCount,
+            "Scores in this category, highest first", "Score", "No scores.", scoreRows(cat0.Students));
+    }
 }
 
-<h1 class="gw-page-title">@Model.Code &middot; @Model.Name</h1>
-<p class="gw-page-sub">@Model.Term &middot; Class analytics &middot; <span class="gw-badge">@Model.ScopeLabel</span></p>
+<div class="gw-faculty-courses gw-fcourse gw-fpage">
 
-<div class="gw-toolbar">
-    @Html.ActionLink("Back to scores", "Course", "Faculty", new { id = Model.CourseId }, new { @class = "gw-btn gw-btn-outline" })
-    @Html.ActionLink("Export class record (CSV)", "ExportCsv", "Faculty", new { id = Model.CourseId, scope = Model.Scope }, new { @class = "gw-btn" })
+<h1 class="gw-page-title">@Model.Code &middot; @Model.Name</h1>
+<p class="gw-page-sub gw-fcourse-sub">
+    <span class="gw-fc-chip gw-fc-chip-term">@Model.Term</span>
+    <span class="gw-fc-chip gw-fc-chip-section">Class analytics</span>
+    <span class="gw-fc-chip gw-fc-chip-students">@Model.StudentCount @(Model.StudentCount == 1 ? "student" : "students")</span>
+</p>
+
+<div class="gw-toolbar gw-fcourse-toolbar">
+    <a href="@Url.Action("Course", "Faculty", new { id = Model.CourseId })" class="gw-iconbtn gw-iconbtn-text" title="Back to scores">
+        <img src="@Url.Content("~/Content/img/icons/back.svg")" alt="" width="24" height="24" />
+        <span>Back to scores</span>
+    </a>
+    <a href="@Url.Action("Enroll", "Faculty", new { id = Model.CourseId })" class="gw-iconbtn gw-iconbtn-text gw-tone-blue" title="Students">
+        <img src="@Url.Content("~/Content/img/icons/user.svg")" alt="" width="24" height="24" />
+        <span>Students</span>
+    </a>
+    <a href="@Url.Action("Categories", "Faculty", new { id = Model.CourseId })" class="gw-iconbtn gw-iconbtn-text gw-tone-gold" title="Categories and weights">
+        <img src="@Url.Content("~/Content/img/icons/list.svg")" alt="" width="24" height="24" />
+        <span>Categories</span>
+    </a>
+    <a href="@Url.Action("Analytics", "Faculty", new { id = Model.CourseId })" class="gw-iconbtn gw-iconbtn-text gw-tone-lav" aria-current="page" title="Analytics">
+        <img src="@Url.Content("~/Content/img/icons/calendar.svg")" alt="" width="24" height="24" />
+        <span>Analytics</span>
+    </a>
+    <a href="@Url.Action("ExportCsv", "Faculty", new { id = Model.CourseId, scope = Model.Scope })" class="gw-iconbtn gw-iconbtn-text gw-tone-lime" title="Export class record (CSV)">
+        <img src="@Url.Content("~/Content/img/icons/download.svg")" alt="" width="24" height="24" />
+        <span>Export CSV</span>
+    </a>
 </div>
 
-<div class="gw-scope">
-    <div class="gw-scope-toggle" role="group" aria-label="Grade scope">
-        @foreach (var key in GradeScopes.All)
-        {
-            var on = key == Model.Scope;
-            <a href="@Url.Action("Analytics", "Faculty", new { id = Model.CourseId, scope = key })" class="gw-btn gw-btn-small @(on ? "gw-scope-on" : "gw-btn-outline")" aria-current="@(on ? "true" : "false")">@GradeScopes.Label(key)</a>
-        }
+<div class="gw-fcourse-scopebar">
+    <div class="gw-scope-form">
+        <span class="gw-fcourse-scopelabel">Grade scope</span>
+        <div class="gw-scope-toggle" role="group" aria-label="Grade scope">
+            @foreach (var key in GradeScopes.All)
+            {
+                var on = key == Model.Scope;
+                <a href="@Url.Action("Analytics", "Faculty", new { id = Model.CourseId, scope = key })" class="gw-btn gw-btn-small @(on ? "gw-scope-on" : "gw-btn-outline")" aria-current="@(on ? "true" : "false")">@GradeScopes.Label(key)</a>
+            }
+        </div>
+        <p class="gw-scope-note">Students see: @Model.CourseScopeLabel.</p>
     </div>
-    <p class="gw-scope-note">Students see: @Model.CourseScopeLabel.</p>
 </div>
 
 @if (Model.Categories.Count > 0 && !Model.WeightsOk)
 {
     <div class="gw-alert gw-alert-warn" role="status">
-        The @Model.ScopeLabel category weights add up to <strong>@GradeCalculator.Format(Model.WeightTotal)%</strong>, not 100%.
-        The numbers below use the weights as they are.
-        @Html.ActionLink("Fix the weights", "Categories", "Faculty", new { id = Model.CourseId }, null)
+        @Model.ScopeLabel weights total <strong>@GradeCalculator.Format(Model.WeightTotal)%</strong>, not 100%. Numbers below use them as they are.
+        @Html.ActionLink("Fix weights", "Categories", "Faculty", new { id = Model.CourseId }, null)
     </div>
 }
 
 <section class="gw-stats" aria-label="Class summary">
-    <div class="gw-stat" data-tab="Students">
+    <div class="gw-stat gw-stat-blue" data-tab="Students">
         <div class="gw-stat-value">@Model.StudentCount</div>
         <div class="gw-stat-label">Students</div>
     </div>
-    <div class="gw-stat" data-tab="Average">
+    <div class="gw-stat gw-stat-lime" data-tab="Average">
         <div class="gw-stat-value">@(Model.Summary.Average.HasValue ? GradeCalculator.Format(Model.Summary.Average) + "%" : GradeCalculator.Format(Model.Summary.Average))</div>
         <div class="gw-stat-label">Class average (@Model.ScopeLabel)</div>
     </div>
-    <div class="gw-stat" data-tab="Highest">
+    <div class="gw-stat gw-stat-lav" data-tab="Highest">
         <div class="gw-stat-value">@(Model.Summary.Highest.HasValue ? GradeCalculator.Format(Model.Summary.Highest) + "%" : GradeCalculator.Format(Model.Summary.Highest))</div>
         <div class="gw-stat-label">Highest (@Model.ScopeLabel)</div>
     </div>
-    <div class="gw-stat" data-tab="Lowest">
+    <div class="gw-stat gw-stat-orange" data-tab="Lowest">
         <div class="gw-stat-value">@(Model.Summary.Lowest.HasValue ? GradeCalculator.Format(Model.Summary.Lowest) + "%" : GradeCalculator.Format(Model.Summary.Lowest))</div>
         <div class="gw-stat-label">Lowest (@Model.ScopeLabel)</div>
     </div>
 </section>
 
-<section class="gw-panel">
+@if (Model.StudentCount > 0)
+{
+    <section class="gw-stats" aria-label="More statistics">
+        <div class="gw-stat gw-stat-blue" data-tab="Median">
+            <div class="gw-stat-value">@(Model.Median.HasValue ? GradeCalculator.Format(Model.Median) + "%" : GradeCalculator.Format(Model.Median))</div>
+            <div class="gw-stat-label">Median (@Model.ScopeLabel)</div>
+        </div>
+        <div class="gw-stat gw-stat-lime" data-tab="Passing">
+            <div class="gw-stat-value">@(Model.PassRate.HasValue ? GradeCalculator.Format(Model.PassRate) + "%" : GradeCalculator.Format(Model.PassRate))</div>
+            <div class="gw-stat-label">Passing: @Model.Passing of @graded graded (64.5+)</div>
+        </div>
+        <div class="gw-stat gw-stat-gold" data-tab="Spread">
+            <div class="gw-stat-value">@GradeCalculator.Format(Model.StdDev)</div>
+            <div class="gw-stat-label">Spread (std. deviation)@(Model.Range.HasValue ? ", range " + GradeCalculator.Format(Model.Range) : "")</div>
+        </div>
+        <div class="gw-stat gw-stat-lav" data-tab="Entered">
+            <div class="gw-stat-value">@(Model.CompletionPercent.HasValue ? GradeCalculator.Format(Model.CompletionPercent) + "%" : GradeCalculator.Format(Model.CompletionPercent))</div>
+            <div class="gw-stat-label">Scores entered: @Model.ScoresEntered of @Model.ScoresExpected</div>
+        </div>
+    </section>
+}
+
+<section class="gw-panel gw-sr-panel">
     <div class="gw-panel-head">
         <h2 class="gw-panel-title">@Model.ScopeLabel grade distribution</h2>
     </div>
@@ -63,26 +237,23 @@
             <img src="@Url.Content("~/Content/img/stickers/mascot-cat.svg")" alt="" class="gw-empty-mascot" width="72" height="72" />
             <p class="gw-empty-title">No students yet</p>
             <p class="gw-muted">
-                No students are enrolled yet.
-                @Html.ActionLink("Enroll students", "Enroll", "Faculty", new { id = Model.CourseId }, null)
+                @Html.ActionLink("Enroll students", "Enroll", "Faculty", new { id = Model.CourseId }, null) to see analytics.
             </p>
         </div>
     }
     else if (graded == 0)
     {
         <div class="gw-panel-body gw-empty-block">
-            No scores have been entered yet, so there is nothing to chart.
+            No scores yet, so nothing to chart.
             @Html.ActionLink("Enter scores", "Course", "Faculty", new { id = Model.CourseId }, null)
         </div>
     }
     else
     {
-        <div class="gw-panel-body">
+        <div class="gw-panel-body gw-fp-note">
             <p class="gw-hint-block gw-muted">
-                Number of students whose <strong>@Model.ScopeLabel Earned Grade</strong> falls in each range. Earned Grade is the points collected out of 100,
-                and work that is not graded yet counts as 0.
-                A range includes its lower number but not its upper one, and Earned Grades are rounded to 2 decimals, as in the score table.
-                <strong>Click any bar</strong> to view the students and their Earned Grade in that range.
+                Students per <strong>@Model.ScopeLabel Earned Grade</strong> range (points out of 100; ungraded work counts as 0).
+                Each range includes its lower number, not its upper. <strong>Click a bar</strong> to see the students.
             </p>
         </div>
         <div class="gw-table-wrap">
@@ -171,7 +342,7 @@
                     @if (bin.Students.Count == 0)
                     {
                         <div class="gw-panel-body gw-empty-block">
-                            No students currently fall in the <strong>@bin.Label</strong> range.
+                            No students in <strong>@bin.Label</strong>.
                         </div>
                     }
                     else
@@ -218,7 +389,7 @@
                     <div class="gw-modal-top">
                         <div class="gw-modal-meta">
                             <span class="gw-badge">@Model.NotGradedPercentText</span>
-                            <span class="gw-muted">@Model.NotGraded of @Model.StudentCount @notGradedWord with no scores yet</span>
+                            <span class="gw-muted">@Model.NotGraded of @Model.StudentCount @notGradedWord with no scores</span>
                         </div>
                         <button type="button" class="gw-iconbtn gw-modal-close" data-modal-close aria-label="Close modal" title="Close">
                             <img src="@Url.Content("~/Content/img/icons/close.svg")" alt="" width="20" height="20" />
@@ -255,50 +426,378 @@
     }
 </section>
 
-<section class="gw-panel">
+@if (Model.StudentCount > 0 && graded > 0)
+{
+    var passLabels = new[] { "Passing (64.5 and up)", "Below passing", "Not graded yet" };
+    var passCls = new[] { "gw-seg-pass", "gw-seg-fail", "gw-seg-none" };
+    var passCounts = new[] { Model.Passing, Model.Failing, Model.NotGraded };
+    var passTargets = new string[] { Model.Passing > 0 ? "gw-pass-modal" : null, Model.Failing > 0 ? "gw-fail-modal" : null, Model.NotGraded > 0 ? "gw-bin-modal-notgraded" : null };
+    var passTips = new string[3];
+    for (var pi = 0; pi < 3; pi++) { passTips[pi] = tipOf(passLabels[pi], passCounts[pi], Model.StudentCount, passTargets[pi] != null); }
+
+    <section class="gw-panel gw-sr-panel">
+        <div class="gw-panel-head">
+            <h2 class="gw-panel-title">Passing vs below passing</h2>
+        </div>
+        <div class="gw-panel-body gw-fp-note">
+            <p class="gw-hint-block gw-muted">Hover a slice for numbers. Click a slice or a row to see the students.</p>
+        </div>
+        <div class="gw-donut-wrap">
+            @Html.Raw(donut("Passing, below passing and not graded students", passCls, passCounts, passTargets, passTips, GradeCalculator.Format(Model.PassRate) + "%", "pass of graded"))
+            <ul class="gw-legend">
+                @Html.Raw(legend(passLabels, passCls, passCounts, passTargets, passTips))
+            </ul>
+        </div>
+    </section>
+
+    // Column chart of graded students per equivalent grade.
+    var eqMax = 1;
+    foreach (var eb in Model.EquivalentBins) { if (eb.Count > eqMax) { eqMax = eb.Count; } }
+    var eqStep = (int)Math.Ceiling(eqMax / 4.0);
+    var eqTop = eqStep * 4;
+    double plotL = 40, plotR = 632, plotT = 24, plotB = 212;
+    var colW = (plotR - plotL) / Model.EquivalentBins.Count;
+    var cs = new System.Text.StringBuilder();
+    cs.Append("<svg class=\"gw-chart gw-col-chart\" viewBox=\"0 0 640 262\" role=\"img\" aria-label=\"Graded students per equivalent grade\">");
+    for (var gi = 0; gi <= 4; gi++)
+    {
+        var gy = plotB - (plotB - plotT) * gi / 4.0;
+        cs.Append("<line class=\"gw-chart-grid\" x1=\"" + n2(plotL) + "\" x2=\"" + n2(plotR) + "\" y1=\"" + n2(gy) + "\" y2=\"" + n2(gy) + "\"></line>");
+        cs.Append(svgText("gw-chart-label gw-chart-ytick", plotL - 8, gy + 4, (eqStep * gi).ToString()));
+    }
+    for (var ci = 0; ci < Model.EquivalentBins.Count; ci++)
+    {
+        var ebar = Model.EquivalentBins[ci];
+        var cx0 = plotL + colW * ci;
+        var bw = colW * 0.62;
+        var bx = cx0 + (colW - bw) / 2;
+        var bh = (plotB - plotT) * ebar.Count / (double)eqTop;
+        var colTip = tipOf("Equivalent " + ebar.Label, ebar.Count, graded, ebar.Count > 0).Replace(" students (", " graded (").Replace(" student (", " graded (");
+        var colAttr = ebar.Count > 0 ? " data-modal-target=\"gw-eq-modal-" + ci + "\" role=\"button\" tabindex=\"0\" aria-label=\"" + enc(colTip) + "\"" : "";
+        cs.Append("<g class=\"gw-hit\" data-tooltip=\"" + enc(colTip) + "\"" + colAttr + ">");
+        cs.Append("<rect class=\"gw-hit-area\" x=\"" + n2(cx0) + "\" y=\"" + n2(plotT - 14) + "\" width=\"" + n2(colW) + "\" height=\"" + n2(plotB - plotT + 14) + "\"></rect>");
+        if (ebar.Count > 0)
+        {
+            cs.Append("<rect class=\"gw-col-bar" + (ebar.Label == "5.00" ? " gw-col-fail" : "") + "\" x=\"" + n2(bx) + "\" y=\"" + n2(plotB - bh) + "\" width=\"" + n2(bw) + "\" height=\"" + n2(bh) + "\"></rect>");
+            cs.Append(svgText("gw-col-value", bx + bw / 2, plotB - bh - 6, ebar.Count.ToString()));
+        }
+        cs.Append("</g>");
+        cs.Append(svgText("gw-chart-label gw-chart-xtick", cx0 + colW / 2, plotB + 18, ebar.Label));
+    }
+    cs.Append("<line class=\"gw-chart-axis-line\" x1=\"" + n2(plotL) + "\" x2=\"" + n2(plotR) + "\" y1=\"" + n2(plotB) + "\" y2=\"" + n2(plotB) + "\"></line>");
+    cs.Append(svgText("gw-chart-label gw-chart-xtick", (plotL + plotR) / 2, 254, "Equivalent grade (1.00 is best, 5.00 is failed)"));
+    cs.Append("</svg>");
+    <section class="gw-panel gw-sr-panel">
+        <div class="gw-panel-head">
+            <h2 class="gw-panel-title">@Model.ScopeLabel equivalent grades</h2>
+        </div>
+        <div class="gw-panel-body gw-fp-note">
+            <p class="gw-hint-block gw-muted">Graded students per equivalent grade. Hover a column, click it to see the students.</p>
+        </div>
+        <div class="gw-chart-scroll">
+            <div class="gw-chart-pad gw-chart-min">@Html.Raw(cs.ToString())</div>
+        </div>
+    </section>
+
+    <div class="gw-an-pair">
+        <section class="gw-panel gw-sr-panel">
+            <div class="gw-panel-head">
+                <h2 class="gw-panel-title">Top performers</h2>
+            </div>
+            <div class="gw-table-wrap">
+                <table class="gw-table">
+                    <thead>
+                        <tr>
+                            <th scope="col">Student</th>
+                            <th scope="col" class="gw-num">@Model.ScopeLabel</th>
+                            <th scope="col" class="gw-num">Eq.</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var t in Model.TopStudents)
+                        {
+                            <tr>
+                                <td><strong>@t.FullName</strong><br /><span class="gw-muted gw-small">@t.StudentNo</span></td>
+                                <td class="gw-num"><span class="gw-fc-chip gw-sr-ps gw-sr-ps-high"><strong>@GradeCalculator.Format(t.Average)</strong></span></td>
+                                <td class="gw-num">@GradeCalculator.Format(GradeCalculator.EquivalentGrade(t.Average))</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section class="gw-panel gw-sr-panel">
+            <div class="gw-panel-head">
+                <h2 class="gw-panel-title">Needs attention</h2>
+            </div>
+            @if (Model.AttentionStudents.Count == 0)
+            {
+                <div class="gw-panel-body gw-empty-block">No graded student is below passing (64.5).</div>
+            }
+            else
+            {
+                <div class="gw-table-wrap">
+                    <table class="gw-table">
+                        <thead>
+                            <tr>
+                                <th scope="col">Student</th>
+                                <th scope="col" class="gw-num">@Model.ScopeLabel</th>
+                                <th scope="col" class="gw-num">Eq.</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var a in Model.AttentionStudents)
+                            {
+                                <tr>
+                                    <td><strong>@a.FullName</strong><br /><span class="gw-muted gw-small">@a.StudentNo</span></td>
+                                    <td class="gw-num"><span class="gw-fc-chip gw-sr-ps gw-sr-ps-low"><strong>@GradeCalculator.Format(a.Average)</strong></span></td>
+                                    <td class="gw-num">@GradeCalculator.Format(GradeCalculator.EquivalentGrade(a.Average))</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+                <div class="gw-panel-body gw-an-foot">Below passing: @Model.Failing of @graded graded. Lowest @Model.AttentionStudents.Count shown.</div>
+            }
+            @if (Model.Incomplete > 0)
+            {
+                <div class="gw-panel-body gw-an-foot">@Model.Incomplete @(Model.Incomplete == 1 ? "student is" : "students are") marked INC (Final Term exam still blank).</div>
+            }
+        </section>
+    </div>
+}
+
+@if (Model.HasTermComparison)
+{
+    var termLabels = new[] { "Improved", "Declined", "Unchanged" };
+    var termCls = new[] { "gw-seg-up", "gw-seg-down", "gw-seg-same" };
+    var termCounts = new[] { Model.Improved, Model.Declined, Model.Unchanged };
+    var termTargets = new string[3];
+    var termTips = new string[3];
+    for (var tk = 0; tk < 3; tk++)
+    {
+        termTargets[tk] = termCounts[tk] > 0 ? "gw-term-modal-" + tk : null;
+        termTips[tk] = tipOf(termLabels[tk], termCounts[tk], Model.TermCompared, termTargets[tk] != null);
+    }
+    <section class="gw-panel gw-sr-panel">
+        <div class="gw-panel-head">
+            <h2 class="gw-panel-title">Midterm vs Final Term</h2>
+        </div>
+        <div class="gw-panel-body gw-fp-note gw-fp-note-info">
+            <p class="gw-hint-block gw-muted">Compares the @Model.TermCompared @(Model.TermCompared == 1 ? "student" : "students") graded in both terms.</p>
+            <button type="button" class="gw-info-btn" data-info-toggle="gw-term-info" aria-expanded="false" aria-controls="gw-term-info" aria-label="What do Improved, Declined and Unchanged mean?" title="What do these mean?">i</button>
+        </div>
+        <div id="gw-term-info" class="gw-panel-body gw-info-pop" hidden>
+            <p><strong>Improved:</strong> the student's Final Term grade is higher than their Midterm grade.</p>
+            <p><strong>Declined:</strong> the Final Term grade is lower than the Midterm grade. It does not mean the student failed.</p>
+            <p><strong>Unchanged:</strong> both grades are the same.</p>
+            <p class="gw-muted">Grades are out of 100 and compared to two decimals.</p>
+        </div>
+        <div class="gw-donut-wrap">
+            @Html.Raw(donut("Students who improved, declined or stayed the same", termCls, termCounts, termTargets, termTips, Model.TermCompared.ToString(), Model.TermCompared == 1 ? "student" : "students"))
+            <ul class="gw-legend">
+                @Html.Raw(legend(termLabels, termCls, termCounts, termTargets, termTips))
+            </ul>
+        </div>
+        <div class="gw-table-wrap">
+            <table class="gw-table">
+                <tbody>
+                    <tr><th scope="row">Midterm average</th><td class="gw-num"><strong>@GradeCalculator.Format(Model.MidtermAverage)%</strong></td></tr>
+                    <tr><th scope="row">Final Term average</th><td class="gw-num"><strong>@GradeCalculator.Format(Model.FinalTermAverage)%</strong></td></tr>
+                    <tr><th scope="row">Average change</th><td class="gw-num"><strong>@(Model.TermChange.HasValue && Model.TermChange.Value > 0 ? "+" : "")@GradeCalculator.Format(Model.TermChange)</strong></td></tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+}
+
+@if (Model.Categories.Count > 0 && Model.Categories.Any(x => x.Graded > 0))
+{
+    double rLeft = 210, rW = 400, rTop = 34, rowH = 48;
+    Func<double, double> rx = v => rLeft + Math.Max(0, Math.Min(100, v)) * rW / 100.0;
+    var rangeH = rTop + Model.Categories.Count * rowH + 10;
+    var rs = new System.Text.StringBuilder();
+    rs.Append("<svg class=\"gw-chart gw-range-chart\" viewBox=\"0 0 640 " + n2(rangeH) + "\" role=\"img\" aria-label=\"Lowest, average and highest score per category\">");
+    foreach (var tick in new[] { 0, 25, 50, 75, 100 })
+    {
+        rs.Append("<line class=\"gw-chart-grid\" x1=\"" + n2(rx(tick)) + "\" x2=\"" + n2(rx(tick)) + "\" y1=\"" + n2(rTop - 6) + "\" y2=\"" + n2(rangeH - 8) + "\"></line>");
+        rs.Append(svgText("gw-chart-label gw-chart-xtick", rx(tick), rTop - 14, tick.ToString()));
+    }
+    rs.Append("<line class=\"gw-chart-pass\" x1=\"" + n2(rx(64.5)) + "\" x2=\"" + n2(rx(64.5)) + "\" y1=\"" + n2(rTop - 6) + "\" y2=\"" + n2(rangeH - 8) + "\"></line>");
+    rs.Append(svgText("gw-chart-passlabel gw-chart-xtick", rx(64.5), rTop - 24, "pass 64.5"));
+    for (var ri = 0; ri < Model.Categories.Count; ri++)
+    {
+        var rc = Model.Categories[ri];
+        var rowY = rTop + ri * rowH;
+        var midY = rowY + rowH / 2;
+        var shortName = rc.Name.Length > 24 ? rc.Name.Substring(0, 23) + "..." : rc.Name;
+        var hasScores = rc.Graded > 0 && rc.Average.HasValue && rc.Lowest.HasValue && rc.Highest.HasValue;
+        var rangeTip = hasScores
+            ? rc.Name + ": average " + GradeCalculator.Format(rc.Average) + "%, lowest " + GradeCalculator.Format(rc.Lowest) + ", highest " + GradeCalculator.Format(rc.Highest) + " (" + rc.Graded + " of " + Model.StudentCount + " graded). Click to view scores"
+            : rc.Name + ": no scores yet";
+        var rangeAttr = hasScores ? " data-modal-target=\"gw-cat-modal-" + ri + "\" role=\"button\" tabindex=\"0\" aria-label=\"" + enc(rangeTip) + "\"" : "";
+        rs.Append("<g class=\"gw-hit\" data-tooltip=\"" + enc(rangeTip) + "\"" + rangeAttr + ">");
+        rs.Append("<rect class=\"gw-hit-area\" x=\"2\" y=\"" + n2(rowY) + "\" width=\"636\" height=\"" + n2(rowH) + "\"></rect>");
+        rs.Append(svgText("gw-range-name", 10, midY - 2, shortName));
+        rs.Append(svgText("gw-chart-label", 10, midY + 14, rc.Period + ", " + GradeCalculator.Format(rc.Weight) + "%"));
+        if (hasScores)
+        {
+            var lx = rx(rc.Lowest.Value);
+            var hx = rx(rc.Highest.Value);
+            var ax = rx(rc.Average.Value);
+            rs.Append("<line class=\"gw-range-line\" x1=\"" + n2(lx) + "\" x2=\"" + n2(hx) + "\" y1=\"" + n2(midY) + "\" y2=\"" + n2(midY) + "\"></line>");
+            rs.Append("<line class=\"gw-range-cap\" x1=\"" + n2(lx) + "\" x2=\"" + n2(lx) + "\" y1=\"" + n2(midY - 7) + "\" y2=\"" + n2(midY + 7) + "\"></line>");
+            rs.Append("<line class=\"gw-range-cap\" x1=\"" + n2(hx) + "\" x2=\"" + n2(hx) + "\" y1=\"" + n2(midY - 7) + "\" y2=\"" + n2(midY + 7) + "\"></line>");
+            rs.Append("<circle class=\"gw-range-dot\" cx=\"" + n2(ax) + "\" cy=\"" + n2(midY) + "\" r=\"7\"></circle>");
+            rs.Append(svgText("gw-chart-label gw-chart-xtick gw-range-avg", ax, midY - 12, GradeCalculator.Format(rc.Average)));
+        }
+        else
+        {
+            rs.Append(svgText("gw-chart-label", rLeft + 8, midY + 4, "No scores yet"));
+        }
+        rs.Append("</g>");
+    }
+    rs.Append("</svg>");
+    <section class="gw-panel gw-sr-panel">
+        <div class="gw-panel-head">
+            <h2 class="gw-panel-title">@Model.ScopeLabel score range by category</h2>
+        </div>
+        <div class="gw-panel-body gw-fp-note">
+            <p class="gw-hint-block gw-muted">Line is lowest to highest, dot is the class average. Click a row to see the scores.</p>
+        </div>
+        <div class="gw-chart-scroll">
+            <div class="gw-chart-pad gw-chart-min">@Html.Raw(rs.ToString())</div>
+        </div>
+    </section>
+}
+
+<section class="gw-panel gw-sr-panel">
     <div class="gw-panel-head">
         <h2 class="gw-panel-title">@Model.ScopeLabel category averages</h2>
     </div>
     <div class="gw-table-wrap">
-        <table class="gw-table">
+        <table class="gw-table gw-table-grouped">
+            <colgroup><col style="width:26%" /><col style="width:11%" /><col style="width:21%" /><col style="width:14%" /><col style="width:12%" /><col style="width:16%" /></colgroup>
             <thead>
                 <tr>
                     <th>Category</th>
                     <th class="gw-num">Weight</th>
                     <th class="gw-num">Students graded</th>
                     <th class="gw-num">Class average</th>
+                    <th class="gw-num">Passing</th>
+                    <th class="gw-num">Low &ndash; high</th>
                 </tr>
             </thead>
             <tbody>
                 @if (Model.Categories.Count == 0)
                 {
                     <tr>
-                        <td colspan="4" class="gw-empty">
-                            This course has no @Model.ScopeLabel grading categories yet.
+                        <td colspan="6" class="gw-empty">
+                            No @Model.ScopeLabel categories yet.
                             @Html.ActionLink("Set them up", "Categories", "Faculty", new { id = Model.CourseId }, null)
                         </td>
                     </tr>
                 }
-                @foreach (var c in Model.Categories)
+                @foreach (var group in Model.Categories.Count == 0 ? new string[0] : new[] { "Class Standing", "Exam" })
                 {
-                    var gradedPct = Model.StudentCount > 0 ? Math.Round(c.Graded * 100.0 / Model.StudentCount, 2) : 0;
-                    var gradedPctText = gradedPct.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture) + "%";
-                    <tr title="@c.Name: @gradedPctText graded (@c.Graded of @Model.StudentCount)">
-                        <td>@c.Name <span class="gw-th-sub">(@c.Period)</span></td>
-                        <td class="gw-num">@GradeCalculator.Format(c.Weight)%</td>
-                        <td class="gw-num">@c.Graded of @Model.StudentCount <span class="gw-muted">(@gradedPctText)</span></td>
-                        <td class="gw-num">@(c.Average.HasValue ? GradeCalculator.Format(c.Average) + "%" : GradeCalculator.Format(c.Average))</td>
-                    </tr>
+                    var groupRows = Model.Categories.Where(c => c.Group == group).ToList();
+                    <tr><td colspan="6" class="gw-group-cell"><details class="gw-student-major @(group == "Exam" ? "gw-grp-ex" : "gw-grp-cs")" open><summary><strong>@group</strong><span>avg @GradeCalculator.Format(group == "Exam" ? Model.ExamAverage : Model.ClassStandingAverage) &middot; @(Model.Scope == GradeScopes.FinalGrade ? (group == "Class Standing" ? "30%" : "20%") : (group == "Class Standing" ? "60%" : "40%"))</span></summary>
+                        <table class="gw-table gw-table-grouped">
+                        <colgroup><col style="width:26%" /><col style="width:11%" /><col style="width:21%" /><col style="width:14%" /><col style="width:12%" /><col style="width:16%" /></colgroup>
+                        <tbody>
+                        @if (groupRows.Count == 0)
+                        {
+                            <tr><td colspan="6" class="gw-empty">No @group.ToLower() categories here.</td></tr>
+                        }
+                        @foreach (var c in groupRows)
+                        {
+                            var gradedPct = Model.StudentCount > 0 ? Math.Round(c.Graded * 100.0 / Model.StudentCount, 2) : 0;
+                            var gradedPctText = gradedPct.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture) + "%";
+                            <tr title="@c.Name: @gradedPctText graded (@c.Graded of @Model.StudentCount)">
+                                <td>@c.Name <span class="gw-th-sub">(@c.Period)</span></td>
+                                <td class="gw-num"><strong>@GradeCalculator.Format(c.Weight)%</strong></td>
+                                <td class="gw-num">@c.Graded of @Model.StudentCount <span class="gw-muted">(@gradedPctText)</span></td>
+                                <td class="gw-num"><span class="gw-fc-chip gw-sr-ps gw-sr-ps-@(!c.Average.HasValue ? "none" : c.Average.Value >= 75 ? "high" : c.Average.Value >= 65 ? "mid" : "low")">@(c.Average.HasValue ? GradeCalculator.Format(c.Average) + "%" : GradeCalculator.Format(c.Average))</span></td>
+                                <td class="gw-num">@(c.PassRate.HasValue ? GradeCalculator.Format(c.PassRate) + "%" : GradeCalculator.Format(c.PassRate))</td>
+                                <td class="gw-num">@(c.Lowest.HasValue ? GradeCalculator.Format(c.Lowest) + " to " + GradeCalculator.Format(c.Highest) : GradeCalculator.Format(c.Lowest))</td>
+                            </tr>
+                        }
+                        </tbody></table>
+                    </details></td></tr>
                 }
             </tbody>
         </table>
     </div>
+    @{
+        var withAvg = Model.Categories.Where(c => c.Average.HasValue).ToList();
+        if (withAvg.Count > 1)
+        {
+            var strongest = withAvg.OrderByDescending(c => c.Average.Value).First();
+            var weakest = withAvg.OrderBy(c => c.Average.Value).First();
+            <div class="gw-panel-body gw-an-foot">
+                Strongest: <strong>@strongest.Name</strong> (@GradeCalculator.Format(strongest.Average)%).
+                Weakest: <strong>@weakest.Name</strong> (@GradeCalculator.Format(weakest.Average)%).
+            </div>
+        }
+    }
 </section>
+
+@foreach (var def in modalDefs)
+{
+    <div id="@def.Id" class="gw-modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="@(def.Id)-title" hidden>
+        <div class="gw-panel gw-card-raised gw-modal-card">
+            <div class="gw-panel-head">
+                <h3 id="@(def.Id)-title" class="gw-panel-title">@def.Title</h3>
+            </div>
+            <div class="gw-modal-top">
+                <div class="gw-modal-meta">
+                    <span class="gw-badge gw-status-active">@def.Badge</span>
+                    <span class="gw-muted">@def.Meta</span>
+                </div>
+                <button type="button" class="gw-iconbtn gw-modal-close" data-modal-close aria-label="Close modal" title="Close">
+                    <img src="@Url.Content("~/Content/img/icons/close.svg")" alt="" width="20" height="20" />
+                </button>
+            </div>
+            @if (def.Rows.Count == 0)
+            {
+                <div class="gw-panel-body gw-empty-block">@def.EmptyText</div>
+            }
+            else
+            {
+                <div class="gw-table-wrap gw-modal-table-wrap">
+                    <table class="gw-table">
+                        <thead>
+                            <tr>
+                                <th scope="col">Name</th>
+                                <th scope="col" class="gw-num">@def.ValueHeader</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var row in def.Rows)
+                            {
+                                <tr>
+                                    <td><strong>@row.FullName</strong><br /><span class="gw-muted gw-small">@row.StudentNo</span></td>
+                                    <td class="gw-num"><strong>@row.Value</strong></td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+            <div class="gw-modal-foot">
+                <button type="button" class="gw-btn gw-btn-outline" data-modal-close>Close</button>
+            </div>
+        </div>
+    </div>
+}
+
+</div>
 
 @section scripts {
     <script>
-        // Bars and rows open their modal through the shared component (gw-modal.js), which also handles
-        // Close buttons, Esc, a click on the dark backdrop, the Tab key and returning focus.
+        // Bars, slices, columns and rows open their popup through the shared component (gw-modal.js), which also
+        // handles Close buttons, Esc, a click on the dark backdrop, the Tab key and returning focus.
         (function () {
             function openFrom(el) {
                 var id = el.getAttribute("data-modal-target");
@@ -306,6 +805,16 @@
             }
 
             document.addEventListener("click", function (e) {
+                var info = e.target.closest("[data-info-toggle]");
+                if (info) {
+                    var box = document.getElementById(info.getAttribute("data-info-toggle"));
+                    if (box) {
+                        var show = box.hasAttribute("hidden");
+                        if (show) box.removeAttribute("hidden"); else box.setAttribute("hidden", "");
+                        info.setAttribute("aria-expanded", show ? "true" : "false");
+                    }
+                    return;
+                }
                 var trigger = e.target.closest("[data-modal-target]");
                 if (trigger) openFrom(trigger);
             });
@@ -313,11 +822,52 @@
             document.addEventListener("keydown", function (e) {
                 if (e.key !== "Enter" && e.key !== " ") return;
                 var focused = document.activeElement;
-                if (focused && focused.hasAttribute("data-modal-target")) {
+                if (focused && focused.hasAttribute && focused.hasAttribute("data-modal-target") && focused.tagName.toLowerCase() !== "button") {
                     e.preventDefault();
                     openFrom(focused);
                 }
             });
+        })();
+
+        // Hover tooltip for the charts (anything with class gw-hit and a data-tooltip).
+        (function () {
+            var tip = document.createElement("div");
+            tip.className = "gw-tip";
+            tip.setAttribute("role", "tooltip");
+            tip.hidden = true;
+            document.body.appendChild(tip);
+
+            function place(x, y) {
+                var w = tip.offsetWidth, h = tip.offsetHeight;
+                var left = Math.max(8, Math.min(x - w / 2, window.innerWidth - w - 8));
+                var top = y - h - 14;
+                if (top < 8) top = y + 20;
+                tip.style.left = left + "px";
+                tip.style.top = top + "px";
+            }
+
+            function hit(node) {
+                return node && node.closest ? node.closest(".gw-hit[data-tooltip]") : null;
+            }
+
+            document.addEventListener("mousemove", function (e) {
+                var el = hit(e.target);
+                if (!el) { tip.hidden = true; return; }
+                tip.textContent = el.getAttribute("data-tooltip");
+                tip.hidden = false;
+                place(e.clientX, e.clientY);
+            });
+            document.addEventListener("focusin", function (e) {
+                var el = hit(e.target);
+                if (!el) return;
+                var r = el.getBoundingClientRect();
+                tip.textContent = el.getAttribute("data-tooltip");
+                tip.hidden = false;
+                place(r.left + r.width / 2, r.top);
+            });
+            document.addEventListener("focusout", function () { tip.hidden = true; });
+            window.addEventListener("scroll", function () { tip.hidden = true; }, true);
+            document.addEventListener("click", function (e) { if (hit(e.target)) tip.hidden = true; });
         })();
     </script>
 }

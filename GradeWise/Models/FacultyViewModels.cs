@@ -56,6 +56,34 @@ namespace GradeWise.Models
 
         /// <summary>Result for the course's reflected scope (what the boxes and the class numbers use).</summary>
         public GradeResult ScopeResult { get; set; }
+
+        /// <summary>The Final Grade is Incomplete (INC): see GradeCalculator.IsIncomplete.</summary>
+        public bool Incomplete { get; set; }
+
+        /// <summary>One entry per course category (same order as the course categories): its assessment boxes, Total and PS.</summary>
+        public List<CategoryCells> CategoryCells { get; set; } = new List<CategoryCells>();
+    }
+
+    /// <summary>
+    /// One student's boxes for one category, like one block of the class record
+    /// (numbered columns, Total and PS).
+    /// </summary>
+    public class CategoryCells
+    {
+        /// <summary>Text of each assessment box, in the order of the category's assessments.</summary>
+        public List<string> Inputs { get; set; } = new List<string>();
+
+        /// <summary>True for each box whose text is not a valid score.</summary>
+        public List<bool> Invalid { get; set; } = new List<bool>();
+
+        /// <summary>Sum of the entered scores. Null when nothing is entered.</summary>
+        public double? Total { get; set; }
+
+        /// <summary>Highest possible total of the assessments that have a score entered.</summary>
+        public double GradedMax { get; set; }
+
+        /// <summary>PS: Total / GradedMax x 100. Null when nothing is entered.</summary>
+        public double? Percent { get; set; }
     }
 
     public class CourseDetailViewModel
@@ -140,6 +168,10 @@ namespace GradeWise.Models
         public string Original { get; set; }
         public string Name { get; set; }
         public string Period { get; set; } = GradePeriods.Midterm;
+
+        /// <summary>"Class Standing" or "Exam".</summary>
+        public string Group { get; set; } = GradeGroups.ClassStanding;
+
         public string Weight { get; set; }
     }
 
@@ -150,6 +182,41 @@ namespace GradeWise.Models
         public string Name { get; set; }
         public string Term { get; set; }
         public List<CategoryRow> Rows { get; set; } = new List<CategoryRow>();
+        public List<string> Errors { get; set; } = new List<string>();
+    }
+
+    /// <summary>One student's row on the single-assessment score page.</summary>
+    public class AssessmentScoreRow
+    {
+        public string StudentId { get; set; }
+        public string StudentNo { get; set; }
+        public string FullName { get; set; }
+
+        /// <summary>Score text for the box (empty when not graded yet).</summary>
+        public string Score { get; set; }
+    }
+
+    /// <summary>Score entry for one assessment (e.g. "Quiz 1") of one category.</summary>
+    public class AssessmentScoreViewModel
+    {
+        public string CourseId { get; set; }
+        public string CategoryName { get; set; }
+        public string AssessmentId { get; set; }
+        public string AssessmentName { get; set; }
+
+        /// <summary>Highest possible score of this assessment.</summary>
+        public double MaxScore { get; set; } = 100;
+
+        /// <summary>Text of the name box of the edit fields (what was typed when the last save failed).</summary>
+        public string EditName { get; set; }
+
+        /// <summary>Text of the highest possible score box of the edit fields.</summary>
+        public string EditMax { get; set; }
+
+        /// <summary>"Midterm" or "Final Term".</summary>
+        public string Period { get; set; }
+
+        public List<AssessmentScoreRow> Rows { get; set; } = new List<AssessmentScoreRow>();
         public List<string> Errors { get; set; } = new List<string>();
     }
 

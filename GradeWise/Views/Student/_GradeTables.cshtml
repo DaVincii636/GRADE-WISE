@@ -1,0 +1,315 @@
+@model GradeWise.Models.StudentDashboardViewModel
+@using System.Globalization
+@using GradeWise.Models
+@using GradeWise.Services
+@{
+    // The student's scores, laid out exactly like the faculty Course page: Class Standing then Exam, every assessment box,
+    // Total, PS, then Earned /100 and Eq. per term, and the Midterm / Final Term / Final Grade summary.
+    // ViewData["Print"] = true (printable summary): no tabs, every released table is listed one after the other.
+    var print = (ViewData["Print"] as bool?) == true;
+
+    // Colours borrowed from the admin Accounts page: lime, blue, gold, plus lavender and orange.
+    var tones = new[] { "lime", "blue", "gold", "lav", "orange" };
+
+    // Passing mark is 65: lime at 75 and above, gold from 65, orange below (same as the faculty page).
+    Func<double?, string> gradeTone = v => !v.HasValue ? "none" : v.Value >= 75 ? "high" : v.Value >= 65 ? "mid" : "low";
+
+    Func<string, string> initialsOf = n =>
+    {
+        var parts = (n ?? "").Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+        return parts.Length == 0 ? "?" : (parts[0].Substring(0, 1) + (parts.Length > 1 ? parts[parts.Length - 1].Substring(0, 1) : "")).ToUpperInvariant();
+    };
+
+    Func<double?, string> scoreText = v => v.HasValue ? v.Value.ToString("0.##", CultureInfo.InvariantCulture) : "\u2014";
+
+    // The tabs the student can open: the released terms, and the Final Grade when the course reflects it.
+    var tabs = Model.Terms.Select(t => new { Key = t.Key, Label = t.Period }).ToList();
+    if (Model.ShowFinalGrade) { tabs.Add(new { Key = GradeScopes.FinalGrade, Label = "Final Grade" }); }
+    var showTabs = !print && tabs.Count > 1;
+    var active = tabs.Count == 0 ? "" : tabs.Any(t => t.Key == Model.ActiveTab) ? Model.ActiveTab : tabs[0].Key;
+}
+
+@* The student cell, same look as the faculty table. *@
+@helper StudentCell(string name, string no, string initials, string tone)
+{
+    <td class="gw-sr-student">
+        <div class="gw-sr-person">
+            <span class="gw-sr-avatar gw-sr-avatar-@tone" aria-hidden="true">@initials</span>
+            <span class="gw-sr-person-text">
+                <span class="gw-sr-name">@name</span>
+                <code class="gw-sr-id">@no</code>
+            </span>
+        </div>
+    </td>
+}
+
+<section class="gw-panel gw-sr-panel gw-sg-scores">
+    <div class="gw-panel-head">
+        <h2 class="gw-panel-title">Your scores</h2>
+        <span class="gw-fc-chip gw-fc-chip-term">@Model.Code &middot; @Model.ScopeLabel</span>
+    </div>
+
+    @if (!print)
+    {
+        <div class="gw-panel-body gw-fp-note">
+            <p>Each term: <strong>Class Standing 60%</strong> + <strong>Exam 40%</strong> = <strong>100%</strong>. Final grade = &frac12; Midterm + &frac12; Final Term.</p>
+        </div>
+    }
+
+    @if (Model.Terms.Count == 0 || tabs.Count == 0)
+    {
+        <div class="gw-panel-body gw-empty-block">Your scores appear once your instructor sets the categories.</div>
+    }
+    else
+    {
+        if (showTabs)
+        {
+            <div class="gw-panel-body gw-tabs-wrap">
+                <div class="gw-tabs" role="tablist" aria-label="Score tables">
+                    @foreach (var t in tabs)
+                    {
+                        var on = t.Key == active;
+                        <button type="button" class="gw-tab" role="tab" id="tab-@t.Key" aria-controls="panel-@t.Key"
+                                aria-selected="@(on ? "true" : "false")" tabindex="@(on ? 0 : -1)" data-tab="@t.Key">@t.Label</button>
+                    }
+                </div>
+            </div>
+        }
+
+        foreach (var term in Model.Terms)
+        {
+            var key = term.Key;
+            var isFinal = term.Period == GradePeriods.FinalTerm;
+
+            var groupBlocks = GradeGroups.All
+                .Select(g => new
+                {
+                    Name = g,
+                    Key = g == GradeGroups.Exam ? "ex" : "cs",
+                    Items = term.Categories.Where(c => c.Group == g).ToList()
+                })
+                .Where(b => b.Items.Count > 0)
+                .ToList();
+
+            <div class="gw-tabpanel" role="tabpanel" id="panel-@key" aria-labelledby="tab-@key" hidden="@(print || key == active ? null : "hidden")">
+                @if (!showTabs)
+                {
+                    <div class="gw-panel-body gw-sg-termhead"><strong>@term.Period</strong></div>
+                }
+
+                @if (term.Categories.Count == 0)
+                {
+                    <div class="gw-panel-body gw-empty-block">No @term.Period categories yet.</div>
+                }
+                else
+                {
+                    if (!print)
+                    {
+                        @* Which category is open, grouped as Class Standing and Exam. One is open at a time, so the table always fits the page. *@
+                        <div class="gw-panel-body gw-sr-bar">
+                            <span class="gw-sr-bar-label">View scores for</span>
+                            @foreach (var block in groupBlocks)
+                            {
+                                <div class="gw-sr-chipgroup gw-sr-chipgroup-@block.Key" role="group" aria-label="@block.Name categories">
+                                    <span class="gw-sr-chipgroup-name">@block.Name <span class="gw-sr-chip-w">@GradeCalculator.Format(block.Items.Sum(i => i.Weight))%</span></span>
+                                    <div class="gw-sr-chips">
+                                        @foreach (var x in block.Items)
+                                        {
+                                            var p = term.Categories.IndexOf(x);
+                                            <button type="button" class="gw-sr-chip gw-sr-chip-@tones[p % tones.Length]" data-sr-cat="@p" aria-pressed="@(p == 0 ? "true" : "false")">
+                                                @x.Name <span class="gw-sr-chip-w">@GradeCalculator.Format(x.Weight)%</span>
+                                            </button>
+                                        }
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+
+                    <div class="gw-table-wrap">
+                    <table class="gw-table gw-sr-table" data-sr-table>
+                        <colgroup>
+                            <col class="gw-sr-student" />
+                            @for (var p = 0; p < term.Categories.Count; p++)
+                            {
+                                <col class="gw-sr-cat @(p == 0 && !print ? "is-open" : "")" data-cat="@p" />
+                            }
+                            <col class="gw-sr-fin" />
+                            <col class="gw-sr-fin gw-sr-eq" />
+                        </colgroup>
+                        <thead>
+                            <tr class="gw-sr-grouprow">
+                                <th class="gw-sr-student gw-sr-groupblank" aria-hidden="true"></th>
+                                @foreach (var block in groupBlocks)
+                                {
+                                    <th scope="colgroup" colspan="@block.Items.Count" class="gw-sr-group gw-sr-group-@block.Key">
+                                        <span class="gw-sr-group-name">@block.Name</span>
+                                        <span class="gw-sr-group-w">@GradeCalculator.Format(block.Items.Sum(i => i.Weight))%</span>
+                                    </th>
+                                }
+                                <th class="gw-sr-fin gw-sr-groupblank" aria-hidden="true"></th>
+                                <th class="gw-sr-fin gw-sr-eq gw-sr-groupblank" aria-hidden="true"></th>
+                            </tr>
+                            <tr>
+                                <th scope="col" class="gw-sr-student">Student</th>
+                                @for (var p = 0; p < term.Categories.Count; p++)
+                                {
+                                    var x = term.Categories[p];
+                                    var tone = tones[p % tones.Length];
+                                    <th scope="col" class="gw-sr-cat gw-sr-tone-@tone @(p == 0 && !print ? "is-open" : "")" data-cat="@p">
+                                        <div class="gw-sr-headtop">
+                                            <button type="button" class="gw-sr-cathead" data-sr-cat="@p" aria-expanded="@(p == 0 && !print ? "true" : "false")" title="@x.Name, @GradeCalculator.Format(x.Weight)%, @x.Group">
+                                                <span class="gw-sr-catname">@x.Name</span>
+                                                <span class="gw-sr-catsub">@GradeCalculator.Format(x.Weight)%<span class="gw-sr-catgroup"> &middot; @x.Group</span></span>
+                                            </button>
+                                        </div>
+                                        <div class="gw-sr-open-only">
+                                            <div class="gw-sr-grid gw-sr-grid-head" style="--sr-n:@(x.Assessments.Count + 2)">
+                                                @foreach (var a in x.Assessments)
+                                                {
+                                                    <span class="gw-sr-gi"><span class="gw-sr-fit" title="@a.Name">@a.Name</span></span>
+                                                }
+                                                <span class="gw-sr-gi gw-sr-gi-calc"><span class="gw-sr-fit">Total</span></span>
+                                                <span class="gw-sr-gi gw-sr-gi-calc"><span class="gw-sr-fit">PS</span></span>
+                                            </div>
+                                        </div>
+                                    </th>
+                                }
+                                <th scope="col" class="gw-sr-fin">Earned<span class="gw-th-sub"> /100</span></th>
+                                <th scope="col" class="gw-sr-fin gw-sr-eq">Eq.</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr class="gw-sr-hps">
+                                <td class="gw-sr-student"><strong>Highest possible score</strong></td>
+                                @for (var p = 0; p < term.Categories.Count; p++)
+                                {
+                                    var x = term.Categories[p];
+                                    <td class="gw-sr-cat gw-sr-tone-@tones[p % tones.Length] @(p == 0 && !print ? "is-open" : "")" data-cat="@p">
+                                        <div class="gw-sr-sum"><strong>@GradeCalculator.Format(x.HighestTotal)</strong></div>
+                                        <div class="gw-sr-grid" style="--sr-n:@(x.Assessments.Count + 2)">
+                                            @foreach (var a in x.Assessments)
+                                            {
+                                                <span class="gw-sr-gi" data-name="@a.Name"><strong>@scoreText(a.MaxScore)</strong></span>
+                                            }
+                                            <span class="gw-sr-gi gw-sr-gi-calc" data-name="Total"><strong>@GradeCalculator.Format(x.HighestTotal)</strong></span>
+                                            <span class="gw-sr-gi gw-sr-gi-calc" data-name="PS"><strong>100.00</strong></span>
+                                        </div>
+                                    </td>
+                                }
+                                <td class="gw-sr-fin">&nbsp;</td>
+                                <td class="gw-sr-fin gw-sr-eq">&nbsp;</td>
+                            </tr>
+                            <tr>
+                                @StudentCell(Model.StudentName, Model.StudentNo, initialsOf(Model.StudentName), gradeTone(term.Earned))
+                                @for (var p = 0; p < term.Categories.Count; p++)
+                                {
+                                    var x = term.Categories[p];
+                                    <td class="gw-sr-cat gw-sr-tone-@tones[p % tones.Length] @(p == 0 && !print ? "is-open" : "")" data-cat="@p">
+                                        <div class="gw-sr-sum">
+                                            <span class="gw-fc-chip gw-sr-ps gw-sr-ps-@gradeTone(x.Percent)" title="Total @GradeCalculator.Format(x.Total) of @GradeCalculator.Format(x.GradedMax)">@GradeCalculator.Format(x.Percent)</span>
+                                        </div>
+                                        <div class="gw-sr-grid" style="--sr-n:@(x.Assessments.Count + 2)">
+                                            @foreach (var a in x.Assessments)
+                                            {
+                                                <span class="gw-sr-gi" data-name="@a.Name">
+                                                    <span class="gw-sr-val @(a.Score.HasValue ? "" : "gw-sr-val-empty")" title="@(a.Score.HasValue ? a.Name : a.Name + ": not graded yet")">@scoreText(a.Score)</span>
+                                                </span>
+                                            }
+                                            <span class="gw-sr-gi gw-sr-gi-calc" data-name="Total">@GradeCalculator.Format(x.Total)</span>
+                                            <span class="gw-sr-gi gw-sr-gi-calc" data-name="PS"><strong>@GradeCalculator.Format(x.Percent)</strong></span>
+                                        </div>
+                                    </td>
+                                }
+                                <td class="gw-sr-fin"><span class="gw-fc-chip gw-sr-ps gw-sr-ps-@gradeTone(term.Earned)"><strong>@GradeCalculator.Format(term.Earned)</strong></span></td>
+                                <td class="gw-sr-fin gw-sr-eq">@GradeCalculator.Format(term.Equivalent)</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    </div>
+
+                    if (print)
+                    {
+                        @* Closed columns only show PS, so the printout lists every score as well. *@
+                        <div class="gw-table-wrap">
+                            <table class="gw-table gw-sg-detail">
+                                <thead>
+                                    <tr>
+                                        <th>@term.Period category</th>
+                                        <th>Assessment</th>
+                                        <th class="gw-num">Score</th>
+                                        <th class="gw-num">Highest possible</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var x in term.Categories)
+                                    {
+                                        foreach (var a in x.Assessments)
+                                        {
+                                            <tr>
+                                                <td>@x.Name</td>
+                                                <td>@a.Name</td>
+                                                <td class="gw-num">@(a.Score.HasValue ? GradeCalculator.Format(a.Score) : "Not graded yet")</td>
+                                                <td class="gw-num">@GradeCalculator.Format(a.MaxScore)</td>
+                                            </tr>
+                                        }
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+
+                    <div class="gw-panel-body gw-sr-legend">
+                        <dl class="gw-sr-legend-list">
+                            <div><dt>Total</dt><dd>Sum of scores entered.</dd></div>
+                            <div><dt>PS</dt><dd>Total &divide; highest possible &times; 100. Weights apply to PS.</dd></div>
+                            <div><dt>Earned</dt><dd>Points out of 100. Ungraded work counts as 0.</dd></div>
+                        </dl>
+                    </div>
+                }
+            </div>
+        }
+
+        if (Model.ShowFinalGrade)
+        {
+            <div class="gw-tabpanel" role="tabpanel" id="panel-final-grade" aria-labelledby="tab-final-grade" hidden="@(print || active == GradeScopes.FinalGrade ? null : "hidden")">
+                @if (!showTabs)
+                {
+                    <div class="gw-panel-body gw-sg-termhead"><strong>Final Grade</strong></div>
+                }
+                <div class="gw-table-wrap">
+                <table class="gw-table gw-sr-table gw-sr-final">
+                    <thead>
+                        <tr>
+                            <th scope="col" class="gw-sr-student">Student</th>
+                            <th scope="col" class="gw-num gw-sr-tone-blue">Midterm Grade</th>
+                            <th scope="col" class="gw-num gw-sr-tone-blue">Midterm Eq.</th>
+                            <th scope="col" class="gw-num gw-sr-tone-gold">Final Term Grade</th>
+                            <th scope="col" class="gw-num gw-sr-tone-gold">Final Term Eq.</th>
+                            <th scope="col" class="gw-num gw-sr-tone-lime">Final Grade</th>
+                            <th scope="col" class="gw-num gw-sr-tone-lime">Equivalent</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            @StudentCell(Model.StudentName, Model.StudentNo, initialsOf(Model.StudentName), gradeTone(Model.EarnedGrade))
+                            <td class="gw-num">@GradeCalculator.Format(Model.MidtermEarned)</td>
+                            <td class="gw-num">@GradeCalculator.Format(Model.MidtermEquivalent)</td>
+                            <td class="gw-num">@GradeCalculator.Format(Model.FinalTermEarned)</td>
+                            <td class="gw-num">@GradeCalculator.Format(Model.FinalTermEquivalent)</td>
+                            <td class="gw-num"><span class="gw-fc-chip gw-sr-ps gw-sr-ps-@gradeTone(Model.EarnedGrade)"><strong>@GradeCalculator.Format(Model.EarnedGrade)</strong></span></td>
+                            <td class="gw-num"><strong>@(Model.Incomplete ? "INC" : GradeCalculator.Format(Model.Equivalent))</strong></td>
+                        </tr>
+                    </tbody>
+                </table>
+                </div>
+                <div class="gw-panel-body gw-sr-legend">
+                    <dl class="gw-sr-legend-list">
+                        <div><dt>Final Grade</dt><dd>Average of Midterm and Final Term.</dd></div>
+                        <div><dt>INC</dt><dd>Class standing 65+ in both terms, Final Term exam still blank.</dd></div>
+                    </dl>
+                </div>
+            </div>
+        }
+    }
+</section>

@@ -148,6 +148,62 @@ namespace GradeWise.Controllers
             return RedirectToAction("Course", new { id = id, tab = CourseService.NormalizeTab(Request.Form["tab"]) });
         }
 
+        // ---------- Individual assessment score entry ----------
+        public ActionResult Assessment(string id, string category, string assessment)
+        {
+            var model = CourseService.GetAssessmentScores(id, CurrentFacultyId(), category, assessment);
+            if (model == null) return HttpNotFound();
+            return View(model);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public ActionResult SaveAssessment(string id, string category, string assessment)
+        {
+            List<string> errors;
+            if (!CourseService.SaveAssessmentScores(id, CurrentFacultyId(), category, assessment, key => Request.Form[key], out errors))
+            {
+                var model = CourseService.GetAssessmentScores(id, CurrentFacultyId(), category, assessment);
+                if (model == null) return HttpNotFound();
+                model.Errors = errors;
+
+                // Show what was typed again (name, highest possible score and the score boxes).
+                var typedName = Request.Form[CourseService.AssessmentNameField];
+                var typedMax = Request.Form[CourseService.AssessmentMaxField];
+                if (typedName != null) model.EditName = typedName;
+                if (typedMax != null) model.EditMax = typedMax;
+                foreach (var row in model.Rows)
+                {
+                    var typed = Request.Form[CourseService.AssessmentFieldName(row.StudentId)];
+                    if (typed != null) row.Score = typed;
+                }
+                return View("Assessment", model);
+            }
+            TempData["Message"] = "Assessment scores saved.";
+            return RedirectToAction("Course", new { id = id, tab = CourseService.TabOfCategory(id, CurrentFacultyId(), category) });
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public ActionResult AddAssessment(string id, string category, string name, string maxScore)
+        {
+            var facultyId = CurrentFacultyId();
+            string error;
+            if (!CourseService.AddAssessment(id, facultyId, category, name, maxScore, out error)) TempData["Error"] = error;
+            else TempData["Message"] = "Column added to " + category + ". Enter its highest possible score and the scores in the class record.";
+            return RedirectToAction("Course", new { id = id, tab = CourseService.TabOfCategory(id, facultyId, category) });
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public ActionResult RemoveAssessment(string id, string category, string assessment)
+        {
+            var facultyId = CurrentFacultyId();
+            if (!CourseService.RemoveAssessment(id, facultyId, category, assessment)) TempData["Error"] = "The column could not be removed. Each category must keep at least one column.";
+            else TempData["Message"] = "Column removed along with its scores.";
+            return RedirectToAction("Course", new { id = id, tab = CourseService.TabOfCategory(id, facultyId, category) });
+        }
+
         // ---------- Enrollment ----------
 
         // GET: /Faculty/Enroll/{id}
@@ -215,11 +271,12 @@ namespace GradeWise.Controllers
             var names = form.GetValues("names") ?? new string[0];
             var periods = form.GetValues("periods") ?? new string[0];
             var weights = form.GetValues("weights") ?? new string[0];
+            var groups = form.GetValues("groups") ?? new string[0];
 
             List<string> errors;
-            if (!CourseService.SaveCategories(id, facultyId, originals, names, periods, weights, out errors))
+            if (!CourseService.SaveCategories(id, facultyId, originals, names, periods, weights, groups, out errors))
             {
-                var model = CourseService.EchoCategories(id, facultyId, originals, names, periods, weights, errors);
+                var model = CourseService.EchoCategories(id, facultyId, originals, names, periods, weights, groups, errors);
                 if (model == null) return HttpNotFound();
                 return View(model);
             }

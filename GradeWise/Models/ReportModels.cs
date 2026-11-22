@@ -122,6 +122,8 @@ namespace GradeWise.Models
     {
         public string Name { get; set; }
 
+        public string Group { get; set; }
+
         /// <summary>"Midterm" or "Final Term".</summary>
         public string Period { get; set; }
 
@@ -132,6 +134,71 @@ namespace GradeWise.Models
         public int Graded { get; set; }
 
         public double? Average { get; set; }
+
+        /// <summary>Lowest and highest score in this category (percent). Null when nobody has a score.</summary>
+        public double? Lowest { get; set; }
+
+        public double? Highest { get; set; }
+
+        /// <summary>Percent of the students with a score here who are at or above the passing line. Null when nobody has a score.</summary>
+        public double? PassRate { get; set; }
+
+        /// <summary>Students with a score here (Average holds the score), highest first. Used by the range chart's popup.</summary>
+        public List<DistributionStudent> Students { get; set; } = new List<DistributionStudent>();
+    }
+
+    /// <summary>How many graded students land on one equivalent grade (1.00 to 3.00, or 5.00).</summary>
+    public class EquivalentBin
+    {
+        public string Label { get; set; }
+
+        public int Count { get; set; }
+
+        /// <summary>Percent of the graded students (0 to 100), rounded to 2 decimals.</summary>
+        public double Percent { get; set; }
+
+        /// <summary>The students on this equivalent grade, highest first.</summary>
+        public List<DistributionStudent> Students { get; set; } = new List<DistributionStudent>();
+
+        public string PercentText
+        {
+            get { return Percent.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture) + "%"; }
+        }
+    }
+
+    /// <summary>One student in the Midterm vs Final Term comparison.</summary>
+    public class TermStudent
+    {
+        public string StudentNo { get; set; }
+        public string FullName { get; set; }
+        public double Midterm { get; set; }
+        public double FinalTerm { get; set; }
+
+        /// <summary>Final Term minus Midterm (Earned Grade points).</summary>
+        public double Change { get; set; }
+
+        /// <summary>"Improved", "Declined" or "Unchanged".</summary>
+        public string Status { get; set; }
+    }
+
+    /// <summary>One row of a student-list popup (see the Analytics page).</summary>
+    public class StudentModalRow
+    {
+        public string FullName { get; set; }
+        public string StudentNo { get; set; }
+        public string Value { get; set; }
+    }
+
+    /// <summary>A popup that lists students when a chart segment is clicked.</summary>
+    public class StudentModalDef
+    {
+        public string Id { get; set; }
+        public string Title { get; set; }
+        public string Badge { get; set; }
+        public string Meta { get; set; }
+        public string ValueHeader { get; set; }
+        public string EmptyText { get; set; }
+        public List<StudentModalRow> Rows { get; set; } = new List<StudentModalRow>();
     }
 
     public class AnalyticsViewModel
@@ -172,5 +239,76 @@ namespace GradeWise.Models
 
         /// <summary>Set by the service: true when the scope has categories and they total 100.</summary>
         public bool WeightsOk { get; set; }
+
+        // ---------- More statistics (all for the scope shown, graded students only) ----------
+
+        /// <summary>The middle Earned Grade. Null when nobody is graded.</summary>
+        public double? Median { get; set; }
+
+        /// <summary>Standard deviation of the Earned Grades (how spread out the class is). Null when nobody is graded.</summary>
+        public double? StdDev { get; set; }
+
+        /// <summary>Highest minus lowest Earned Grade. Null when nobody is graded.</summary>
+        public double? Range { get; set; }
+
+        /// <summary>Graded students at or above the passing line, and below it.</summary>
+        public int Passing { get; set; }
+
+        public int Failing { get; set; }
+
+        /// <summary>Percent of graded students who pass. Null when nobody is graded.</summary>
+        public double? PassRate { get; set; }
+
+        /// <summary>Final Grade scope only: students marked INC (class standing is fine, Final Term exam still blank).</summary>
+        public int Incomplete { get; set; }
+
+        /// <summary>Category scores entered out of the scores the class could have (students x categories).</summary>
+        public int ScoresEntered { get; set; }
+
+        public int ScoresExpected { get; set; }
+
+        /// <summary>Percent of possible category scores entered (0 to 100). Null when there is nothing to enter.</summary>
+        public double? CompletionPercent { get; set; }
+
+        /// <summary>Weighted average of the Class Standing and of the Exam categories (percent). Null when nothing is graded there.</summary>
+        public double? ClassStandingAverage { get; set; }
+
+        public double? ExamAverage { get; set; }
+
+        /// <summary>The best and the lowest graded students (up to 5 each).</summary>
+        public List<DistributionStudent> TopStudents { get; set; } = new List<DistributionStudent>();
+
+        public List<DistributionStudent> AttentionStudents { get; set; } = new List<DistributionStudent>();
+
+        /// <summary>Every graded student at or above the passing line (best first) and below it (lowest first).</summary>
+        public List<DistributionStudent> PassingStudents { get; set; } = new List<DistributionStudent>();
+
+        public List<DistributionStudent> FailingStudents { get; set; } = new List<DistributionStudent>();
+
+        /// <summary>Graded students per equivalent grade, best first. Empty when nobody is graded.</summary>
+        public List<EquivalentBin> EquivalentBins { get; set; } = new List<EquivalentBin>();
+
+        // ---------- Midterm vs Final Term (students graded in both) ----------
+
+        /// <summary>True when both terms have full weights and at least one student is graded in both.</summary>
+        public bool HasTermComparison { get; set; }
+
+        public int TermCompared { get; set; }
+
+        public double? MidtermAverage { get; set; }
+
+        public double? FinalTermAverage { get; set; }
+
+        /// <summary>Average of (Final Term minus Midterm) over the compared students.</summary>
+        public double? TermChange { get; set; }
+
+        public int Improved { get; set; }
+
+        public int Declined { get; set; }
+
+        public int Unchanged { get; set; }
+
+        /// <summary>The compared students, with both term grades. Behind the Improved / Declined / Unchanged popups.</summary>
+        public List<TermStudent> TermStudents { get; set; } = new List<TermStudent>();
     }
 }

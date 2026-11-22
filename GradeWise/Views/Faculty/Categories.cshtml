@@ -11,10 +11,39 @@
     var hasFinalRows = Model.Rows.Any(r => r.Period == GradePeriods.FinalTerm
         && (!string.IsNullOrEmpty(r.Original) || !string.IsNullOrWhiteSpace(r.Name) || !string.IsNullOrWhiteSpace(r.Weight)));
     var autoCopy = !hasFinalRows && Model.Errors.Count == 0;
+
+    // The two major groups of every term, with the share of the term each one must total.
+    var groups = new[]
+    {
+        new { Name = "Class Standing", Key = "cs", Cap = 60 },
+        new { Name = "Exam", Key = "ex", Cap = 40 }
+    };
 }
 
+@* One category row: name, weight, remove. The page script builds the same row for "Add category".
+   A row that was emptied (removed) before a failed save comes back hidden, so it stays removed and does not show as a blank row. *@
+@helper CategoryRow(string period, string original, string name, string weight, string group, bool hide = false)
+{
+    <div class="gw-cat-row" hidden="@(hide ? "hidden" : null)">
+        <input type="hidden" name="originals" value="@original" />
+        <input type="hidden" name="periods" value="@period" />
+        <input type="hidden" name="groups" value="@group" />
+        <input type="text" name="names" class="gw-cat-name" value="@name" maxlength="40" placeholder="Category name" aria-label="Category name" />
+        <label class="gw-cat-weight">
+            <input type="number" name="weights" value="@weight" min="0.01" max="100" step="any" inputmode="decimal" aria-label="Weight in percent" />
+            <span aria-hidden="true">%</span>
+        </label>
+        <button type="button" class="gw-btn gw-btn-small gw-btn-outline" data-remove="1">Remove</button>
+    </div>
+}
+
+<div class="gw-faculty-courses gw-fcourse gw-fpage">
+
 <h1 class="gw-page-title">@Model.Code &middot; Categories and weights</h1>
-<p class="gw-page-sub">@Model.Name, @Model.Term</p>
+<p class="gw-page-sub gw-fcourse-sub">
+    <span class="gw-fc-chip gw-fc-chip-term">@Model.Name</span>
+    <span class="gw-fc-chip gw-fc-chip-section">@Model.Term</span>
+</p>
 
 @if (!string.IsNullOrEmpty(error))
 {
@@ -37,25 +66,54 @@
     </div>
 }
 
-<div class="gw-toolbar">
-    @Html.ActionLink("Back to scores", "Course", "Faculty", new { id = Model.CourseId }, new { @class = "gw-btn gw-btn-outline" })
+<div class="gw-toolbar gw-fcourse-toolbar">
+    <a href="@Url.Action("Course", "Faculty", new { id = Model.CourseId })" class="gw-iconbtn gw-iconbtn-text" title="Back to scores">
+        <img src="@Url.Content("~/Content/img/icons/back.svg")" alt="" width="24" height="24" />
+        <span>Back to scores</span>
+    </a>
+    <a href="@Url.Action("Enroll", "Faculty", new { id = Model.CourseId })" class="gw-iconbtn gw-iconbtn-text gw-tone-blue" title="Students">
+        <img src="@Url.Content("~/Content/img/icons/user.svg")" alt="" width="24" height="24" />
+        <span>Students</span>
+    </a>
+    <a href="@Url.Action("Categories", "Faculty", new { id = Model.CourseId })" class="gw-iconbtn gw-iconbtn-text gw-tone-gold" aria-current="page" title="Categories and weights">
+        <img src="@Url.Content("~/Content/img/icons/list.svg")" alt="" width="24" height="24" />
+        <span>Categories</span>
+    </a>
+    <a href="@Url.Action("Analytics", "Faculty", new { id = Model.CourseId })" class="gw-iconbtn gw-iconbtn-text gw-tone-lav" title="Analytics">
+        <img src="@Url.Content("~/Content/img/icons/calendar.svg")" alt="" width="24" height="24" />
+        <span>Analytics</span>
+    </a>
 </div>
 
-<section class="gw-panel gw-form-narrow">
+<section class="gw-panel gw-sr-panel" aria-labelledby="gw-cat-title">
     <div class="gw-panel-head">
-        <h2 class="gw-panel-title">Grading categories</h2>
+        <h2 class="gw-panel-title" id="gw-cat-title">Grading categories</h2>
     </div>
-    <div class="gw-panel-body">
-        <p class="gw-field-hint gw-hint-block">
-            Use the Midterm and Final Term buttons to switch lists. Inside each term the weights add up to exactly 100,
-            and the final grade is half Midterm and half Final Term. Each name must be unique in the course, so the Final Term
-            copy starts with "Final". Renaming a category keeps its scores; removing one deletes them.
-        </p>
 
-        @using (Html.BeginForm("Categories", "Faculty", new { id = Model.CourseId }, FormMethod.Post, new { id = "cat-form", data_autocopy = autoCopy ? "1" : "0" }))
-        {
-            @Html.AntiForgeryToken()
+    @using (Html.BeginForm("Categories", "Faculty", new { id = Model.CourseId }, FormMethod.Post, new { id = "cat-form", data_autocopy = autoCopy ? "1" : "0" }))
+    {
+        @Html.AntiForgeryToken()
 
+        <div class="gw-panel-body gw-fp-note">
+            <p>Each term: <strong>Class Standing 60%</strong> + <strong>Exam 40%</strong> = <strong>100%</strong>. Final grade = &frac12; Midterm + &frac12; Final Term.</p>
+            <p>Names must be unique, so Final Term copies start with "Final". Renaming keeps scores; removing deletes them.</p>
+        </div>
+
+        @* Live totals of both terms (the page script fills them in). *@
+        <div class="gw-panel-body">
+            <div class="gw-stats gw-cat-totals" aria-live="polite">
+                @foreach (var p in GradePeriods.All)
+                {
+                    <div class="gw-stat @(p == GradePeriods.Midterm ? "gw-stat-blue" : "gw-stat-gold") gw-period-total" data-period="@p">
+                        <div class="gw-stat-value"><span data-total>0</span> <span class="gw-cat-of">/ 100</span></div>
+                        <div class="gw-stat-label">@p <span data-left>(100 left)</span></div>
+                        <div class="gw-cat-split">Class Standing <strong data-standing>0</strong>/60 &middot; Exam <strong data-exam>0</strong>/40</div>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <div class="gw-panel-body gw-tabs-wrap">
             <div class="gw-tabs" role="tablist" aria-label="Grading period">
                 @foreach (var p in GradePeriods.All)
                 {
@@ -67,88 +125,64 @@
                     </button>
                 }
             </div>
+        </div>
 
-            foreach (var p in GradePeriods.All)
-            {
-                var key = p == GradePeriods.Midterm ? "midterm" : "final-term";
-                var isFinal = p == GradePeriods.FinalTerm;
-                var periodRows = Model.Rows.Where(r => r.Period == p).ToList();
-                var emptyCount = periodRows.Count(r => string.IsNullOrEmpty(r.Original) && string.IsNullOrWhiteSpace(r.Name) && string.IsNullOrWhiteSpace(r.Weight));
-                var spare = (isFinal && autoCopy) ? 0 : System.Math.Max(0, (periodRows.Count == 0 ? 3 : 1) - emptyCount);
+        foreach (var p in GradePeriods.All)
+        {
+            var key = p == GradePeriods.Midterm ? "midterm" : "final-term";
+            var isFinal = p == GradePeriods.FinalTerm;
+            var periodRows = Model.Rows.Where(r => r.Period == p).ToList();
 
-                <div class="gw-tabpanel" role="tabpanel" id="panel-@key" aria-labelledby="tab-@key" data-period="@p" hidden="@(p == GradePeriods.Midterm ? null : "hidden")">
-                    <table class="gw-cat-table gw-field-table">
-                        <thead>
-                            <tr>
-                                <th>Category</th>
-                                <th>Weight (%)</th>
-                                <th><span class="gw-sr-only">Remove</span></th>
-                            </tr>
-                        </thead>
-                        <tbody data-body="@p">
-                            @foreach (var r in periodRows)
-                            {
-                                <tr>
-                                    <td>
-                                        <input type="hidden" name="originals" value="@r.Original" />
-                                        <input type="hidden" name="periods" value="@p" />
-                                        <input type="text" name="names" value="@r.Name" maxlength="40" aria-label="Category name" />
-                                    </td>
-                                    <td><input type="number" name="weights" value="@r.Weight" min="0.01" max="100" step="any" inputmode="decimal" aria-label="Weight in percent" /></td>
-                                    <td><button type="button" class="gw-btn gw-btn-small gw-btn-outline" data-remove="1">Remove</button></td>
-                                </tr>
-                            }
-                            @for (var i = 0; i < spare; i++)
-                            {
-                                <tr>
-                                    <td>
-                                        <input type="hidden" name="originals" value="" />
-                                        <input type="hidden" name="periods" value="@p" />
-                                        <input type="text" name="names" value="" maxlength="40" aria-label="Category name" />
-                                    </td>
-                                    <td><input type="number" name="weights" value="" min="0.01" max="100" step="any" inputmode="decimal" aria-label="Weight in percent" /></td>
-                                    <td><button type="button" class="gw-btn gw-btn-small gw-btn-outline" data-remove="1">Remove</button></td>
-                                </tr>
-                            }
-                        </tbody>
-                    </table>
-
-                    <div class="gw-form-buttons gw-panel-actions">
-                        <button type="button" class="gw-btn gw-btn-small gw-btn-outline" data-add="@p">Add category</button>
-                        @if (isFinal)
+            <div class="gw-tabpanel" role="tabpanel" id="panel-@key" aria-labelledby="tab-@key" data-period="@p" hidden="@(p == GradePeriods.Midterm ? null : "hidden")">
+                <div class="gw-panel-body">
+                    <div class="gw-cat-groups">
+                        @foreach (var g in groups)
                         {
-                            <button type="button" class="gw-btn gw-btn-small gw-btn-outline" id="cat-copy">Copy from Midterm</button>
+                            <details class="gw-student-major gw-grp-@g.Key" data-period="@p" data-group="@g.Name" open>
+                                <summary><strong>@g.Name</strong><span><b data-grp-total>0</b> / @g.Cap%</span></summary>
+                                <div class="gw-cat-list" data-body="@p" data-group="@g.Name">
+                                    @foreach (var r in periodRows.Where(x => (x.Group == "Exam" ? "Exam" : "Class Standing") == g.Name))
+                                    {
+                                        var blank = string.IsNullOrWhiteSpace(r.Name) && string.IsNullOrWhiteSpace(r.Weight);
+                                        if (blank && string.IsNullOrEmpty(r.Original)) { continue; }
+                                        @CategoryRow(p, r.Original, r.Name, r.Weight, g.Name, blank)
+                                    }
+                                </div>
+                                <p class="gw-cat-empty" data-empty hidden>No @g.Name.ToLower() categories in @p yet.</p>
+                                <div class="gw-cat-actions">
+                                    <button type="button" class="gw-btn gw-btn-small gw-btn-outline" data-add="@p" data-group="@g.Name">Add @g.Name.ToLower() category</button>
+                                </div>
+                            </details>
                         }
                     </div>
+
                     @if (isFinal)
                     {
-                        <p class="gw-note" id="final-note" aria-live="polite"></p>
+                        <div class="gw-cat-copybar">
+                            <button type="button" class="gw-btn gw-btn-small gw-btn-outline" id="cat-copy">Copy from Midterm</button>
+                            <p class="gw-note" id="final-note" aria-live="polite"></p>
+                        </div>
                     }
                 </div>
-            }
-
-            <div class="gw-period-totals" aria-live="polite">
-                @foreach (var p in GradePeriods.All)
-                {
-                    <div class="gw-period-total" data-period="@p">
-                        <span class="gw-period-name">@p</span>
-                        <span><strong class="gw-total-number" data-total>0</strong> / 100</span>
-                        <span class="gw-muted" data-left>(100 left)</span>
-                    </div>
-                }
             </div>
+        }
 
+        <div class="gw-panel-body gw-sr-savebar">
+            <span class="gw-sr-savehint">Both terms are saved together.</span>
             <div class="gw-form-buttons">
                 <button type="submit" class="gw-btn">Save categories</button>
             </div>
-        }
-    </div>
+        </div>
+    }
 </section>
+
+</div>
 
 @section scripts {
     <script>
         (function () {
             var PERIODS = ["Midterm", "Final Term"];
+            var CAPS = { "Class Standing": 60, "Exam": 40 };
             var form = document.getElementById("cat-form");
             var tabs = [].slice.call(form.querySelectorAll('[role="tab"]'));
             var finalNote = document.getElementById("final-note");
@@ -158,33 +192,44 @@
             var finalTouched = form.getAttribute("data-autocopy") !== "1";
 
             function round2(n) { return Math.round(n * 100) / 100; }
-            function bodyOf(period) { return form.querySelector('tbody[data-body="' + period + '"]'); }
-            function weightOf(tr) { return tr.querySelector("input[name=weights]"); }
-            function nameOf(tr) { return tr.querySelector("input[name=names]"); }
-            function originalOf(tr) { return tr.querySelector("input[name=originals]").value; }
-            function periodOfRow(tr) { return tr.closest("tbody").getAttribute("data-body"); }
+            function listOf(period, group) { return form.querySelector('.gw-cat-list[data-body="' + period + '"][data-group="' + group + '"]'); }
+            function rowsOf(period) { return [].slice.call(form.querySelectorAll('.gw-cat-list[data-body="' + period + '"] .gw-cat-row')); }
+            function weightOf(row) { return row.querySelector("input[name=weights]"); }
+            function nameOf(row) { return row.querySelector("input[name=names]"); }
+            function originalOf(row) { return row.querySelector("input[name=originals]").value; }
+            function groupInput(row) { return row.querySelector("input[name=groups]"); }
+            function periodOfRow(row) { return row.closest(".gw-cat-list").getAttribute("data-body"); }
 
             // removed rows are hidden (and emptied), so they never count
             function liveRows(period) {
-                return [].slice.call(bodyOf(period).querySelectorAll("tr")).filter(function (tr) { return !tr.hidden; });
+                return rowsOf(period).filter(function (row) { return !row.hidden; });
             }
 
             function totalFor(period, skipRow) {
                 var total = 0;
-                liveRows(period).forEach(function (tr) {
-                    if (tr === skipRow) { return; }
-                    var v = parseFloat(weightOf(tr).value);
+                liveRows(period).forEach(function (row) {
+                    if (row === skipRow) { return; }
+                    var v = parseFloat(weightOf(row).value);
                     if (!isNaN(v)) { total += v; }
                 });
                 return round2(total);
             }
 
+            function totalForGroup(period, groupName) {
+                var total = 0;
+                liveRows(period).forEach(function (row) {
+                    var weight = parseFloat(weightOf(row).value);
+                    if (groupInput(row).value === groupName && !isNaN(weight)) { total += weight; }
+                });
+                return round2(total);
+            }
+
             // A period can never go over 100: cut the typed value down to what is left.
-            function clampRow(tr) {
-                var input = weightOf(tr);
+            function clampRow(row) {
+                var input = weightOf(row);
                 var v = parseFloat(input.value);
                 if (isNaN(v)) { return; }
-                var max = round2(100 - totalFor(periodOfRow(tr), tr));
+                var max = round2(100 - totalFor(periodOfRow(row), row));
                 if (max <= 0) { input.value = ""; }
                 else if (v > max) { input.value = max; }
             }
@@ -196,12 +241,27 @@
                     var box = form.querySelector('.gw-period-total[data-period="' + p + '"]');
                     box.querySelector("[data-total]").textContent = total;
                     box.querySelector("[data-left]").textContent = "(" + (left > 0 ? left + " left" : "full") + ")";
+                    box.querySelector("[data-standing]").textContent = totalForGroup(p, "Class Standing");
+                    box.querySelector("[data-exam]").textContent = totalForGroup(p, "Exam");
                     form.querySelector('.gw-tab[data-period="' + p + '"] [data-tab-note]').textContent = total + " / 100";
+
+                    // each group bar shows what it holds against its share of the term
+                    Object.keys(CAPS).forEach(function (g) {
+                        var bar = form.querySelector('.gw-student-major[data-period="' + p + '"][data-group="' + g + '"]');
+                        if (!bar) { return; }
+                        var sum = totalForGroup(p, g);
+                        bar.querySelector("[data-grp-total]").textContent = sum;
+                        bar.classList.toggle("is-full", Math.abs(sum - CAPS[g]) < 0.005);
+                        bar.classList.toggle("is-over", sum > CAPS[g] + 0.005);
+                        var list = listOf(p, g);
+                        var any = [].some.call(list.children, function (row) { return !row.hidden; });
+                        bar.querySelector("[data-empty]").hidden = any;
+                    });
                 });
                 if (finalNote) {
                     finalNote.textContent = finalTouched
-                        ? "You changed this list by hand, so it no longer follows the Midterm. Use Copy from Midterm to start over."
-                        : "This list copies the Midterm. Change anything here and it stops following the Midterm.";
+                        ? "Edited by hand, so it no longer follows the Midterm. Use Copy from Midterm to reset."
+                        : "This list copies the Midterm until you edit it.";
                 }
             }
 
@@ -226,34 +286,25 @@
             });
 
             // ---------- rows ----------
-            function makeRow(period, name, weight) {
-                var tr = document.createElement("tr");
+            function setGroup(row, group) {
+                groupInput(row).value = group;
+            }
 
-                var td1 = document.createElement("td");
-                var original = document.createElement("input");
-                original.type = "hidden"; original.name = "originals"; original.value = "";
-                var per = document.createElement("input");
-                per.type = "hidden"; per.name = "periods"; per.value = period;
-                var nm = document.createElement("input");
-                nm.type = "text"; nm.name = "names"; nm.maxLength = 40; nm.value = name || "";
-                nm.setAttribute("aria-label", "Category name");
-                td1.appendChild(original); td1.appendChild(per); td1.appendChild(nm);
-
-                var td2 = document.createElement("td");
-                var w = document.createElement("input");
-                w.type = "number"; w.name = "weights"; w.min = "0.01"; w.max = "100"; w.step = "any";
-                w.setAttribute("inputmode", "decimal"); w.setAttribute("aria-label", "Weight in percent");
-                w.value = weight || "";
-                td2.appendChild(w);
-
-                var td3 = document.createElement("td");
-                var rm = document.createElement("button");
-                rm.type = "button"; rm.className = "gw-btn gw-btn-small gw-btn-outline";
-                rm.setAttribute("data-remove", "1"); rm.textContent = "Remove";
-                td3.appendChild(rm);
-
-                tr.appendChild(td1); tr.appendChild(td2); tr.appendChild(td3);
-                return tr;
+            function makeRow(period, name, weight, group) {
+                var row = document.createElement("div");
+                row.className = "gw-cat-row";
+                row.innerHTML =
+                    '<input type="hidden" name="originals" value="" />' +
+                    '<input type="hidden" name="periods" value="" />' +
+                    '<input type="hidden" name="groups" value="" />' +
+                    '<input type="text" name="names" class="gw-cat-name" maxlength="40" placeholder="Category name" aria-label="Category name" />' +
+                    '<label class="gw-cat-weight"><input type="number" name="weights" min="0.01" max="100" step="any" inputmode="decimal" aria-label="Weight in percent" /><span aria-hidden="true">%</span></label>' +
+                    '<button type="button" class="gw-btn gw-btn-small gw-btn-outline" data-remove="1">Remove</button>';
+                row.querySelector("input[name=periods]").value = period;
+                nameOf(row).value = name || "";
+                weightOf(row).value = weight || "";
+                setGroup(row, group || "Class Standing");
+                return row;
             }
 
             // "Quiz" becomes "Final Quiz", "Midterm Quizzes" becomes "Final Quizzes" (names must stay unique in the course).
@@ -265,15 +316,15 @@
             // Rebuild the Final Term list from the Midterm list. Rows that already exist in the database
             // (they have an original name) are never touched here.
             function copyMidterm() {
-                var body = bodyOf("Final Term");
-                [].slice.call(body.querySelectorAll("tr")).forEach(function (tr) {
-                    if (!originalOf(tr)) { body.removeChild(tr); }
+                rowsOf("Final Term").forEach(function (row) {
+                    if (!originalOf(row)) { row.parentNode.removeChild(row); }
                 });
-                liveRows("Midterm").forEach(function (tr) {
-                    var name = nameOf(tr).value.trim();
-                    var weight = weightOf(tr).value;
+                liveRows("Midterm").forEach(function (row) {
+                    var name = nameOf(row).value.trim();
+                    var weight = weightOf(row).value;
+                    var group = groupInput(row).value;
                     if (!name && !weight) { return; }
-                    body.appendChild(makeRow("Final Term", name ? finalName(name) : "", weight));
+                    listOf("Final Term", group).appendChild(makeRow("Final Term", name ? finalName(name) : "", weight, group));
                 });
                 refresh();
             }
@@ -282,33 +333,35 @@
                 if (!finalTouched) { copyMidterm(); }
             }
 
-            function nextFreshPeriod() {
-                return totalFor("Midterm", null) < 100 ? "Midterm" : "Final Term";
+            // a change in a Midterm row flows into the Final Term copy; a change in a Final Term row ends the copying
+            function touched(period) {
+                if (period === "Final Term") { finalTouched = true; }
+                else { syncFinal(); }
             }
 
             form.addEventListener("click", function (e) {
-                var btn = e.target;
-                if (!btn.getAttribute) { return; }
+                var btn = e.target.closest ? e.target.closest("button") : null;
+                if (!btn) { return; }
 
                 var addFor = btn.getAttribute("data-add");
                 if (addFor) {
-                    var tr = makeRow(addFor, "", "");
-                    bodyOf(addFor).appendChild(tr);
+                    var row = makeRow(addFor, "", "", btn.getAttribute("data-group"));
+                    listOf(addFor, btn.getAttribute("data-group")).appendChild(row);
                     if (addFor === "Final Term") { finalTouched = true; }
                     refresh();
-                    nameOf(tr).focus();
+                    nameOf(row).focus();
                     return;
                 }
 
                 if (btn.id === "cat-copy") {
                     finalTouched = false;
                     // rows that exist in the database are emptied and hidden: saving removes them
-                    [].slice.call(bodyOf("Final Term").querySelectorAll("tr")).forEach(function (tr) {
-                        if (originalOf(tr)) {
-                            if (nameOf(tr).value) { tr.setAttribute("data-removed", nameOf(tr).value); }
-                            nameOf(tr).value = "";
-                            weightOf(tr).value = "";
-                            tr.hidden = true;
+                    rowsOf("Final Term").forEach(function (r) {
+                        if (originalOf(r)) {
+                            if (nameOf(r).value) { r.setAttribute("data-removed", nameOf(r).value); }
+                            nameOf(r).value = "";
+                            weightOf(r).value = "";
+                            r.hidden = true;
                         }
                     });
                     copyMidterm();
@@ -317,24 +370,22 @@
 
                 // Remove = empty the row and hide it. The server ignores empty rows.
                 if (btn.getAttribute("data-remove")) {
-                    var row = btn.closest("tr");
-                    var period = periodOfRow(row);
-                    if (originalOf(row) && nameOf(row).value) { row.setAttribute("data-removed", nameOf(row).value); }
-                    nameOf(row).value = "";
-                    weightOf(row).value = "";
-                    row.hidden = true;
-                    if (period === "Final Term") { finalTouched = true; }
-                    else { syncFinal(); }
+                    var gone = btn.closest(".gw-cat-row");
+                    var goneOf = periodOfRow(gone);
+                    if (originalOf(gone) && nameOf(gone).value) { gone.setAttribute("data-removed", nameOf(gone).value); }
+                    nameOf(gone).value = "";
+                    weightOf(gone).value = "";
+                    gone.hidden = true;
+                    touched(goneOf);
                     refresh();
                 }
             });
 
             form.addEventListener("input", function (e) {
-                var tr = e.target.closest ? e.target.closest("tr") : null;
-                if (!tr || !tr.closest("tbody[data-body]")) { return; }
-                if (e.target.name === "weights") { clampRow(tr); }
-                if (periodOfRow(tr) === "Final Term") { finalTouched = true; }
-                else { syncFinal(); }
+                var row = e.target.closest ? e.target.closest(".gw-cat-row") : null;
+                if (!row) { return; }
+                if (e.target.name === "weights") { clampRow(row); }
+                touched(periodOfRow(row));
                 refresh();
             });
 
@@ -343,9 +394,9 @@
                 if (confirmed) { return; }
 
                 var removed = [];
-                form.querySelectorAll("tbody[data-body] tr").forEach(function (tr) {
-                    var original = originalOf(tr);
-                    if (original && !nameOf(tr).value.trim() && !weightOf(tr).value.trim()) { removed.push(original); }
+                form.querySelectorAll(".gw-cat-row").forEach(function (row) {
+                    var original = originalOf(row);
+                    if (original && !nameOf(row).value.trim() && !weightOf(row).value.trim()) { removed.push(original); }
                 });
                 if (removed.length === 0) { return; }
 
@@ -366,11 +417,10 @@
             syncFinal();
             refresh();
 
-            var hasErrors = form.parentNode.querySelector(".gw-error-list") !== null ||
-                            document.querySelector(".gw-error-list") !== null;
+            var hasErrors = document.querySelector(".gw-error-list") !== null;
             if (hasErrors) {
                 for (var i = 0; i < PERIODS.length; i++) {
-                    var rows = liveRows(PERIODS[i]).filter(function (tr) { return nameOf(tr).value.trim() || weightOf(tr).value.trim(); });
+                    var rows = liveRows(PERIODS[i]).filter(function (row) { return nameOf(row).value.trim() || weightOf(row).value.trim(); });
                     if (rows.length > 0 && Math.abs(totalFor(PERIODS[i], null) - 100) >= 0.005) {
                         selectTab(tabs[i], false);
                         break;
