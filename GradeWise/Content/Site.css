@@ -7216,3 +7216,18 @@ button.gw-legend-btn:focus-visible { box-shadow: 3px 3px 0 var(--gw-ink); backgr
     width: 22px;
     border-top: 2px dashed var(--gw-orange);
 }
+
+/* My courses header: title on the left, day and date on the right, one dashed rule across the full width, then the hint */
+.gw-student-grades .gw-sg-listhead {
+    align-items: flex-end;
+    margin-bottom: 12px;
+    padding-bottom: 12px;
+    border-bottom: 1.5px dashed var(--gw-ink);
+}
+.gw-student-grades .gw-sg-listhead .gw-page-title { margin: 0; padding: 0; border-bottom: 0; }
+.gw-student-grades .gw-sg-listhead .gw-datebox { margin: 0; }
+.gw-student-grades .gw-sg-listsub { margin: 0 0 24px; }
+@media (max-width: 575.98px) {
+    .gw-student-grades .gw-sg-listhead { align-items: flex-start; gap: 6px; }
+    .gw-student-grades .gw-sg-listhead .gw-datebox { margin: 0; }
+}

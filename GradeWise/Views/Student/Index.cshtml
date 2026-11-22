@@ -20,16 +20,14 @@
 }
 
 <div class="gw-faculty-courses gw-fcourse gw-student-grades">
-<div class="gw-page-head gw-page-head-date">
-    <div>
-        <h1 class="gw-page-title">My courses</h1>
-        <p class="gw-page-sub">Pick a course to see your scores. Each line shows what you have earned so far and your goal.</p>
-    </div>
+<div class="gw-page-head gw-page-head-date gw-sg-listhead">
+    <h1 class="gw-page-title">My courses</h1>
     <div class="gw-datebox" aria-live="off">
         <span class="gw-datebox-day" id="gw-day">@DateTime.Now.ToString("dddd", CultureInfo.InvariantCulture)</span>
         <span class="gw-datebox-date" id="gw-date">@DateTime.Now.ToString("MM/dd/yyyy", CultureInfo.InvariantCulture)</span>
     </div>
 </div>
+<p class="gw-page-sub gw-sg-listsub">Pick a course to see your scores. Each line shows your grade so far and your goal.</p>
 
 @{
     // Shown after the student changes their email or password (see AccountController).
