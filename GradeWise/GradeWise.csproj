@@ -296,6 +296,7 @@
     <Content Include="Scripts\admin-accounts.js" />
     <Content Include="Scripts\admin-create-user.js" />
     <Content Include="Scripts\admin-terms.js" />
+    <Content Include="Scripts\faculty-course.js" />
     <Content Include="Scripts\faculty-courses.js" />
     <Content Include="Scripts\gw-modal.js" />
     <Content Include="Scripts\gw-notifications.js" />

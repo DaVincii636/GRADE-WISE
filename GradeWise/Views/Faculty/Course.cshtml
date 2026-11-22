@@ -15,10 +15,49 @@
     var editSection = TempData["EditCourseSection"] as string ?? edit.Section;
     var editTerm = TempData["EditCourseTerm"] as string ?? edit.Term;
     var dash = "\u2014";
+
+    // Colours borrowed from the admin Accounts page: lime, blue, gold, plus lavender and orange.
+    var tones = new[] { "lime", "blue", "gold", "lav", "orange" };
+
+    // Passing mark is 65: lime at 75 and above, gold from 65, orange below.
+    Func<double?, string> gradeTone = v => !v.HasValue ? "none" : v.Value >= 75 ? "high" : v.Value >= 65 ? "mid" : "low";
+
+    Func<string, string> initialsOf = n =>
+    {
+        var parts = (n ?? "").Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+        return parts.Length == 0 ? "?" : (parts[0].Substring(0, 1) + (parts.Length > 1 ? parts[parts.Length - 1].Substring(0, 1) : "")).ToUpperInvariant();
+    };
 }
 
+@* One student cell, used by the Midterm, Final Term and Final Grade tables. *@
+@helper StudentCell(string name, string no, string initials, string tone)
+{
+    <td class="gw-sr-student">
+        <div class="gw-sr-person">
+            <span class="gw-sr-avatar gw-sr-avatar-@tone" aria-hidden="true">@initials</span>
+            <span class="gw-sr-person-text">
+                <span class="gw-sr-name">@name</span>
+                <code class="gw-sr-id">@no</code>
+            </span>
+        </div>
+    </td>
+}
+
+<div class="gw-faculty-courses gw-fcourse">
+
 <h1 class="gw-page-title">@Model.Code &middot; @Model.Name</h1>
-<p class="gw-page-sub">@Model.Term@if (!string.IsNullOrWhiteSpace(Model.Section)) { <text> &middot; Section @Model.Section</text> }</p>
+<p class="gw-page-sub gw-fcourse-sub">
+    <span class="gw-fc-chip gw-fc-chip-term">@Model.Term</span>
+    @if (!string.IsNullOrWhiteSpace(Model.Section))
+    {
+        <span class="gw-fc-chip gw-fc-chip-section">Section @Model.Section</span>
+    }
+    else
+    {
+        <span class="gw-fc-chip gw-fc-chip-plain">No section</span>
+    }
+    <span class="gw-fc-chip gw-fc-chip-students">@Model.Rows.Count @(Model.Rows.Count == 1 ? "student" : "students")</span>
+</p>
 
 @if (!string.IsNullOrEmpty(error))
 {
@@ -74,10 +113,11 @@ else if (!Model.PeriodsOk)
     </div>
 }
 
-<div class="gw-scope">
+<div class="gw-fcourse-scopebar">
     @using (Html.BeginForm("SetScope", "Faculty", new { id = Model.CourseId }, FormMethod.Post, new { @class = "gw-scope-form" }))
     {
         @Html.AntiForgeryToken()
+        <span class="gw-fcourse-scopelabel">Grade scope</span>
         <div class="gw-scope-toggle" role="group" aria-label="Grade scope">
             @foreach (var key in GradeScopes.All)
             {
@@ -104,56 +144,56 @@ else if (!Model.PeriodsOk)
 }
 
 <section class="gw-stats" aria-label="Class summary">
-    <div class="gw-stat" data-tab="Students">
+    <div class="gw-stat gw-stat-blue" data-tab="Students">
         <div class="gw-stat-value">@Model.Rows.Count</div>
         <div class="gw-stat-label">Students</div>
     </div>
-    <div class="gw-stat" data-tab="Average">
+    <div class="gw-stat gw-stat-lime" data-tab="Average">
         <div class="gw-stat-value">@(Model.ScopeReady ? GradeCalculator.Format(Model.Summary.Average) : dash)</div>
         <div class="gw-stat-label">Class average (@Model.ScopeLabel)</div>
     </div>
-    <div class="gw-stat" data-tab="Highest">
+    <div class="gw-stat gw-stat-lav" data-tab="Highest">
         <div class="gw-stat-value">@(Model.ScopeReady ? GradeCalculator.Format(Model.Summary.Highest) : dash)</div>
         <div class="gw-stat-label">Highest (@Model.ScopeLabel)</div>
     </div>
-    <div class="gw-stat" data-tab="Lowest">
+    <div class="gw-stat gw-stat-orange" data-tab="Lowest">
         <div class="gw-stat-value">@(Model.ScopeReady ? GradeCalculator.Format(Model.Summary.Lowest) : dash)</div>
         <div class="gw-stat-label">Lowest (@Model.ScopeLabel)</div>
     </div>
-    <div class="gw-stat" data-tab="Equivalent">
+    <div class="gw-stat gw-stat-gold" data-tab="Equivalent">
         <div class="gw-stat-value">@(Model.ScopeReady ? GradeCalculator.Format(Model.Equivalent) : dash)</div>
         <div class="gw-stat-label">Class equivalent (@Model.ScopeLabel)</div>
     </div>
 </section>
 
-<div class="gw-toolbar">
+<div class="gw-toolbar gw-fcourse-toolbar">
     <a href="@Url.Action("Index", "Faculty")" class="gw-iconbtn gw-iconbtn-text" title="Back to courses">
         <img src="@Url.Content("~/Content/img/icons/back.svg")" alt="" width="24" height="24" />
         <span>Back to courses</span>
     </a>
-    <a href="@Url.Action("Enroll", "Faculty", new { id = Model.CourseId })" class="gw-iconbtn gw-iconbtn-text" title="Students">
+    <a href="@Url.Action("Enroll", "Faculty", new { id = Model.CourseId })" class="gw-iconbtn gw-iconbtn-text gw-tone-blue" title="Students">
         <img src="@Url.Content("~/Content/img/icons/user.svg")" alt="" width="24" height="24" />
         <span>Students</span>
     </a>
-    <a href="@Url.Action("Categories", "Faculty", new { id = Model.CourseId })" class="gw-iconbtn gw-iconbtn-text" title="Categories and weights">
+    <a href="@Url.Action("Categories", "Faculty", new { id = Model.CourseId })" class="gw-iconbtn gw-iconbtn-text gw-tone-gold" title="Categories and weights">
         <img src="@Url.Content("~/Content/img/icons/list.svg")" alt="" width="24" height="24" />
         <span>Categories</span>
     </a>
-    <a href="@Url.Action("Analytics", "Faculty", new { id = Model.CourseId })" class="gw-iconbtn gw-iconbtn-text" title="Analytics">
+    <a href="@Url.Action("Analytics", "Faculty", new { id = Model.CourseId })" class="gw-iconbtn gw-iconbtn-text gw-tone-lav" title="Analytics">
         <img src="@Url.Content("~/Content/img/icons/calendar.svg")" alt="" width="24" height="24" />
         <span>Analytics</span>
     </a>
-    <a href="@Url.Action("ExportCsv", "Faculty", new { id = Model.CourseId, scope = Model.Scope })" class="gw-iconbtn gw-iconbtn-text" title="Export CSV">
+    <a href="@Url.Action("ExportCsv", "Faculty", new { id = Model.CourseId, scope = Model.Scope })" class="gw-iconbtn gw-iconbtn-text gw-tone-lime" title="Export CSV">
         <img src="@Url.Content("~/Content/img/icons/download.svg")" alt="" width="24" height="24" />
         <span>Export CSV</span>
     </a>
-    <button type="button" class="gw-iconbtn gw-iconbtn-text" data-modal-open="gw-editcourse-modal" aria-haspopup="dialog" title="Edit course">
+    <button type="button" class="gw-iconbtn gw-iconbtn-text gw-tone-orange" data-modal-open="gw-editcourse-modal" aria-haspopup="dialog" title="Edit course">
         <img src="@Url.Content("~/Content/img/icons/edit.svg")" alt="" width="24" height="24" />
         <span>Edit course</span>
     </button>
 </div>
 
-<section class="gw-panel">
+<section class="gw-panel gw-sr-panel">
     <div class="gw-panel-head">
         <h2 class="gw-panel-title">Score entry</h2>
     </div>
@@ -171,6 +211,18 @@ else if (!Model.PeriodsOk)
     }
     else
     {
+        @* Search filter: hidden until faculty-course.js runs; without JavaScript every student is listed. *@
+        <div class="gw-panel-body gw-fc-controls" id="gw-sr-controls" hidden>
+            <div class="gw-fc-filters" role="search" aria-label="Filter students">
+                <div class="gw-fc-filter gw-fc-filter-search">
+                    <label for="gw-sr-search">Search</label>
+                    <input type="search" id="gw-sr-search" class="gw-inline-select" placeholder="Student name or number" autocomplete="off" spellcheck="false" />
+                </div>
+                <button type="button" class="gw-btn gw-btn-small gw-btn-outline" id="gw-sr-clear">Clear filters</button>
+            </div>
+            <p class="gw-fc-count" id="gw-sr-count" aria-live="polite"></p>
+        </div>
+
         using (Html.BeginForm("SaveScores", "Faculty", new { id = Model.CourseId }, FormMethod.Post, new { id = "score-form" }))
         {
             @Html.AntiForgeryToken()
@@ -214,88 +266,125 @@ else if (!Model.PeriodsOk)
                             .Where(x => GradePeriods.Normalize(x.Category.Period) == period)
                             .ToList();
 
-                        <div class="gw-table-wrap">
-                            <table class="gw-table gw-score-table gw-classrecord">
-                                <thead>
-                                    <tr>
-                                        <th class="gw-sticky-col" rowspan="2">Student</th>
-                                        @foreach (var x in periodCategories)
-                                        {
-                                            <th class="gw-group-head" colspan="@(x.Category.Assessments.Count + 2)">
-                                                @x.Category.Name
-                                                <span class="gw-th-sub">@GradeCalculator.Format(x.Category.Weight)% &middot; @x.Category.Group</span>
-                                            </th>
-                                        }
-                                        <th class="gw-num" rowspan="2">Earned Grade<br /><span class="gw-th-sub">of 100</span></th>
-                                        <th class="gw-num" rowspan="2">Equivalent</th>
-                                    </tr>
-                                    <tr>
-                                        @foreach (var x in periodCategories)
-                                        {
-                                            foreach (var assessment in x.Category.Assessments)
-                                            {
-                                                <th class="gw-num">@Html.ActionLink(assessment.Name, "Assessment", "Faculty", new { id = Model.CourseId, category = x.Category.Name, assessment = assessment.Id }, new { title = "Enter " + assessment.Name + " scores on their own page" })</th>
-                                            }
-                                            <th class="gw-num">Total</th>
-                                            <th class="gw-num">PS</th>
-                                        }
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr class="gw-hps-row">
-                                        <td class="gw-sticky-col"><strong>Highest possible score</strong></td>
-                                        @foreach (var x in periodCategories)
-                                        {
-                                            foreach (var assessment in x.Category.Assessments)
-                                            {
-                                                <td class="gw-num">
-                                                    <input type="number" min="0.01" step="any" inputmode="decimal"
-                                                           class="gw-score-input gw-hps-input"
-                                                           name="@CourseService.HpsFieldName(assessment.Id)"
-                                                           value="@GradeCalculator.Raw(assessment.MaxScore)"
-                                                           aria-label="Highest possible score of @x.Category.Name @assessment.Name" />
-                                                </td>
-                                            }
-                                            <td class="gw-num"><strong>@GradeCalculator.Format(x.Category.Assessments.Sum(a => a.MaxScore))</strong></td>
-                                            <td class="gw-num"><strong>100.00</strong></td>
-                                        }
-                                        <td class="gw-num">&nbsp;</td>
-                                        <td class="gw-num">&nbsp;</td>
-                                    </tr>
-                                    @foreach (var row in Model.Rows)
-                                    {
-                                        var result = isFinal ? row.FinalResult : row.MidtermResult;
-                                        <tr>
-                                            <td class="gw-sticky-col">
-                                                @row.FullName
-                                                <div class="gw-muted gw-small">@row.StudentNo</div>
-                                            </td>
-                                            @foreach (var x in periodCategories)
-                                            {
-                                                var cells = row.CategoryCells[x.Index];
-                                                for (var j = 0; j < x.Category.Assessments.Count; j++)
-                                                {
-                                                    var assessment = x.Category.Assessments[j];
-                                                    <td class="gw-num">
-                                                        <input type="number" min="0" max="@GradeCalculator.Raw(assessment.MaxScore)" step="any" inputmode="decimal"
-                                                               class="gw-score-input @(cells.Invalid[j] ? "gw-input-bad" : "")"
-                                                               name="@CourseService.CellFieldName(row.StudentId, assessment.Id)"
-                                                               value="@cells.Inputs[j]"
-                                                               placeholder="&mdash;"
-                                                               aria-label="@x.Category.Name @assessment.Name score for @row.FullName" />
-                                                    </td>
-                                                }
-                                                <td class="gw-num">@GradeCalculator.Format(cells.Total)</td>
-                                                <td class="gw-num"><strong>@GradeCalculator.Format(cells.Percent)</strong></td>
-                                            }
-                                            <td class="gw-num"><strong>@GradeCalculator.Format(result.EarnedOrNull)</strong></td>
-                                            <td class="gw-num">@GradeCalculator.Format(GradeCalculator.EquivalentFromEarned(result))</td>
-                                        </tr>
-                                    }
-                                </tbody>
-                            </table>
+                        @* Which category is open for typing. One category is open at a time, so the table
+                           always fits the page: the others show only their PS. All boxes are saved together. *@
+                        <div class="gw-panel-body gw-sr-bar">
+                            <span class="gw-sr-bar-label">Enter scores for</span>
+                            <div class="gw-sr-chips" role="group" aria-label="Category to enter">
+                                @for (var p = 0; p < periodCategories.Count; p++)
+                                {
+                                    var x = periodCategories[p];
+                                    <button type="button" class="gw-sr-chip gw-sr-chip-@tones[p % tones.Length]" data-sr-cat="@x.Index" aria-pressed="@(p == 0 ? "true" : "false")">
+                                        @x.Category.Name <span class="gw-sr-chip-w">@GradeCalculator.Format(x.Category.Weight)%</span>
+                                    </button>
+                                }
+                            </div>
                         </div>
-                        <div class="gw-panel-body">
+
+                        <table class="gw-table gw-sr-table" data-sr-table>
+                            <thead>
+                                <tr>
+                                    <th scope="col" class="gw-sr-student">Student</th>
+                                    @for (var p = 0; p < periodCategories.Count; p++)
+                                    {
+                                        var x = periodCategories[p];
+                                        var tone = tones[p % tones.Length];
+                                        <th scope="col" class="gw-sr-cat gw-sr-tone-@tone @(p == 0 ? "is-open" : "")" data-cat="@x.Index">
+                                            <button type="button" class="gw-sr-cathead" data-sr-cat="@x.Index" aria-expanded="@(p == 0 ? "true" : "false")" title="@x.Category.Name, @GradeCalculator.Format(x.Category.Weight)%, @x.Category.Group">
+                                                <span class="gw-sr-catname">@x.Category.Name</span>
+                                                <span class="gw-sr-catsub">@GradeCalculator.Format(x.Category.Weight)%<span class="gw-sr-catgroup"> &middot; @x.Category.Group</span></span>
+                                            </button>
+                                            <div class="gw-sr-open-only">
+                                                <div class="gw-sr-grid gw-sr-grid-head">
+                                                    @foreach (var assessment in x.Category.Assessments)
+                                                    {
+                                                        <span class="gw-sr-gi">@Html.ActionLink(assessment.Name, "Assessment", "Faculty", new { id = Model.CourseId, category = x.Category.Name, assessment = assessment.Id }, new { title = "Enter " + assessment.Name + " scores on their own page" })</span>
+                                                    }
+                                                    <span class="gw-sr-gi gw-sr-gi-calc">Total</span>
+                                                    <span class="gw-sr-gi gw-sr-gi-calc">PS</span>
+                                                </div>
+                                                <button type="button" class="gw-btn gw-btn-small gw-btn-outline gw-sr-colsbtn" data-modal-open="gw-cols-@x.Index" aria-haspopup="dialog">Add or remove columns</button>
+                                            </div>
+                                        </th>
+                                    }
+                                    <th scope="col" class="gw-sr-fin">Earned<span class="gw-th-sub"> /100</span></th>
+                                    <th scope="col" class="gw-sr-fin gw-sr-eq">Eq.</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr class="gw-sr-hps">
+                                    <td class="gw-sr-student"><strong>Highest possible score</strong></td>
+                                    @for (var p = 0; p < periodCategories.Count; p++)
+                                    {
+                                        var x = periodCategories[p];
+                                        <td class="gw-sr-cat gw-sr-tone-@tones[p % tones.Length] @(p == 0 ? "is-open" : "")" data-cat="@x.Index">
+                                            <div class="gw-sr-sum"><strong>@GradeCalculator.Format(x.Category.Assessments.Sum(a => a.MaxScore))</strong></div>
+                                            <div class="gw-sr-grid">
+                                                @foreach (var assessment in x.Category.Assessments)
+                                                {
+                                                    <span class="gw-sr-gi" data-name="@assessment.Name">
+                                                        <input type="number" min="0.01" step="any" inputmode="decimal"
+                                                               class="gw-score-input gw-sr-input gw-hps-input"
+                                                               name="@CourseService.HpsFieldName(assessment.Id)"
+                                                               value="@GradeCalculator.Raw(assessment.MaxScore)"
+                                                               aria-label="Highest possible score of @x.Category.Name @assessment.Name" />
+                                                    </span>
+                                                }
+                                                <span class="gw-sr-gi gw-sr-gi-calc" data-name="Total"><strong>@GradeCalculator.Format(x.Category.Assessments.Sum(a => a.MaxScore))</strong></span>
+                                                <span class="gw-sr-gi gw-sr-gi-calc" data-name="PS"><strong>100.00</strong></span>
+                                            </div>
+                                        </td>
+                                    }
+                                    <td class="gw-sr-fin">&nbsp;</td>
+                                    <td class="gw-sr-fin gw-sr-eq">&nbsp;</td>
+                                </tr>
+                                @foreach (var row in Model.Rows)
+                                {
+                                    var result = isFinal ? row.FinalResult : row.MidtermResult;
+                                    var earned = result.EarnedOrNull;
+                                    <tr data-student="@((row.FullName + " " + row.StudentNo).ToLowerInvariant())">
+                                        @StudentCell(row.FullName, row.StudentNo, initialsOf(row.FullName), gradeTone(earned))
+                                        @for (var p = 0; p < periodCategories.Count; p++)
+                                        {
+                                            var x = periodCategories[p];
+                                            var cells = row.CategoryCells[x.Index];
+                                            <td class="gw-sr-cat gw-sr-tone-@tones[p % tones.Length] @(p == 0 ? "is-open" : "")" data-cat="@x.Index">
+                                                <div class="gw-sr-sum">
+                                                    <span class="gw-fc-chip gw-sr-ps gw-sr-ps-@gradeTone(cells.Percent)" title="Total @GradeCalculator.Format(cells.Total) of @GradeCalculator.Format(cells.GradedMax)">@GradeCalculator.Format(cells.Percent)</span>
+                                                </div>
+                                                <div class="gw-sr-grid">
+                                                    @for (var j = 0; j < x.Category.Assessments.Count; j++)
+                                                    {
+                                                        var assessment = x.Category.Assessments[j];
+                                                        <span class="gw-sr-gi" data-name="@assessment.Name">
+                                                            <input type="number" min="0" max="@GradeCalculator.Raw(assessment.MaxScore)" step="any" inputmode="decimal"
+                                                                   class="gw-score-input gw-sr-input @(cells.Invalid[j] ? "gw-input-bad" : "")"
+                                                                   name="@CourseService.CellFieldName(row.StudentId, assessment.Id)"
+                                                                   value="@cells.Inputs[j]"
+                                                                   placeholder="&mdash;"
+                                                                   aria-label="@x.Category.Name @assessment.Name score for @row.FullName" />
+                                                        </span>
+                                                    }
+                                                    <span class="gw-sr-gi gw-sr-gi-calc" data-name="Total">@GradeCalculator.Format(cells.Total)</span>
+                                                    <span class="gw-sr-gi gw-sr-gi-calc" data-name="PS"><strong>@GradeCalculator.Format(cells.Percent)</strong></span>
+                                                </div>
+                                            </td>
+                                        }
+                                        <td class="gw-sr-fin"><span class="gw-fc-chip gw-sr-ps gw-sr-ps-@gradeTone(earned)"><strong>@GradeCalculator.Format(earned)</strong></span></td>
+                                        <td class="gw-sr-fin gw-sr-eq">@GradeCalculator.Format(GradeCalculator.EquivalentFromEarned(result))</td>
+                                    </tr>
+                                }
+                                <tr class="gw-sr-nomatch" hidden>
+                                    <td colspan="@(periodCategories.Count + 3)" class="gw-empty">
+                                        No students match this search.
+                                        <button type="button" class="gw-fc-linkbtn" data-sr-clear>Clear filters</button>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <div class="gw-panel-body gw-sr-savebar">
+                            <span class="gw-sr-savehint">Scores in every category are saved together.</span>
                             <div class="gw-form-buttons">
                                 <button type="submit" class="gw-btn">Save scores</button>
                             </div>
@@ -305,38 +394,39 @@ else if (!Model.PeriodsOk)
             }
 
             <div class="gw-tabpanel" role="tabpanel" id="panel-final-grade" aria-labelledby="tab-final-grade" hidden="@("final-grade" == Model.ActiveTab ? null : "hidden")">
-                <div class="gw-table-wrap">
-                    <table class="gw-table gw-score-table">
-                        <thead>
-                            <tr>
-                                <th class="gw-sticky-col">Student</th>
-                                <th class="gw-num">Midterm Grade</th>
-                                <th class="gw-num">Midterm Eq.</th>
-                                <th class="gw-num">Final Term Grade</th>
-                                <th class="gw-num">Final Term Eq.</th>
-                                <th class="gw-num">Final Grade</th>
-                                <th class="gw-num">Equivalent</th>
+                <table class="gw-table gw-sr-table gw-sr-final">
+                    <thead>
+                        <tr>
+                            <th scope="col" class="gw-sr-student">Student</th>
+                            <th scope="col" class="gw-num gw-sr-tone-blue">Midterm Grade</th>
+                            <th scope="col" class="gw-num gw-sr-tone-blue">Midterm Eq.</th>
+                            <th scope="col" class="gw-num gw-sr-tone-gold">Final Term Grade</th>
+                            <th scope="col" class="gw-num gw-sr-tone-gold">Final Term Eq.</th>
+                            <th scope="col" class="gw-num gw-sr-tone-lime">Final Grade</th>
+                            <th scope="col" class="gw-num gw-sr-tone-lime">Equivalent</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var row in Model.Rows)
+                        {
+                            <tr data-student="@((row.FullName + " " + row.StudentNo).ToLowerInvariant())">
+                                @StudentCell(row.FullName, row.StudentNo, initialsOf(row.FullName), gradeTone(row.Result.EarnedOrNull))
+                                <td class="gw-num">@GradeCalculator.Format(row.MidtermResult.EarnedOrNull)</td>
+                                <td class="gw-num">@GradeCalculator.Format(GradeCalculator.EquivalentFromEarned(row.MidtermResult))</td>
+                                <td class="gw-num">@GradeCalculator.Format(row.FinalResult.EarnedOrNull)</td>
+                                <td class="gw-num">@GradeCalculator.Format(GradeCalculator.EquivalentFromEarned(row.FinalResult))</td>
+                                <td class="gw-num"><span class="gw-fc-chip gw-sr-ps gw-sr-ps-@gradeTone(row.Result.EarnedOrNull)"><strong>@GradeCalculator.Format(row.Result.EarnedOrNull)</strong></span></td>
+                                <td class="gw-num"><strong>@(row.Incomplete ? "INC" : GradeCalculator.Format(GradeCalculator.EquivalentFromEarned(row.Result)))</strong></td>
                             </tr>
-                        </thead>
-                        <tbody>
-                            @foreach (var row in Model.Rows)
-                            {
-                                <tr>
-                                    <td class="gw-sticky-col">
-                                        @row.FullName
-                                        <div class="gw-muted gw-small">@row.StudentNo</div>
-                                    </td>
-                                    <td class="gw-num">@GradeCalculator.Format(row.MidtermResult.EarnedOrNull)</td>
-                                    <td class="gw-num">@GradeCalculator.Format(GradeCalculator.EquivalentFromEarned(row.MidtermResult))</td>
-                                    <td class="gw-num">@GradeCalculator.Format(row.FinalResult.EarnedOrNull)</td>
-                                    <td class="gw-num">@GradeCalculator.Format(GradeCalculator.EquivalentFromEarned(row.FinalResult))</td>
-                                    <td class="gw-num"><strong>@GradeCalculator.Format(row.Result.EarnedOrNull)</strong></td>
-                                    <td class="gw-num"><strong>@(row.Incomplete ? "INC" : GradeCalculator.Format(GradeCalculator.EquivalentFromEarned(row.Result)))</strong></td>
-                                </tr>
-                            }
-                        </tbody>
-                    </table>
-                </div>
+                        }
+                        <tr class="gw-sr-nomatch" hidden>
+                            <td colspan="7" class="gw-empty">
+                                No students match this search.
+                                <button type="button" class="gw-fc-linkbtn" data-sr-clear>Clear filters</button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
                 <div class="gw-panel-body">
                     <p class="gw-note gw-note-first">This table is read only. Enter scores in the Midterm and Final Term tabs.</p>
                 </div>
@@ -355,22 +445,27 @@ else if (!Model.PeriodsOk)
     }
 </section>
 
+@* ---------- Add or remove columns (one window per category) ----------
+   These forms are outside the score form on purpose (a form cannot sit inside another form). *@
 @if (Model.Categories.Count > 0)
 {
-    <section class="gw-panel" id="manage-columns">
-        <div class="gw-panel-head">
-            <h2 class="gw-panel-title">Columns</h2>
-        </div>
-        <div class="gw-panel-body">
-            <p class="gw-field-hint gw-hint-block">
-                Add a column for every quiz, project or attendance day (1, 2, 3 and so on, like the class record). Each column keeps its own highest possible score, which you set in the table above.
-                Removing a column deletes the scores entered in it.
-            </p>
-
-            @foreach (var c in Model.Categories)
-            {
-                <div class="gw-col-manage">
-                    <div class="gw-col-title"><strong>@c.Name</strong> <span class="gw-muted">@c.Period &middot; @c.Group</span></div>
+    for (var ci = 0; ci < Model.Categories.Count; ci++)
+    {
+        var c = Model.Categories[ci];
+        <div id="gw-cols-@ci" class="gw-modal-backdrop" hidden>
+            <div class="gw-panel gw-card-raised gw-modal-card" role="dialog" aria-modal="true" aria-labelledby="gw-cols-title-@ci">
+                <div class="gw-panel-head">
+                    <h2 id="gw-cols-title-@ci" class="gw-panel-title">@c.Name columns</h2>
+                </div>
+                <div class="gw-modal-top">
+                    <div class="gw-modal-meta">
+                        <span class="gw-muted">@c.Period &middot; @c.Group. Add a column for every quiz, project or attendance day. Each column keeps its own highest possible score, set in the table. Removing a column deletes the scores entered in it. The page reloads after each change, so save typed scores first.</span>
+                    </div>
+                    <button type="button" class="gw-iconbtn gw-modal-close" data-modal-close aria-label="Close" title="Close">
+                        <img src="@Url.Content("~/Content/img/icons/close.svg")" alt="" width="20" height="20" />
+                    </button>
+                </div>
+                <div class="gw-panel-body">
                     <div class="gw-col-list">
                         @foreach (var assessment in c.Assessments)
                         {
@@ -391,9 +486,12 @@ else if (!Model.PeriodsOk)
                         <button type="submit" class="gw-btn gw-btn-small gw-btn-outline">Add column</button>
                     }
                 </div>
-            }
+                <div class="gw-modal-foot">
+                    <button type="button" class="gw-btn gw-btn-outline" data-modal-close>Close</button>
+                </div>
+            </div>
         </div>
-    </section>
+    }
 }
 
 <div id="gw-editcourse-modal" class="gw-modal-backdrop" hidden @(editErrors.Count > 0 ? "data-open-on-load" : null)>
@@ -474,38 +572,9 @@ else if (!Model.PeriodsOk)
     </div>
 </div>
 
+</div>
+
 @section scripts {
-    <script>
-        (function () {
-            // Forms that carry data-confirm ask first (removing a column deletes its scores).
-            document.addEventListener("submit", function (e) {
-                var message = e.target.getAttribute && e.target.getAttribute("data-confirm");
-                if (message && !window.confirm(message)) { e.preventDefault(); }
-            });
-
-            var tabs = [].slice.call(document.querySelectorAll('[role="tab"][data-tab]'));
-            var hidden = document.getElementById("active-tab");
-            if (!tabs.length) { return; }
-
-            function selectTab(tab, focus) {
-                tabs.forEach(function (t) {
-                    var on = t === tab;
-                    t.setAttribute("aria-selected", on ? "true" : "false");
-                    t.tabIndex = on ? 0 : -1;
-                    document.getElementById(t.getAttribute("aria-controls")).hidden = !on;
-                });
-                if (hidden) { hidden.value = tab.getAttribute("data-tab"); }
-                if (focus) { tab.focus(); }
-            }
-
-            tabs.forEach(function (tab) {
-                tab.addEventListener("click", function () { selectTab(tab, false); });
-                tab.addEventListener("keydown", function (e) {
-                    if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") { return; }
-                    var next = tabs[(tabs.indexOf(tab) + (e.key === "ArrowRight" ? 1 : tabs.length - 1)) % tabs.length];
-                    selectTab(next, true);
-                });
-            });
-        })();
-    </script>
+    @* The page script is in Scripts/faculty-course.js. *@
+    <script src="@Url.Content("~/Scripts/faculty-course.js")?v=@System.IO.File.GetLastWriteTimeUtc(Server.MapPath("~/Scripts/faculty-course.js")).Ticks"></script>
 }
