@@ -128,24 +128,21 @@
         }
         else
         {
-            @* Search filter: hidden until faculty-assessment.js runs; without JavaScript every student is listed. *@
-            <div class="gw-panel-body gw-fc-controls" id="gw-sr-controls" hidden>
-                <div class="gw-fc-filters" role="search" aria-label="Filter students">
-                    <div class="gw-fc-filter gw-fc-filter-search">
-                        <label for="gw-sr-search">Search</label>
-                        <input type="search" id="gw-sr-search" class="gw-inline-select" placeholder="Student name or number" autocomplete="off" spellcheck="false" />
-                    </div>
-                    <button type="button" class="gw-btn gw-btn-small gw-btn-outline" id="gw-sr-clear">Clear filters</button>
-                </div>
-                <p class="gw-fc-count" id="gw-sr-count" aria-live="polite"></p>
+            @* Slim search bar: hidden until the page script runs; without JavaScript every student is listed. *@
+            <div class="gw-sr-tools" id="gw-sr-controls" role="search" aria-label="Filter students" hidden>
+            <div class="gw-sr-tools-search">
+                <input type="search" id="gw-sr-search" placeholder="Search student name or number" aria-label="Search students" autocomplete="off" spellcheck="false" />
+            </div>
+            <span class="gw-fc-chip gw-sr-tools-count" id="gw-sr-count" aria-live="polite"></span>
+            <button type="button" class="gw-btn gw-btn-small gw-btn-outline" id="gw-sr-clear">Clear</button>
             </div>
 
             <table class="gw-table gw-sr-table gw-as-table">
                 <thead>
                     <tr>
                         <th scope="col" class="gw-sr-student">Student</th>
-                        <th scope="col" class="gw-as-col-score gw-sr-tone-blue">Score <span class="gw-th-sub">out of <span data-as-max-label>@GradeCalculator.Raw(Model.MaxScore)</span></span></th>
-                        <th scope="col" class="gw-as-col-pct gw-sr-tone-lime">Percent</th>
+                        <th scope="col" class="gw-as-col-score">Score <span class="gw-th-sub">out of <span data-as-max-label>@GradeCalculator.Raw(Model.MaxScore)</span></span></th>
+                        <th scope="col" class="gw-as-col-pct">Percent</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -179,7 +176,10 @@
         <div class="gw-panel-body gw-sr-savebar">
             <span class="gw-sr-savehint">Saves the name, the highest possible score and every score on this page.</span>
             <div class="gw-form-buttons">
-                <button type="submit" class="gw-btn">Save assessment scores</button>
+                <button type="submit" class="gw-btn"
+                        data-confirm="This saves the name, the highest possible score and every score on this page."
+                        data-confirm-title="Save changes?"
+                        data-confirm-ok="Save">Save</button>
             </div>
         </div>
     </section>

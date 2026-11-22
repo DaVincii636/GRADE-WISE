@@ -5699,8 +5699,15 @@ html.gw-loading button {
     text-align: center;
 }
 
-/* column names wrap onto two lines instead of being cut off */
+/* Column labels above the score boxes: one tidy box per column, same grid as the boxes below.
+   Names wrap onto two lines instead of being cut off. */
 .gw-fcourse .gw-sr-grid-head .gw-sr-gi {
+    display: flex;
+    align-items: stretch;
+    justify-content: center;
+    min-height: 32px;
+    background: var(--gw-paper);
+    border: 1.5px solid var(--gw-ink);
     font-size: 0.78rem;
     font-weight: 700;
     line-height: 1.2;
@@ -5710,28 +5717,88 @@ html.gw-loading button {
 }
 
 .gw-fcourse .gw-sr-grid-head .gw-sr-gi a {
-    display: block;
-    padding: 2px 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 1 1 auto;
+    min-width: 0;
+    padding: 3px 4px;
     color: var(--gw-ink);
-    text-decoration: underline;
-    text-decoration-style: dotted;
-    text-underline-offset: 3px;
+    text-decoration: none;
 }
 
 .gw-fcourse .gw-sr-grid-head .gw-sr-gi a:hover,
 .gw-fcourse .gw-sr-grid-head .gw-sr-gi a:focus-visible {
-    background: var(--gw-paper);
-    text-decoration-style: solid;
+    background: var(--gw-acct-gold);
 }
 
+/* Total and PS are worked out, not typed: dashed box like the cells below */
 .gw-fcourse .gw-sr-grid-head .gw-sr-gi-calc {
-    align-self: start;
-    padding: 2px 0;
+    align-items: center;
+    background: transparent;
+    border-style: dashed;
     font-family: var(--gw-font-pixel);
-    font-size: 0.65rem;
+    font-size: 0.62rem;
     font-weight: 400;
     letter-spacing: 0.04em;
     text-transform: uppercase;
+}
+
+/* "+" tile after the last column: add a column */
+.gw-fcourse .gw-sr-grid-head .gw-sr-gi-add {
+    border: 0;
+    background: transparent;
+}
+
+.gw-fcourse .gw-sr-addtile {
+    flex: 1 1 auto;
+    padding: 0;
+    background: var(--gw-acct-gold-pale);
+    color: var(--gw-ink);
+    border: 1.5px solid var(--gw-ink);
+    border-radius: 0;
+    font: inherit;
+    font-size: 1.1rem;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.gw-fcourse .gw-sr-addtile:hover,
+.gw-fcourse .gw-sr-addtile:focus-visible {
+    background: var(--gw-lime);
+}
+
+/* title row of the open category: name on the left, small "Columns" button on the right */
+.gw-fcourse .gw-sr-headtop {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+}
+
+.gw-fcourse .gw-sr-headtop .gw-sr-cathead {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.gw-fcourse .gw-sr-tool {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 8px;
+    background: var(--gw-paper);
+    color: var(--gw-ink);
+    border: 1.5px solid var(--gw-ink);
+    border-radius: 0;
+    font: inherit;
+    font-size: 0.75rem;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.gw-fcourse .gw-sr-tool:hover,
+.gw-fcourse .gw-sr-tool:focus-visible {
+    background: var(--gw-acct-gold);
 }
 
 .gw-fcourse .gw-sr-input {
@@ -5765,22 +5832,6 @@ html.gw-loading button {
     white-space: nowrap;
 }
 
-.gw-fcourse .gw-sr-bar .gw-sr-colsbtn {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    margin-left: auto;
-    background: var(--gw-paper);
-}
-
-.gw-fcourse .gw-sr-bar .gw-sr-colsbtn:hover:not(:disabled) {
-    background: var(--gw-acct-gold);
-}
-
-.gw-fcourse .gw-sr-bar .gw-sr-colsbtn:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-}
 
 /* highest possible score row */
 .gw-fcourse .gw-sr-hps td {
@@ -6043,8 +6094,9 @@ html.gw-loading button {
 .gw-fassess .gw-as-table .gw-sr-student { width: auto; }
 .gw-fassess .gw-as-table .gw-as-col-score { width: 170px; text-align: center; }
 .gw-fassess .gw-as-table .gw-as-col-pct { width: 120px; text-align: center; }
-.gw-fassess .gw-as-table thead th.gw-sr-tone-blue { background: var(--gw-acct-blue); }
-.gw-fassess .gw-as-table thead th.gw-sr-tone-lime { background: var(--gw-lime); }
+.gw-fassess .gw-as-table thead th { background: var(--gw-head); }
+.gw-fassess .gw-as-table thead th.gw-as-col-score { box-shadow: inset 0 5px 0 var(--gw-acct-blue); }
+.gw-fassess .gw-as-table thead th.gw-as-col-pct { box-shadow: inset 0 5px 0 var(--gw-lime); }
 
 .gw-fassess .gw-as-input {
     width: 100%;
@@ -6057,4 +6109,80 @@ html.gw-loading button {
     .gw-fassess .gw-as-table .gw-as-col-score { width: 96px; }
     .gw-fassess .gw-as-table .gw-as-col-pct { width: 74px; }
     .gw-fassess .gw-as-table .gw-th-sub { display: none; }
+}
+
+/* ---------- Slim search bar (class record and assessment page) ---------- */
+.gw-fcourse .gw-sr-tools {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    background: var(--gw-acct-blue-pale);
+    border-bottom: var(--gw-outline);
+}
+
+.gw-fcourse .gw-sr-tools[hidden] {
+    display: none;
+}
+
+.gw-fcourse .gw-sr-tools-search {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.gw-fcourse .gw-sr-tools-search input {
+    width: 100%;
+    height: 36px;
+    padding: 4px 10px 4px 34px;
+    background: var(--gw-paper) url(img/icons/search.svg) 9px center / 18px 18px no-repeat;
+    border: var(--gw-outline);
+    border-radius: 0;
+    color: var(--gw-ink);
+    font-family: inherit;
+}
+
+.gw-fcourse .gw-sr-tools-search input:focus {
+    outline: 3px solid var(--gw-ink);
+    outline-offset: 0;
+    box-shadow: 0 0 0 6px var(--gw-lime);
+}
+
+.gw-fcourse .gw-sr-tools .gw-fc-chip {
+    flex: 0 0 auto;
+    background: var(--gw-paper);
+    font-family: var(--gw-font-pixel);
+    font-size: 0.65rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.gw-fcourse .gw-sr-tools .gw-btn {
+    flex: 0 0 auto;
+    height: 36px;
+    margin: 0;
+}
+
+/* tidier assessment table */
+.gw-fassess .gw-as-table td,
+.gw-fassess .gw-as-table th {
+    padding-top: 8px;
+    padding-bottom: 8px;
+}
+
+.gw-fassess .gw-as-table thead th {
+    font-size: 0.9rem;
+}
+
+@media (max-width: 575.98px) {
+    .gw-fcourse .gw-sr-tools {
+        flex-wrap: wrap;
+    }
+
+    .gw-fcourse .gw-sr-tools-search {
+        flex-basis: 100%;
+    }
+
+    .gw-fcourse .gw-sr-tool span {
+        display: none;
+    }
 }

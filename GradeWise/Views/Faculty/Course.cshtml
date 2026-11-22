@@ -211,16 +211,13 @@ else if (!Model.PeriodsOk)
     }
     else
     {
-        @* Search filter: hidden until faculty-course.js runs; without JavaScript every student is listed. *@
-        <div class="gw-panel-body gw-fc-controls" id="gw-sr-controls" hidden>
-            <div class="gw-fc-filters" role="search" aria-label="Filter students">
-                <div class="gw-fc-filter gw-fc-filter-search">
-                    <label for="gw-sr-search">Search</label>
-                    <input type="search" id="gw-sr-search" class="gw-inline-select" placeholder="Student name or number" autocomplete="off" spellcheck="false" />
-                </div>
-                <button type="button" class="gw-btn gw-btn-small gw-btn-outline" id="gw-sr-clear">Clear filters</button>
+        @* Slim search bar: hidden until the page script runs; without JavaScript every student is listed. *@
+        <div class="gw-sr-tools" id="gw-sr-controls" role="search" aria-label="Filter students" hidden>
+            <div class="gw-sr-tools-search">
+                <input type="search" id="gw-sr-search" placeholder="Search student name or number" aria-label="Search students" autocomplete="off" spellcheck="false" />
             </div>
-            <p class="gw-fc-count" id="gw-sr-count" aria-live="polite"></p>
+            <span class="gw-fc-chip gw-sr-tools-count" id="gw-sr-count" aria-live="polite"></span>
+            <button type="button" class="gw-btn gw-btn-small gw-btn-outline" id="gw-sr-clear">Clear</button>
         </div>
 
         using (Html.BeginForm("SaveScores", "Faculty", new { id = Model.CourseId }, FormMethod.Post, new { id = "score-form" }))
@@ -279,11 +276,6 @@ else if (!Model.PeriodsOk)
                                     </button>
                                 }
                             </div>
-                            @* Opens the column window of the open category (faculty-course.js keeps this up to date). *@
-                            <button type="button" class="gw-btn gw-btn-small gw-btn-outline gw-sr-colsbtn" data-sr-cols data-modal-open="gw-cols-@periodCategories[0].Index" aria-haspopup="dialog">
-                                <img src="@Url.Content("~/Content/img/icons/edit.svg")" alt="" width="18" height="18" />
-                                <span>Edit columns</span>
-                            </button>
                         </div>
 
                         <table class="gw-table gw-sr-table" data-sr-table>
@@ -295,18 +287,25 @@ else if (!Model.PeriodsOk)
                                         var x = periodCategories[p];
                                         var tone = tones[p % tones.Length];
                                         <th scope="col" class="gw-sr-cat gw-sr-tone-@tone @(p == 0 ? "is-open" : "")" data-cat="@x.Index">
-                                            <button type="button" class="gw-sr-cathead" data-sr-cat="@x.Index" aria-expanded="@(p == 0 ? "true" : "false")" title="@x.Category.Name, @GradeCalculator.Format(x.Category.Weight)%, @x.Category.Group">
-                                                <span class="gw-sr-catname">@x.Category.Name</span>
-                                                <span class="gw-sr-catsub">@GradeCalculator.Format(x.Category.Weight)%<span class="gw-sr-catgroup"> &middot; @x.Category.Group</span></span>
-                                            </button>
+                                            <div class="gw-sr-headtop">
+                                                <button type="button" class="gw-sr-cathead" data-sr-cat="@x.Index" aria-expanded="@(p == 0 ? "true" : "false")" title="@x.Category.Name, @GradeCalculator.Format(x.Category.Weight)%, @x.Category.Group">
+                                                    <span class="gw-sr-catname">@x.Category.Name</span>
+                                                    <span class="gw-sr-catsub">@GradeCalculator.Format(x.Category.Weight)%<span class="gw-sr-catgroup"> &middot; @x.Category.Group</span></span>
+                                                </button>
+                                                <button type="button" class="gw-sr-tool gw-sr-open-only" data-modal-open="gw-cols-@x.Index" aria-haspopup="dialog" aria-label="Edit columns of @x.Category.Name" title="Add, edit or remove columns">
+                                                    <img src="@Url.Content("~/Content/img/icons/edit.svg")" alt="" width="14" height="14" />
+                                                    <span>Columns</span>
+                                                </button>
+                                            </div>
                                             <div class="gw-sr-open-only">
                                                 <div class="gw-sr-grid gw-sr-grid-head">
                                                     @foreach (var assessment in x.Category.Assessments)
                                                     {
-                                                        <span class="gw-sr-gi">@Html.ActionLink(assessment.Name, "Assessment", "Faculty", new { id = Model.CourseId, category = x.Category.Name, assessment = assessment.Id }, new { title = "Enter " + assessment.Name + " scores on their own page" })</span>
+                                                        <span class="gw-sr-gi">@Html.ActionLink(assessment.Name, "Assessment", "Faculty", new { id = Model.CourseId, category = x.Category.Name, assessment = assessment.Id }, new { title = "Open " + assessment.Name + " to enter its scores and edit it" })</span>
                                                     }
                                                     <span class="gw-sr-gi gw-sr-gi-calc">Total</span>
                                                     <span class="gw-sr-gi gw-sr-gi-calc">PS</span>
+                                                    <span class="gw-sr-gi gw-sr-gi-add"><button type="button" class="gw-sr-addtile" data-modal-open="gw-cols-@x.Index" aria-haspopup="dialog" aria-label="Add a column to @x.Category.Name" title="Add a column">+</button></span>
                                                 </div>
                                             </div>
                                         </th>
@@ -390,7 +389,10 @@ else if (!Model.PeriodsOk)
                         <div class="gw-panel-body gw-sr-savebar">
                             <span class="gw-sr-savehint">Scores in every category are saved together.</span>
                             <div class="gw-form-buttons">
-                                <button type="submit" class="gw-btn">Save scores</button>
+                                <button type="submit" class="gw-btn"
+                                        data-confirm="This saves every score and highest possible score typed in this class record, in all categories and tabs."
+                                        data-confirm-title="Save scores?"
+                                        data-confirm-ok="Save">Save scores</button>
                             </div>
                         </div>
                     }

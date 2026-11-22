@@ -3,17 +3,9 @@
 //   - Midterm / Final Term / Final Grade tabs
 //   - one category open at a time in the score table, so the table never needs a sideways scrollbar
 //   - student search
-//   - confirm before removing a column
 // ASCII only.
 
 (function () {
-    // ---------- confirm forms that carry data-confirm (removing a column deletes its scores) ----------
-    document.addEventListener("submit", function (e) {
-        var target = e.target;
-        var message = target instanceof Element ? target.getAttribute("data-confirm") : null;
-        if (message && !window.confirm(message)) { e.preventDefault(); }
-    });
-
     // ---------- tabs ----------
     var tabs = [].slice.call(document.querySelectorAll('[role="tab"][data-tab]'));
     var activeTabInput = document.getElementById("active-tab");
@@ -62,7 +54,7 @@
 
     /** The grid in the header wraps onto a second line when the open category has many columns. */
     function checkWrap(table) {
-        var items = table.querySelectorAll("th.is-open .gw-sr-grid-head .gw-sr-gi");
+        var items = table.querySelectorAll("th.is-open .gw-sr-grid-head .gw-sr-gi:not(.gw-sr-gi-add)");
         var wrapped = false;
         if (items.length > 1 && items[0] instanceof HTMLElement) {
             var last = items[items.length - 1];
@@ -88,14 +80,6 @@
             var on = cat !== "" && btn.getAttribute("data-sr-cat") === cat;
             btn.setAttribute(btn.classList.contains("gw-sr-chip") ? "aria-pressed" : "aria-expanded", on ? "true" : "false");
         });
-        // The "Edit columns" button works on the open category.
-        var colsBtn = (panel || table).querySelector("[data-sr-cols]");
-        if (colsBtn instanceof HTMLButtonElement) {
-            colsBtn.disabled = cat === "";
-            if (cat === "") { colsBtn.removeAttribute("data-modal-open"); }
-            else { colsBtn.setAttribute("data-modal-open", "gw-cols-" + cat); }
-            colsBtn.title = cat === "" ? "Open a category first" : "";
-        }
         try { sessionStorage.setItem(storeKey(table), cat === "" ? "none" : cat); } catch (err) { /* storage may be blocked */ }
         checkWrap(table);
     }
