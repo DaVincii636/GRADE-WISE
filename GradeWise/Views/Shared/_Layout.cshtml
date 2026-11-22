@@ -43,7 +43,7 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>@ViewBag.Title - GradeWise</title>
+    <title>@ViewBag.Title - GRADE-WISE</title>
     <link rel="icon" type="image/svg+xml" href="@Url.Content("~/Content/img/stickers/stamp-ring.svg")" />
     @* Back button: a page that the browser puts back from its back-forward cache is hidden right away
         (before it can be seen) and fetched again from the server, so a signed-out page is never shown. *@
@@ -80,7 +80,7 @@
         <div class="gw-topbar-inner">
             <a href="@Url.Action("Index", "Home", new { area = "" })" class="gw-brand">
                 <img src="~/Content/img/stickers/stamp-ring.svg" alt="" class="gw-brand-mark" width="36" height="36" />
-                <span class="gw-brand-word">GradeWise</span>
+                <span class="gw-brand-word">GRADE-WISE</span>
             </a>
             @if (!string.IsNullOrEmpty(role))
             {
@@ -116,7 +116,7 @@
     </main>
 
     <footer class="gw-footer">
-        &copy; @DateTime.Now.Year GradeWise
+        &copy; @DateTime.Now.Year GRADE-WISE
     </footer>
 
     @if (role == GradeWise.Models.Roles.Student || role == GradeWise.Models.Roles.Faculty)

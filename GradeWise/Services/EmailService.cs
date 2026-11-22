@@ -23,7 +23,7 @@ namespace GradeWise.Services
                 {
                     using (var message = new MailMessage())
                     {
-                        message.From = new MailAddress(SmtpUser, "GradeWise");
+                        message.From = new MailAddress(SmtpUser, "GRADE-WISE");
                         message.To.Add(new MailAddress(toEmail));
                         message.Subject = subject;
                         message.Body = body;
@@ -47,7 +47,7 @@ namespace GradeWise.Services
 
         public static void SendTempPassword(string toEmail, string fullName, string tempPassword)
         {
-            string subject = "Welcome to GradeWise - Your Temporary Password";
+            string subject = "Welcome to GRADE-WISE - Your Temporary Password";
 
             // GradeWise Zine Theme (Paper, Grid, Ink, Lime)
             string body = $@"
@@ -64,7 +64,7 @@ namespace GradeWise.Services
                         <!-- Body -->
                         <div style='padding: 30px;'>
                             <h2 style='margin-top: 0; font-size: 22px;'>Hello {fullName},</h2>
-                            <p style='font-size: 16px; line-height: 1.5;'>Your GradeWise account has been created. Here is your temporary password:</p>
+                            <p style='font-size: 16px; line-height: 1.5;'>Your GRADE-WISE account has been created. Here is your temporary password:</p>
                             
                             <!-- Password Box -->
                             <div style='text-align: center; margin: 30px 0;'>
@@ -83,7 +83,7 @@ namespace GradeWise.Services
 
                         <!-- Footer -->
                         <div style='border-top: 2px dashed #111111; padding: 15px; text-align: center; font-family: ""Courier New"", monospace; font-size: 12px; color: #555555;'>
-                            &copy; 2026 GradeWise &middot; Keep your password safe.
+                            &copy; 2026 GRADE-WISE &middot; Keep your password safe.
                         </div>
                     </div>
                 </div>";
@@ -119,7 +119,7 @@ namespace GradeWise.Services
                                 </span>
                             </div>
 
-                            <p style='font-size: 16px; line-height: 1.5;'>Please log in to your GradeWise dashboard to view your updated scores, assessment breakdown, and progress history.</p>
+                            <p style='font-size: 16px; line-height: 1.5;'>Please log in to your GRADE-WISE dashboard to view your updated scores, assessment breakdown, and progress history.</p>
                             
                             <!-- Button -->
                             <div style='text-align: center; margin-top: 30px;'>
@@ -129,7 +129,7 @@ namespace GradeWise.Services
 
                         <!-- Footer -->
                         <div style='border-top: 2px dashed #111111; padding: 15px; text-align: center; font-family: ""Courier New"", monospace; font-size: 12px; color: #555555;'>
-                            &copy; 2026 GradeWise &middot; Only you can see your scores.
+                            &copy; 2026 GRADE-WISE &middot; Only you can see your scores.
                         </div>
                     </div>
                 </div>";
