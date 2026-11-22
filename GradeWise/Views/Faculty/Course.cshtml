@@ -279,6 +279,11 @@ else if (!Model.PeriodsOk)
                                     </button>
                                 }
                             </div>
+                            @* Opens the column window of the open category (faculty-course.js keeps this up to date). *@
+                            <button type="button" class="gw-btn gw-btn-small gw-btn-outline gw-sr-colsbtn" data-sr-cols data-modal-open="gw-cols-@periodCategories[0].Index" aria-haspopup="dialog">
+                                <img src="@Url.Content("~/Content/img/icons/edit.svg")" alt="" width="18" height="18" />
+                                <span>Edit columns</span>
+                            </button>
                         </div>
 
                         <table class="gw-table gw-sr-table" data-sr-table>
@@ -303,7 +308,6 @@ else if (!Model.PeriodsOk)
                                                     <span class="gw-sr-gi gw-sr-gi-calc">Total</span>
                                                     <span class="gw-sr-gi gw-sr-gi-calc">PS</span>
                                                 </div>
-                                                <button type="button" class="gw-btn gw-btn-small gw-btn-outline gw-sr-colsbtn" data-modal-open="gw-cols-@x.Index" aria-haspopup="dialog">Add or remove columns</button>
                                             </div>
                                         </th>
                                     }
@@ -458,33 +462,52 @@ else if (!Model.PeriodsOk)
                     <h2 id="gw-cols-title-@ci" class="gw-panel-title">@c.Name columns</h2>
                 </div>
                 <div class="gw-modal-top">
-                    <div class="gw-modal-meta">
-                        <span class="gw-muted">@c.Period &middot; @c.Group. Add a column for every quiz, project or attendance day. Each column keeps its own highest possible score, set in the table. Removing a column deletes the scores entered in it. The page reloads after each change, so save typed scores first.</span>
+                    <div class="gw-modal-meta gw-colm-meta">
+                        <span class="gw-fc-chip gw-fc-chip-term">@c.Period</span>
+                        <span class="gw-fc-chip gw-fc-chip-section">@c.Group</span>
+                        <span class="gw-fc-chip gw-fc-chip-students">@c.Assessments.Count @(c.Assessments.Count == 1 ? "column" : "columns")</span>
                     </div>
                     <button type="button" class="gw-iconbtn gw-modal-close" data-modal-close aria-label="Close" title="Close">
                         <img src="@Url.Content("~/Content/img/icons/close.svg")" alt="" width="20" height="20" />
                     </button>
                 </div>
-                <div class="gw-panel-body">
-                    <div class="gw-col-list">
+                <div class="gw-panel-body gw-colm">
+                    <p class="gw-muted gw-small gw-colm-note">Removing a column deletes its scores. The page reloads after each change, so save typed scores first.</p>
+
+                    <ul class="gw-colm-list">
                         @foreach (var assessment in c.Assessments)
                         {
-                            using (Html.BeginForm("RemoveAssessment", "Faculty", new { id = Model.CourseId, category = c.Name, assessment = assessment.Id }, FormMethod.Post, new { @class = "gw-inline-form", data_confirm = "Remove column " + assessment.Name + " from " + c.Name + "? The scores entered in it are deleted." }))
-                            {
-                                @Html.AntiForgeryToken()
-                                <span class="gw-col-chip">@assessment.Name <span class="gw-muted">/ @GradeCalculator.Raw(assessment.MaxScore)</span>
-                                    <button type="submit" class="gw-btn gw-btn-small gw-btn-outline" disabled="@(c.Assessments.Count <= 1)" title="@(c.Assessments.Count <= 1 ? "A category needs at least one column" : "Remove this column")">Remove</button>
+                            <li class="gw-colm-row">
+                                <span class="gw-colm-name">@assessment.Name</span>
+                                <span class="gw-fc-chip gw-fc-chip-students">Highest @GradeCalculator.Raw(assessment.MaxScore)</span>
+                                <span class="gw-colm-actions">
+                                    <a href="@Url.Action("Assessment", "Faculty", new { id = Model.CourseId, category = c.Name, assessment = assessment.Id })" class="gw-btn gw-btn-small gw-btn-outline">Edit</a>
+                                    @using (Html.BeginForm("RemoveAssessment", "Faculty", new { id = Model.CourseId, category = c.Name, assessment = assessment.Id }, FormMethod.Post, new { @class = "gw-inline-form", data_confirm = "Remove column " + assessment.Name + " from " + c.Name + "? The scores entered in it are deleted." }))
+                                    {
+                                        @Html.AntiForgeryToken()
+                                        <button type="submit" class="gw-btn gw-btn-small gw-btn-outline gw-colm-remove" disabled="@(c.Assessments.Count <= 1)" title="@(c.Assessments.Count <= 1 ? "A category needs at least one column" : "Remove this column")">Remove</button>
+                                    }
                                 </span>
-                            }
+                            </li>
+                        }
+                    </ul>
+
+                    <div class="gw-colm-add">
+                        <h3 class="gw-colm-add-title">Add a column</h3>
+                        @using (Html.BeginForm("AddAssessment", "Faculty", new { id = Model.CourseId, category = c.Name }, FormMethod.Post, new { @class = "gw-colm-addform" }))
+                        {
+                            @Html.AntiForgeryToken()
+                            <div class="gw-colm-field">
+                                <label for="gw-colm-name-@ci">Name <span class="gw-muted">(optional)</span></label>
+                                <input type="text" id="gw-colm-name-@ci" name="name" maxlength="40" placeholder="Next number" />
+                            </div>
+                            <div class="gw-colm-field gw-colm-field-max">
+                                <label for="gw-colm-max-@ci">Highest score</label>
+                                <input type="number" id="gw-colm-max-@ci" name="maxScore" min="0.01" step="any" value="100" />
+                            </div>
+                            <button type="submit" class="gw-btn gw-btn-small">Add column</button>
                         }
                     </div>
-                    @using (Html.BeginForm("AddAssessment", "Faculty", new { id = Model.CourseId, category = c.Name }, FormMethod.Post, new { @class = "gw-inline-form gw-col-add" }))
-                    {
-                        @Html.AntiForgeryToken()
-                        <input type="text" name="name" maxlength="40" placeholder="Name (optional, next number)" aria-label="New @c.Name column name" />
-                        <input type="number" name="maxScore" min="0.01" step="any" value="100" aria-label="Highest possible score of the new @c.Name column" />
-                        <button type="submit" class="gw-btn gw-btn-small gw-btn-outline">Add column</button>
-                    }
                 </div>
                 <div class="gw-modal-foot">
                     <button type="button" class="gw-btn gw-btn-outline" data-modal-close>Close</button>

@@ -676,6 +676,8 @@ namespace GradeWise.Services
                 AssessmentId = assessment.Id,
                 AssessmentName = assessment.Name,
                 MaxScore = assessment.MaxScore,
+                EditName = assessment.Name,
+                EditMax = GradeCalculator.Raw(assessment.MaxScore),
                 Period = GradePeriods.Normalize(category.Period)
             };
 
@@ -703,9 +705,16 @@ namespace GradeWise.Services
             return model;
         }
 
+        /// <summary>Name of the box that edits the assessment's name on its score page.</summary>
+        public const string AssessmentNameField = "assessmentName";
+
+        /// <summary>Name of the box that edits the assessment's highest possible score on its score page.</summary>
+        public const string AssessmentMaxField = "assessmentMax";
+
         /// <summary>
-        /// Saves the scores typed for one assessment. Nothing is saved when any box is invalid.
-        /// The category score of each student becomes the average of their entered assessment scores.
+        /// Saves the scores typed for one assessment, and its name and highest possible score when those
+        /// boxes are posted. Nothing is saved when anything is invalid.
+        /// The category score of each student is recalculated from their entered assessment scores.
         /// </summary>
         public static bool SaveAssessmentScores(string courseId, string facultyId, string categoryName, string assessmentId, Func<string, string> raw, out List<string> errors)
         {
@@ -717,6 +726,31 @@ namespace GradeWise.Services
             var category = FindCategory(course, categoryName);
             var assessment = FindAssessment(category, assessmentId);
             if (category == null || assessment == null) { errors.Add("That assessment no longer exists."); return false; }
+
+            // The assessment's own name and highest possible score (saved together with the scores).
+            var newName = assessment.Name;
+            var newMax = assessment.MaxScore;
+
+            var typedName = raw(AssessmentNameField);
+            if (typedName != null)
+            {
+                typedName = typedName.Trim();
+                if (typedName.Length == 0) errors.Add("The assessment name cannot be empty.");
+                else if (typedName.Length > MaxAssessmentNameLength) errors.Add("The assessment name must be " + MaxAssessmentNameLength + " characters or fewer.");
+                else if (category.Assessments.Any(a => a.Id != assessment.Id && string.Equals(a.Name, typedName, StringComparison.OrdinalIgnoreCase)))
+                    errors.Add("This category already has an assessment named " + typedName + ".");
+                else newName = typedName;
+            }
+
+            var typedMax = raw(AssessmentMaxField);
+            if (typedMax != null)
+            {
+                double parsedMax;
+                if (!TryParseMax(typedMax, out parsedMax)) errors.Add("The highest possible score must be a number above 0.");
+                else newMax = parsedMax;
+            }
+
+            if (errors.Count > 0) return false;
 
             var pending = new List<Tuple<GradeRecord, double?>>();
             var problems = 0;
@@ -730,10 +764,10 @@ namespace GradeWise.Services
                 var label = student == null ? studentId : student.FullName;
 
                 double? value;
-                if (!TryParseRawScore(text, assessment.MaxScore, out value))
+                if (!TryParseRawScore(text, newMax, out value))
                 {
                     problems++;
-                    if (errors.Count < MaxErrorsShown) errors.Add(label + " / " + assessment.Name + ": enter a number from 0 to " + assessment.MaxScore.ToString("0.##", CultureInfo.InvariantCulture) + ".");
+                    if (errors.Count < MaxErrorsShown) errors.Add(label + " / " + newName + ": enter a number from 0 to " + newMax.ToString("0.##", CultureInfo.InvariantCulture) + ".");
                     continue;
                 }
                 pending.Add(Tuple.Create(EnsureRecord(db, course, studentId), value));
@@ -741,6 +775,16 @@ namespace GradeWise.Services
 
             if (problems > MaxErrorsShown) errors.Add("...and " + (problems - MaxErrorsShown) + " more.");
             if (problems > 0) return false;
+
+            // Apply the new name and highest possible score before the category scores are recalculated.
+            var detailsChanged = newName != assessment.Name;
+            var maxChanged = Math.Abs(assessment.MaxScore - newMax) >= 0.005;
+            if (detailsChanged || maxChanged)
+            {
+                assessment.Name = newName;
+                assessment.MaxScore = newMax;
+                db.Courses.UpdateOne(c => c.Id == course.Id && c.FacultyId == facultyId, Builders<Course>.Update.Set(c => c.Categories, course.Categories));
+            }
 
             var changesByStudent = new Dictionary<string, List<ScoreChange>>();
             var recordsByStudent = new Dictionary<string, GradeRecord>();
@@ -756,14 +800,19 @@ namespace GradeWise.Services
                 if (entry.AssessmentScores == null) entry.AssessmentScores = new List<AssessmentScoreEntry>();
 
                 var existing = entry.AssessmentScores.FirstOrDefault(a => a.AssessmentId == assessment.Id);
-                if (SameScore(existing == null ? null : existing.Score, newValue)) continue;
+                var scoreChanged = !SameScore(existing == null ? null : existing.Score, newValue);
+                // A new highest possible score changes the PS of every student who has a score in this category.
+                if (!scoreChanged && !(maxChanged && HasAnyAssessmentScore(entry))) continue;
 
-                if (existing == null)
+                if (scoreChanged)
                 {
-                    existing = new AssessmentScoreEntry { AssessmentId = assessment.Id };
-                    entry.AssessmentScores.Add(existing);
+                    if (existing == null)
+                    {
+                        existing = new AssessmentScoreEntry { AssessmentId = assessment.Id };
+                        entry.AssessmentScores.Add(existing);
+                    }
+                    existing.Score = newValue;
                 }
-                existing.Score = newValue;
 
                 var oldCategoryScore = entry.Score;
                 var newCategoryScore = CategoryPercent(entry.AssessmentScores, category);

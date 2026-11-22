@@ -1,26 +1,193 @@
 @model GradeWise.Models.AssessmentScoreViewModel
 @using GradeWise.Services
 @{
-    ViewBag.Title = "Assessment scores";
-}
-<div class="gw-toolbar">
-    @Html.ActionLink("Back to class record", "Course", "Faculty", new { id = Model.CourseId }, new { @class = "gw-btn gw-btn-outline" })
-</div>
-<section class="gw-panel">
-    <div class="gw-panel-head">
-        <h1 class="gw-panel-title">@Model.CategoryName / @Model.AssessmentName</h1>
-        <p class="gw-muted">@Model.Period &middot; Enter scores from 0 to @GradeCalculator.Raw(Model.MaxScore) for this assessment only (highest possible score: @GradeCalculator.Raw(Model.MaxScore)).</p>
-    </div>
-    @if (Model.Errors.Count > 0) { <div class="gw-alert" role="alert"><ul>@foreach (var error in Model.Errors) { <li>@error</li> }</ul></div> }
-    @using (Html.BeginForm("SaveAssessment", "Faculty", new { id = Model.CourseId, category = Model.CategoryName, assessment = Model.AssessmentId }, FormMethod.Post))
+    ViewBag.Title = Model.CategoryName + " / " + Model.AssessmentName;
+
+    // Same standing colours as the class record: lime at 75 and above, gold from 65, orange below.
+    Func<double?, string> gradeTone = v => !v.HasValue ? "none" : v.Value >= 75 ? "high" : v.Value >= 65 ? "mid" : "low";
+
+    Func<string, string> initialsOf = n =>
     {
-        @Html.AntiForgeryToken()
-        <div class="gw-table-wrap"><table class="gw-table gw-score-table">
-            <thead><tr><th>Student</th><th>Student number</th><th class="gw-num">@Model.AssessmentName score</th></tr></thead>
-            <tbody>@foreach (var row in Model.Rows) {
-                <tr><td>@row.FullName</td><td>@row.StudentNo</td><td class="gw-num"><input type="number" min="0" max="@GradeCalculator.Raw(Model.MaxScore)" step="0.01" name="assessment__@row.StudentId" value="@row.Score" aria-label="@row.FullName @Model.AssessmentName score" /></td></tr>
-            }</tbody>
-        </table></div>
-        <div class="gw-panel-body"><button type="submit" class="gw-btn">Save assessment scores</button></div>
-    }
+        var parts = (n ?? "").Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+        return parts.Length == 0 ? "?" : (parts[0].Substring(0, 1) + (parts.Length > 1 ? parts[parts.Length - 1].Substring(0, 1) : "")).ToUpperInvariant();
+    };
+
+    // Percent of the highest possible score, for the chip beside each box.
+    Func<string, double?> percentOf = text =>
+    {
+        double parsed;
+        return !string.IsNullOrWhiteSpace(text)
+            && double.TryParse(text, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out parsed)
+            && Model.MaxScore > 0
+            ? (double?)(parsed / Model.MaxScore * 100) : null;
+    };
+
+    var percents = Model.Rows.Select(r => percentOf(r.Score)).ToList();
+    var entered = percents.Count(v => v.HasValue);
+    var missing = Model.Rows.Count - entered;
+    double? average = entered == 0 ? (double?)null : percents.Where(v => v.HasValue).Average(v => v.Value);
+    var dash = "\u2014";
+}
+
+@helper StudentCell(string name, string no, string initials, string tone)
+{
+    <td class="gw-sr-student">
+        <div class="gw-sr-person">
+            <span class="gw-sr-avatar gw-sr-avatar-@tone" aria-hidden="true">@initials</span>
+            <span class="gw-sr-person-text">
+                <span class="gw-sr-name">@name</span>
+                <code class="gw-sr-id">@no</code>
+            </span>
+        </div>
+    </td>
+}
+
+<div class="gw-faculty-courses gw-fcourse gw-fassess">
+
+<h1 class="gw-page-title">@Model.CategoryName / @Model.AssessmentName</h1>
+<p class="gw-page-sub gw-fcourse-sub">
+    <span class="gw-fc-chip gw-fc-chip-term">@Model.Period</span>
+    <span class="gw-fc-chip gw-fc-chip-section">@Model.CategoryName</span>
+    <span class="gw-fc-chip gw-fc-chip-students">Highest possible score @GradeCalculator.Raw(Model.MaxScore)</span>
+</p>
+
+@if (Model.Errors.Count > 0)
+{
+    <div class="gw-alert" role="alert">
+        <strong>Nothing was saved. Please fix the following:</strong>
+        <ul class="gw-error-list">
+            @foreach (var error in Model.Errors)
+            {
+                <li>@error</li>
+            }
+        </ul>
+    </div>
+}
+
+<section class="gw-stats" aria-label="Assessment summary">
+    <div class="gw-stat gw-stat-blue" data-tab="Students">
+        <div class="gw-stat-value">@Model.Rows.Count</div>
+        <div class="gw-stat-label">Students</div>
+    </div>
+    <div class="gw-stat gw-stat-lime" data-tab="Entered">
+        <div class="gw-stat-value" id="gw-as-entered">@entered</div>
+        <div class="gw-stat-label">Scores entered</div>
+    </div>
+    <div class="gw-stat gw-stat-gold" data-tab="Missing">
+        <div class="gw-stat-value" id="gw-as-missing">@missing</div>
+        <div class="gw-stat-label">Scores not yet entered</div>
+    </div>
+    <div class="gw-stat gw-stat-lav" data-tab="Average">
+        <div class="gw-stat-value" id="gw-as-average">@(average.HasValue ? GradeCalculator.Format(average) : dash)</div>
+        <div class="gw-stat-label">Average (percent of highest score)</div>
+    </div>
 </section>
+
+<div class="gw-toolbar gw-fcourse-toolbar">
+    <a href="@Url.Action("Course", "Faculty", new { id = Model.CourseId })" class="gw-iconbtn gw-iconbtn-text" title="Back to class record">
+        <img src="@Url.Content("~/Content/img/icons/back.svg")" alt="" width="24" height="24" />
+        <span>Back to class record</span>
+    </a>
+</div>
+
+@using (Html.BeginForm("SaveAssessment", "Faculty", new { id = Model.CourseId, category = Model.CategoryName, assessment = Model.AssessmentId }, FormMethod.Post, new { id = "assessment-form" }))
+{
+    @Html.AntiForgeryToken()
+
+    @* ---------- Edit the assessment itself: saved by the same Save button as the scores ---------- *@
+    <section class="gw-panel gw-as-details" aria-labelledby="gw-as-details-title">
+        <div class="gw-panel-head">
+            <h2 class="gw-panel-title" id="gw-as-details-title">Assessment details</h2>
+        </div>
+        <div class="gw-panel-body">
+            <div class="gw-fc-filters gw-as-fields">
+                <div class="gw-fc-filter gw-as-field">
+                    <label for="gw-as-name">Name</label>
+                    <input type="text" id="gw-as-name" name="@CourseService.AssessmentNameField" class="gw-inline-select" maxlength="@CourseService.MaxAssessmentNameLength" value="@Model.EditName" required autocomplete="off" />
+                </div>
+                <div class="gw-fc-filter gw-as-field gw-as-field-max">
+                    <label for="gw-as-max">Highest possible score</label>
+                    <input type="number" id="gw-as-max" name="@CourseService.AssessmentMaxField" class="gw-inline-select" min="0.01" max="10000" step="any" inputmode="decimal" value="@Model.EditMax" required />
+                </div>
+            </div>
+            <p class="gw-fc-count gw-as-hint">Changes to the name or the highest score are saved with the scores below. A new highest score recalculates every student's PS.</p>
+        </div>
+    </section>
+
+    <section class="gw-panel gw-sr-panel" aria-labelledby="gw-as-scores-title">
+        <div class="gw-panel-head">
+            <h2 class="gw-panel-title" id="gw-as-scores-title">Scores</h2>
+        </div>
+
+        @if (Model.Rows.Count == 0)
+        {
+            <div class="gw-panel-body gw-empty-block">
+                No students are enrolled yet.
+                @Html.ActionLink("Enroll students", "Enroll", "Faculty", new { id = Model.CourseId }, null)
+            </div>
+        }
+        else
+        {
+            @* Search filter: hidden until faculty-assessment.js runs; without JavaScript every student is listed. *@
+            <div class="gw-panel-body gw-fc-controls" id="gw-sr-controls" hidden>
+                <div class="gw-fc-filters" role="search" aria-label="Filter students">
+                    <div class="gw-fc-filter gw-fc-filter-search">
+                        <label for="gw-sr-search">Search</label>
+                        <input type="search" id="gw-sr-search" class="gw-inline-select" placeholder="Student name or number" autocomplete="off" spellcheck="false" />
+                    </div>
+                    <button type="button" class="gw-btn gw-btn-small gw-btn-outline" id="gw-sr-clear">Clear filters</button>
+                </div>
+                <p class="gw-fc-count" id="gw-sr-count" aria-live="polite"></p>
+            </div>
+
+            <table class="gw-table gw-sr-table gw-as-table">
+                <thead>
+                    <tr>
+                        <th scope="col" class="gw-sr-student">Student</th>
+                        <th scope="col" class="gw-as-col-score gw-sr-tone-blue">Score <span class="gw-th-sub">out of <span data-as-max-label>@GradeCalculator.Raw(Model.MaxScore)</span></span></th>
+                        <th scope="col" class="gw-as-col-pct gw-sr-tone-lime">Percent</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @for (var i = 0; i < Model.Rows.Count; i++)
+                    {
+                        var row = Model.Rows[i];
+                        var pct = percents[i];
+                        <tr data-student="@((row.FullName + " " + row.StudentNo).ToLowerInvariant())">
+                            @StudentCell(row.FullName, row.StudentNo, initialsOf(row.FullName), gradeTone(pct))
+                            <td class="gw-as-col-score">
+                                <input type="number" min="0" max="@GradeCalculator.Raw(Model.MaxScore)" step="0.01" inputmode="decimal"
+                                       class="gw-score-input gw-as-input @(string.IsNullOrWhiteSpace(row.Score) || percents[i].HasValue ? "" : "gw-input-bad")"
+                                       name="@CourseService.AssessmentFieldName(row.StudentId)" value="@row.Score" placeholder="&mdash;"
+                                       data-as-score aria-label="@row.FullName @Model.AssessmentName score" />
+                            </td>
+                            <td class="gw-as-col-pct">
+                                <span class="gw-fc-chip gw-sr-ps gw-sr-ps-@gradeTone(pct)" data-as-pct>@(pct.HasValue ? GradeCalculator.Format(pct) : dash)</span>
+                            </td>
+                        </tr>
+                    }
+                    <tr class="gw-sr-nomatch" hidden>
+                        <td colspan="3" class="gw-empty">
+                            No students match this search.
+                            <button type="button" class="gw-fc-linkbtn" data-sr-clear>Clear filters</button>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        }
+
+        <div class="gw-panel-body gw-sr-savebar">
+            <span class="gw-sr-savehint">Saves the name, the highest possible score and every score on this page.</span>
+            <div class="gw-form-buttons">
+                <button type="submit" class="gw-btn">Save assessment scores</button>
+            </div>
+        </div>
+    </section>
+}
+
+</div>
+
+@section scripts {
+    @* The page script is in Scripts/faculty-assessment.js. *@
+    <script src="@Url.Content("~/Scripts/faculty-assessment.js")?v=@System.IO.File.GetLastWriteTimeUtc(Server.MapPath("~/Scripts/faculty-assessment.js")).Ticks"></script>
+}

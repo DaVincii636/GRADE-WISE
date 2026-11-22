@@ -207,6 +207,12 @@ namespace GradeWise.Models
         /// <summary>Highest possible score of this assessment.</summary>
         public double MaxScore { get; set; } = 100;
 
+        /// <summary>Text of the name box of the edit fields (what was typed when the last save failed).</summary>
+        public string EditName { get; set; }
+
+        /// <summary>Text of the highest possible score box of the edit fields.</summary>
+        public string EditMax { get; set; }
+
         /// <summary>"Midterm" or "Final Term".</summary>
         public string Period { get; set; }
 

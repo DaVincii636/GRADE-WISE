@@ -88,6 +88,14 @@
             var on = cat !== "" && btn.getAttribute("data-sr-cat") === cat;
             btn.setAttribute(btn.classList.contains("gw-sr-chip") ? "aria-pressed" : "aria-expanded", on ? "true" : "false");
         });
+        // The "Edit columns" button works on the open category.
+        var colsBtn = (panel || table).querySelector("[data-sr-cols]");
+        if (colsBtn instanceof HTMLButtonElement) {
+            colsBtn.disabled = cat === "";
+            if (cat === "") { colsBtn.removeAttribute("data-modal-open"); }
+            else { colsBtn.setAttribute("data-modal-open", "gw-cols-" + cat); }
+            colsBtn.title = cat === "" ? "Open a category first" : "";
+        }
         try { sessionStorage.setItem(storeKey(table), cat === "" ? "none" : cat); } catch (err) { /* storage may be blocked */ }
         checkWrap(table);
     }

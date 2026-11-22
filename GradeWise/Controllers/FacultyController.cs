@@ -166,6 +166,17 @@ namespace GradeWise.Controllers
                 var model = CourseService.GetAssessmentScores(id, CurrentFacultyId(), category, assessment);
                 if (model == null) return HttpNotFound();
                 model.Errors = errors;
+
+                // Show what was typed again (name, highest possible score and the score boxes).
+                var typedName = Request.Form[CourseService.AssessmentNameField];
+                var typedMax = Request.Form[CourseService.AssessmentMaxField];
+                if (typedName != null) model.EditName = typedName;
+                if (typedMax != null) model.EditMax = typedMax;
+                foreach (var row in model.Rows)
+                {
+                    var typed = Request.Form[CourseService.AssessmentFieldName(row.StudentId)];
+                    if (typed != null) row.Score = typed;
+                }
                 return View("Assessment", model);
             }
             TempData["Message"] = "Assessment scores saved.";

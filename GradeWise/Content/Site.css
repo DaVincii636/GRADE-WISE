@@ -5662,7 +5662,14 @@ html.gw-loading button {
 .gw-fcourse .gw-sr-cathead::after {
     content: "+";
     float: right;
+    width: 18px;
+    height: 18px;
+    background: var(--gw-paper);
+    border: 1.5px solid var(--gw-ink);
+    font-size: 0.85rem;
     font-weight: 700;
+    line-height: 15px;
+    text-align: center;
 }
 
 .gw-fcourse .gw-sr-table th.gw-sr-cat:not(.is-open) .gw-sr-cathead::after { display: none; }
@@ -5679,7 +5686,7 @@ html.gw-loading button {
 /* The boxes of a category sit on a grid that wraps, so any number of columns fits the width. */
 .gw-fcourse .gw-sr-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(52px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
     gap: 6px;
 }
 
@@ -5692,16 +5699,39 @@ html.gw-loading button {
     text-align: center;
 }
 
+/* column names wrap onto two lines instead of being cut off */
 .gw-fcourse .gw-sr-grid-head .gw-sr-gi {
-    font-size: 0.8rem;
+    font-size: 0.78rem;
     font-weight: 700;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    line-height: 1.2;
+    hyphens: auto;
+    overflow-wrap: anywhere;
+    white-space: normal;
 }
 
 .gw-fcourse .gw-sr-grid-head .gw-sr-gi a {
+    display: block;
+    padding: 2px 0;
     color: var(--gw-ink);
+    text-decoration: underline;
+    text-decoration-style: dotted;
+    text-underline-offset: 3px;
+}
+
+.gw-fcourse .gw-sr-grid-head .gw-sr-gi a:hover,
+.gw-fcourse .gw-sr-grid-head .gw-sr-gi a:focus-visible {
+    background: var(--gw-paper);
+    text-decoration-style: solid;
+}
+
+.gw-fcourse .gw-sr-grid-head .gw-sr-gi-calc {
+    align-self: start;
+    padding: 2px 0;
+    font-family: var(--gw-font-pixel);
+    font-size: 0.65rem;
+    font-weight: 400;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
 }
 
 .gw-fcourse .gw-sr-input {
@@ -5735,9 +5765,21 @@ html.gw-loading button {
     white-space: nowrap;
 }
 
-.gw-fcourse .gw-sr-colsbtn {
-    margin-top: 8px;
-    white-space: normal;
+.gw-fcourse .gw-sr-bar .gw-sr-colsbtn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-left: auto;
+    background: var(--gw-paper);
+}
+
+.gw-fcourse .gw-sr-bar .gw-sr-colsbtn:hover:not(:disabled) {
+    background: var(--gw-acct-gold);
+}
+
+.gw-fcourse .gw-sr-bar .gw-sr-colsbtn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
 }
 
 /* highest possible score row */
@@ -5860,4 +5902,159 @@ html.gw-loading button {
     .gw-fcourse .gw-sr-final th:nth-child(5),
     .gw-fcourse .gw-sr-final td:nth-child(5) { display: none; }
     .gw-fcourse .gw-sr-final .gw-sr-student { width: 36%; }
+}
+
+/* ---------- Edit columns window ---------- */
+.gw-fcourse .gw-colm-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.gw-fcourse .gw-colm-note {
+    margin: 0 0 12px;
+}
+
+.gw-fcourse .gw-colm-list {
+    list-style: none;
+    margin: 0 0 18px;
+    padding: 0;
+    border: var(--gw-outline);
+    max-height: 40vh;
+    overflow-y: auto;
+}
+
+.gw-fcourse .gw-colm-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 10px;
+    padding: 8px 12px;
+    background: var(--gw-paper);
+    border-bottom: 1.5px solid var(--gw-ink);
+}
+
+.gw-fcourse .gw-colm-row:last-child { border-bottom: 0; }
+.gw-fcourse .gw-colm-row:nth-child(even) { background: var(--gw-acct-blue-pale); }
+
+.gw-fcourse .gw-colm-name {
+    flex: 1 1 8em;
+    min-width: 0;
+    font-weight: 700;
+    overflow-wrap: anywhere;
+}
+
+.gw-fcourse .gw-colm-actions {
+    display: inline-flex;
+    gap: 6px;
+}
+
+.gw-fcourse .gw-colm-actions .gw-inline-form { margin: 0; }
+.gw-fcourse .gw-colm-actions a.gw-btn { text-decoration: none; }
+
+.gw-fcourse .gw-colm-add {
+    padding: 12px 14px;
+    background: var(--gw-acct-gold-pale);
+    border: var(--gw-outline);
+}
+
+.gw-fcourse .gw-colm-add-title {
+    margin: 0 0 10px;
+    font-family: var(--gw-font-pixel);
+    font-size: 0.7rem;
+    font-weight: 400;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+.gw-fcourse .gw-colm-addform {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 10px 12px;
+    margin: 0;
+}
+
+.gw-fcourse .gw-colm-field {
+    flex: 1 1 10em;
+}
+
+.gw-fcourse .gw-colm-field-max {
+    flex: 0 1 8em;
+}
+
+.gw-fcourse .gw-colm-field label {
+    display: block;
+    margin: 0 0 4px;
+    font-size: 0.85rem;
+    font-weight: 700;
+}
+
+.gw-fcourse .gw-colm-field input {
+    width: 100%;
+    height: 36px;
+    padding: 4px 8px;
+    border: var(--gw-outline);
+    border-radius: 0;
+    background: var(--gw-paper);
+    color: var(--gw-ink);
+    font-family: inherit;
+}
+
+.gw-fcourse .gw-colm-field input:focus {
+    outline: 3px solid var(--gw-ink);
+    outline-offset: 0;
+    box-shadow: 0 0 0 6px var(--gw-lime);
+}
+
+.gw-fcourse .gw-colm-addform .gw-btn { height: 36px; margin: 0; }
+
+/* ---------- Assessment scores page (.gw-fassess, on top of .gw-fcourse) ---------- */
+.gw-fassess .gw-as-fields {
+    align-items: flex-end;
+}
+
+.gw-fassess .gw-as-field {
+    flex: 1 1 220px;
+}
+
+.gw-fassess .gw-as-field-max {
+    flex: 0 1 240px;
+}
+
+.gw-fassess .gw-as-field input {
+    width: 100%;
+    height: 38px;
+}
+
+.gw-fassess .gw-as-field input:focus {
+    outline: 3px solid var(--gw-ink);
+    outline-offset: 0;
+    box-shadow: 0 0 0 6px var(--gw-lime);
+}
+
+.gw-fassess .gw-as-hint {
+    font-family: inherit;
+    font-size: 0.85rem;
+    letter-spacing: 0;
+    text-transform: none;
+}
+
+.gw-fassess .gw-as-table .gw-sr-student { width: auto; }
+.gw-fassess .gw-as-table .gw-as-col-score { width: 170px; text-align: center; }
+.gw-fassess .gw-as-table .gw-as-col-pct { width: 120px; text-align: center; }
+.gw-fassess .gw-as-table thead th.gw-sr-tone-blue { background: var(--gw-acct-blue); }
+.gw-fassess .gw-as-table thead th.gw-sr-tone-lime { background: var(--gw-lime); }
+
+.gw-fassess .gw-as-input {
+    width: 100%;
+    max-width: 120px;
+    padding: 7px 6px;
+    text-align: center;
+}
+
+@media (max-width: 575.98px) {
+    .gw-fassess .gw-as-table .gw-as-col-score { width: 96px; }
+    .gw-fassess .gw-as-table .gw-as-col-pct { width: 74px; }
+    .gw-fassess .gw-as-table .gw-th-sub { display: none; }
 }
