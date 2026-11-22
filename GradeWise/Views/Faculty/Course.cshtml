@@ -82,8 +82,8 @@
 @if (Model.Categories.Count == 0)
 {
     <div class="gw-alert gw-alert-warn" role="status">
-        This course has no grading categories yet.
-        @Html.ActionLink("Set the categories and weights", "Categories", "Faculty", new { id = Model.CourseId }, null)
+        No grading categories yet.
+        @Html.ActionLink("Set categories and weights", "Categories", "Faculty", new { id = Model.CourseId }, null)
         before entering scores.
     </div>
 }
@@ -108,7 +108,7 @@ else if (!Model.PeriodsOk)
                 <li>Final Term weights add up to <strong>@GradeCalculator.Format(Model.FinalTotal)%</strong>, not 100%.</li>
             }
         </ul>
-        Final Grade is incomplete.
+        Final Grade needs both terms set.
         @Html.ActionLink("Set the categories", "Categories", "Faculty", new { id = Model.CourseId }, null)
     </div>
 }
@@ -134,11 +134,11 @@ else if (!Model.PeriodsOk)
     <div class="gw-alert gw-alert-warn" role="status">
         @if (Model.Scope == GradeScopes.FinalGrade)
         {
-            <text>Final Grade numbers show dashes until both Midterm and Final Term have categories and each totals 100%.</text>
+            <text>Final Grade shows dashes until both terms have categories totaling 100%.</text>
         }
         else
         {
-            <text>@Model.ScopeLabel numbers show dashes until its categories are set and total 100%.</text>
+            <text>@Model.ScopeLabel shows dashes until its categories total 100%.</text>
         }
     </div>
 }
@@ -200,7 +200,7 @@ else if (!Model.PeriodsOk)
 
     @if (Model.Categories.Count == 0)
     {
-        <div class="gw-panel-body gw-empty-block">Set the grading categories to start entering scores.</div>
+        <div class="gw-panel-body gw-empty-block">Set categories to start entering scores.</div>
     }
     else if (Model.Rows.Count == 0)
     {
@@ -341,7 +341,7 @@ else if (!Model.PeriodsOk)
                                                 <div class="gw-sr-grid gw-sr-grid-head" style="--sr-n:@(x.Category.Assessments.Count + 3)">
                                                     @foreach (var assessment in x.Category.Assessments)
                                                     {
-                                                        <span class="gw-sr-gi">@Html.ActionLink(assessment.Name, "Assessment", "Faculty", new { id = Model.CourseId, category = x.Category.Name, assessment = assessment.Id }, new { title = "Open " + assessment.Name + " to enter its scores and edit it" })</span>
+                                                        <span class="gw-sr-gi">@Html.ActionLink(assessment.Name, "Assessment", "Faculty", new { id = Model.CourseId, category = x.Category.Name, assessment = assessment.Id }, new { title = "Edit " + assessment.Name + " and its scores" })</span>
                                                     }
                                                     <span class="gw-sr-gi gw-sr-gi-calc"><span class="gw-sr-fit">Total</span></span>
                                                     <span class="gw-sr-gi gw-sr-gi-calc"><span class="gw-sr-fit">PS</span></span>
@@ -432,18 +432,18 @@ else if (!Model.PeriodsOk)
                             <span class="gw-sr-savehint">All categories are saved together.</span>
                             <div class="gw-form-buttons">
                                 <button type="submit" class="gw-btn"
-                                        data-confirm="This saves every score and highest possible score typed in this class record, in all categories and tabs."
+                                        data-confirm="Saves all scores and highest possible scores in every category and tab."
                                         data-confirm-title="Save scores?"
                                         data-confirm-ok="Save">Save scores</button>
                             </div>
                         </div>
 
                         <div class="gw-panel-body gw-sr-legend">
-                            <p class="gw-sr-legend-lead">Enter each score out of its column's highest possible score. Leave a box empty if the work is not given yet.</p>
+                            <p class="gw-sr-legend-lead">Score each box out of its column's highest possible score. Leave it blank if not given yet.</p>
                             <dl class="gw-sr-legend-list">
-                                <div><dt>Total</dt><dd>Sum of the scores entered.</dd></div>
-                                <div><dt>PS</dt><dd>Total &divide; highest possible total &times; 100. The category weight applies to PS.</dd></div>
-                                <div><dt>Earned</dt><dd>Points out of 100. Work not graded yet counts as 0.</dd></div>
+                                <div><dt>Total</dt><dd>Sum of scores entered.</dd></div>
+                                <div><dt>PS</dt><dd>Total &divide; highest possible &times; 100. Weights apply to PS.</dd></div>
+                                <div><dt>Earned</dt><dd>Points out of 100. Ungraded work counts as 0.</dd></div>
                             </dl>
                         </div>
                     }
@@ -490,8 +490,8 @@ else if (!Model.PeriodsOk)
                 </table>
                 <div class="gw-panel-body gw-sr-legend">
                     <dl class="gw-sr-legend-list">
-                        <div><dt>Final Grade</dt><dd>Average of the Midterm and the Final Term.</dd></div>
-                        <div><dt>INC</dt><dd>Class standing is 65 or more in both terms, but the Final Term exam is still blank.</dd></div>
+                        <div><dt>Final Grade</dt><dd>Average of Midterm and Final Term.</dd></div>
+                        <div><dt>INC</dt><dd>Class standing 65+ in both terms, Final Term exam still blank.</dd></div>
                     </dl>
                 </div>
             </div>
@@ -522,7 +522,7 @@ else if (!Model.PeriodsOk)
                     </button>
                 </div>
                 <div class="gw-panel-body gw-colm">
-                    <p class="gw-muted gw-small gw-colm-note">Removing a column deletes its scores. The page reloads after each change, so save typed scores first.</p>
+                    <p class="gw-muted gw-small gw-colm-note">Removing a column deletes its scores. The page reloads after each change, so save first.</p>
 
                     <ul class="gw-colm-list">
                         @foreach (var assessment in c.Assessments)
@@ -574,7 +574,7 @@ else if (!Model.PeriodsOk)
         </div>
         <div class="gw-modal-top">
             <div class="gw-modal-meta">
-                <span class="gw-muted">Change the code, name, section or term. Categories, students and scores stay as they are.</span>
+                <span class="gw-muted">Categories, students and scores stay unchanged.</span>
             </div>
             <button type="button" class="gw-iconbtn gw-modal-close" data-modal-close aria-label="Close" title="Close">
                 <img src="@Url.Content("~/Content/img/icons/close.svg")" alt="" width="20" height="20" />

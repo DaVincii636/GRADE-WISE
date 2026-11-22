@@ -95,9 +95,8 @@
         @Html.AntiForgeryToken()
 
         <div class="gw-panel-body gw-fp-note">
-            Each term needs <strong>Class Standing 60%</strong> and <strong>Exam 40%</strong>, <strong>100%</strong> together.
-            The final grade is half Midterm and half Final Term. Each category name must be unique in the course, so the Final Term copy starts with "Final".
-            Renaming a category keeps its scores; removing one deletes them.
+            <p>Each term: <strong>Class Standing 60%</strong> + <strong>Exam 40%</strong> = <strong>100%</strong>. Final grade = &frac12; Midterm + &frac12; Final Term.</p>
+            <p>Names must be unique, so Final Term copies start with "Final". Renaming keeps scores; removing deletes them.</p>
         </div>
 
         @* Live totals of both terms (the page script fills them in). *@
@@ -261,8 +260,8 @@
                 });
                 if (finalNote) {
                     finalNote.textContent = finalTouched
-                        ? "You changed this list by hand, so it no longer follows the Midterm. Use Copy from Midterm to start over."
-                        : "This list copies the Midterm. Change anything here and it stops following the Midterm.";
+                        ? "Edited by hand, so it no longer follows the Midterm. Use Copy from Midterm to reset."
+                        : "This list copies the Midterm until you edit it.";
                 }
             }
 

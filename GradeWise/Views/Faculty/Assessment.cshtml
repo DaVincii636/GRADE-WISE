@@ -79,7 +79,7 @@
     </div>
     <div class="gw-stat gw-stat-lav" data-tab="Average">
         <div class="gw-stat-value" id="gw-as-average">@(average.HasValue ? GradeCalculator.Format(average) : dash)</div>
-        <div class="gw-stat-label">Average (percent of highest score)</div>
+        <div class="gw-stat-label">Average (% of highest score)</div>
     </div>
 </section>
 
@@ -110,7 +110,7 @@
                     <input type="number" id="gw-as-max" name="@CourseService.AssessmentMaxField" class="gw-inline-select" min="0.01" max="10000" step="any" inputmode="decimal" value="@Model.EditMax" required />
                 </div>
             </div>
-            <p class="gw-fc-count gw-as-hint">Changes to the name or the highest score are saved with the scores below. A new highest score recalculates every student's PS.</p>
+            <p class="gw-fc-count gw-as-hint">Saved with the scores below. A new highest score recalculates every PS.</p>
         </div>
     </section>
 
@@ -174,10 +174,10 @@
         }
 
         <div class="gw-panel-body gw-sr-savebar">
-            <span class="gw-sr-savehint">Saves the name, the highest possible score and every score on this page.</span>
+            <span class="gw-sr-savehint">Saves the name, highest score and all scores.</span>
             <div class="gw-form-buttons">
                 <button type="submit" class="gw-btn"
-                        data-confirm="This saves the name, the highest possible score and every score on this page."
+                        data-confirm="Saves the name, highest score and all scores on this page."
                         data-confirm-title="Save changes?"
                         data-confirm-ok="Save">Save</button>
             </div>

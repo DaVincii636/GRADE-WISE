@@ -105,11 +105,123 @@ namespace GradeWise.Services
                     Period = GradePeriods.Normalize(category.Period),
                     Weight = GradeCalculator.ScopeWeight(category, scope),
                     Graded = scores.Count,
-                    Average = scores.Count > 0 ? (double?)scores.Average() : null
+                    Average = scores.Count > 0 ? (double?)scores.Average() : null,
+                    Lowest = scores.Count > 0 ? (double?)scores.Min() : null,
+                    Highest = scores.Count > 0 ? (double?)scores.Max() : null,
+                    PassRate = scores.Count > 0 ? (double?)Math.Round(scores.Count(v => GradeCalculator.IsPassing(v)) * 100.0 / scores.Count, 2) : null
                 });
             }
 
+            AddExtraStatistics(model, course, students, byStudent, earned, scope);
             return model;
+        }
+
+        // Median, spread, pass rate, completion, top and attention lists, equivalent grades and the term comparison.
+        private static void AddExtraStatistics(AnalyticsViewModel model, Course course, List<User> students,
+            Dictionary<string, List<ScoreEntry>> byStudent, List<double?> earned, string scope)
+        {
+            var graded = new List<DistributionStudent>();
+            for (var i = 0; i < students.Count; i++)
+            {
+                if (!earned[i].HasValue) continue;
+                graded.Add(new DistributionStudent { StudentNo = students[i].StudentNo, FullName = students[i].FullName, Average = earned[i] });
+            }
+
+            if (graded.Count > 0)
+            {
+                var values = graded.Select(g => g.Average.Value).OrderBy(v => v).ToList();
+                var mid = values.Count / 2;
+                model.Median = values.Count % 2 == 1 ? values[mid] : (values[mid - 1] + values[mid]) / 2.0;
+
+                var mean = values.Average();
+                model.StdDev = Math.Sqrt(values.Sum(v => (v - mean) * (v - mean)) / values.Count);
+                model.Range = values[values.Count - 1] - values[0];
+
+                model.Passing = graded.Count(g => GradeCalculator.IsPassing(g.Average));
+                model.Failing = graded.Count - model.Passing;
+                model.PassRate = Math.Round(model.Passing * 100.0 / graded.Count, 2);
+
+                model.TopStudents = graded.OrderByDescending(g => g.Average).ThenBy(g => g.FullName).Take(5).ToList();
+                model.AttentionStudents = graded.Where(g => !GradeCalculator.IsPassing(g.Average))
+                    .OrderBy(g => g.Average).ThenBy(g => g.FullName).Take(5).ToList();
+
+                var labels = new[] { 1.00, 1.25, 1.50, 1.75, 2.00, 2.25, 2.50, 2.75, 3.00, 5.00 };
+                var counts = new Dictionary<double, int>();
+                foreach (var g in graded)
+                {
+                    var eq = GradeCalculator.EquivalentGrade(g.Average);
+                    if (!eq.HasValue) continue;
+                    var key = Math.Round(eq.Value, 2);
+                    int n;
+                    counts[key] = counts.TryGetValue(key, out n) ? n + 1 : 1;
+                }
+                foreach (var label in labels)
+                {
+                    int n;
+                    counts.TryGetValue(label, out n);
+                    model.EquivalentBins.Add(new EquivalentBin
+                    {
+                        Label = label.ToString("0.00", CultureInfo.InvariantCulture),
+                        Count = n,
+                        Percent = Math.Round(n * 100.0 / graded.Count, 2)
+                    });
+                }
+            }
+
+            if (scope == GradeScopes.FinalGrade)
+            {
+                model.Incomplete = students.Count(s => GradeCalculator.IsIncomplete(course.Categories, ScoresFrom(byStudent, s.Id)));
+            }
+
+            // Score completion: category scores entered out of students x categories.
+            model.ScoresEntered = model.Categories.Sum(c => c.Graded);
+            model.ScoresExpected = students.Count * model.Categories.Count;
+            if (model.ScoresExpected > 0)
+            {
+                model.CompletionPercent = Math.Round(model.ScoresEntered * 100.0 / model.ScoresExpected, 2);
+            }
+
+            // Class Standing and Exam averages, weighted by the categories' own weights.
+            model.ClassStandingAverage = GroupAverage(model.Categories, GradeGroups.ClassStanding);
+            model.ExamAverage = GroupAverage(model.Categories, GradeGroups.Exam);
+
+            // Midterm vs Final Term, for the students graded in both.
+            if (GradeCalculator.ScopeReady(course.Categories, GradeScopes.Midterm) && GradeCalculator.ScopeReady(course.Categories, GradeScopes.FinalTerm))
+            {
+                var midterms = new List<double>();
+                var finals = new List<double>();
+                foreach (var student in students)
+                {
+                    var scores = ScoresFrom(byStudent, student.Id);
+                    var m = GradeCalculator.CalculatePeriod(course.Categories, scores, GradePeriods.Midterm).EarnedOrNull;
+                    var f = GradeCalculator.CalculatePeriod(course.Categories, scores, GradePeriods.FinalTerm).EarnedOrNull;
+                    if (!m.HasValue || !f.HasValue) continue;
+
+                    midterms.Add(m.Value);
+                    finals.Add(f.Value);
+                    var rm = Math.Round(m.Value, 2);
+                    var rf = Math.Round(f.Value, 2);
+                    if (rf > rm) model.Improved++;
+                    else if (rf < rm) model.Declined++;
+                    else model.Unchanged++;
+                }
+
+                if (midterms.Count > 0)
+                {
+                    model.HasTermComparison = true;
+                    model.TermCompared = midterms.Count;
+                    model.MidtermAverage = midterms.Average();
+                    model.FinalTermAverage = finals.Average();
+                    model.TermChange = model.FinalTermAverage - model.MidtermAverage;
+                }
+            }
+        }
+
+        private static double? GroupAverage(IEnumerable<CategoryStat> categories, string group)
+        {
+            var rows = categories.Where(c => c.Group == group && c.Average.HasValue && c.Weight > 0).ToList();
+            var weight = rows.Sum(c => c.Weight);
+            return weight > 0 ? (double?)(rows.Sum(c => c.Average.Value * c.Weight) / weight) : null;
         }
 
         public static string BuildClassCsv(string courseId, string facultyId, string scope, out string fileName)

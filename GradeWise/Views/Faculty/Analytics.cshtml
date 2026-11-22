@@ -55,9 +55,8 @@
 @if (Model.Categories.Count > 0 && !Model.WeightsOk)
 {
     <div class="gw-alert gw-alert-warn" role="status">
-        The @Model.ScopeLabel category weights add up to <strong>@GradeCalculator.Format(Model.WeightTotal)%</strong>, not 100%.
-        The numbers below use the weights as they are.
-        @Html.ActionLink("Fix the weights", "Categories", "Faculty", new { id = Model.CourseId }, null)
+        @Model.ScopeLabel weights total <strong>@GradeCalculator.Format(Model.WeightTotal)%</strong>, not 100%. Numbers below use them as they are.
+        @Html.ActionLink("Fix weights", "Categories", "Faculty", new { id = Model.CourseId }, null)
     </div>
 }
 
@@ -80,6 +79,28 @@
     </div>
 </section>
 
+@if (Model.StudentCount > 0)
+{
+    <section class="gw-stats" aria-label="More statistics">
+        <div class="gw-stat gw-stat-blue" data-tab="Median">
+            <div class="gw-stat-value">@(Model.Median.HasValue ? GradeCalculator.Format(Model.Median) + "%" : GradeCalculator.Format(Model.Median))</div>
+            <div class="gw-stat-label">Median (@Model.ScopeLabel)</div>
+        </div>
+        <div class="gw-stat gw-stat-lime" data-tab="Passing">
+            <div class="gw-stat-value">@(Model.PassRate.HasValue ? GradeCalculator.Format(Model.PassRate) + "%" : GradeCalculator.Format(Model.PassRate))</div>
+            <div class="gw-stat-label">Passing: @Model.Passing of @graded graded (64.5+)</div>
+        </div>
+        <div class="gw-stat gw-stat-gold" data-tab="Spread">
+            <div class="gw-stat-value">@GradeCalculator.Format(Model.StdDev)</div>
+            <div class="gw-stat-label">Spread (std. deviation)@(Model.Range.HasValue ? ", range " + GradeCalculator.Format(Model.Range) : "")</div>
+        </div>
+        <div class="gw-stat gw-stat-lav" data-tab="Entered">
+            <div class="gw-stat-value">@(Model.CompletionPercent.HasValue ? GradeCalculator.Format(Model.CompletionPercent) + "%" : GradeCalculator.Format(Model.CompletionPercent))</div>
+            <div class="gw-stat-label">Scores entered: @Model.ScoresEntered of @Model.ScoresExpected</div>
+        </div>
+    </section>
+}
+
 <section class="gw-panel gw-sr-panel">
     <div class="gw-panel-head">
         <h2 class="gw-panel-title">@Model.ScopeLabel grade distribution</h2>
@@ -90,15 +111,14 @@
             <img src="@Url.Content("~/Content/img/stickers/mascot-cat.svg")" alt="" class="gw-empty-mascot" width="72" height="72" />
             <p class="gw-empty-title">No students yet</p>
             <p class="gw-muted">
-                No students are enrolled yet.
-                @Html.ActionLink("Enroll students", "Enroll", "Faculty", new { id = Model.CourseId }, null)
+                @Html.ActionLink("Enroll students", "Enroll", "Faculty", new { id = Model.CourseId }, null) to see analytics.
             </p>
         </div>
     }
     else if (graded == 0)
     {
         <div class="gw-panel-body gw-empty-block">
-            No scores have been entered yet, so there is nothing to chart.
+            No scores yet, so nothing to chart.
             @Html.ActionLink("Enter scores", "Course", "Faculty", new { id = Model.CourseId }, null)
         </div>
     }
@@ -106,10 +126,8 @@
     {
         <div class="gw-panel-body gw-fp-note">
             <p class="gw-hint-block gw-muted">
-                Number of students whose <strong>@Model.ScopeLabel Earned Grade</strong> falls in each range. Earned Grade is the points collected out of 100,
-                and work that is not graded yet counts as 0.
-                A range includes its lower number but not its upper one, and Earned Grades are rounded to 2 decimals, as in the score table.
-                <strong>Click any bar</strong> to view the students and their Earned Grade in that range.
+                Students per <strong>@Model.ScopeLabel Earned Grade</strong> range (points out of 100; ungraded work counts as 0).
+                Each range includes its lower number, not its upper. <strong>Click a bar</strong> to see the students.
             </p>
         </div>
         <div class="gw-table-wrap">
@@ -198,7 +216,7 @@
                     @if (bin.Students.Count == 0)
                     {
                         <div class="gw-panel-body gw-empty-block">
-                            No students currently fall in the <strong>@bin.Label</strong> range.
+                            No students in <strong>@bin.Label</strong>.
                         </div>
                     }
                     else
@@ -245,7 +263,7 @@
                     <div class="gw-modal-top">
                         <div class="gw-modal-meta">
                             <span class="gw-badge">@Model.NotGradedPercentText</span>
-                            <span class="gw-muted">@Model.NotGraded of @Model.StudentCount @notGradedWord with no scores yet</span>
+                            <span class="gw-muted">@Model.NotGraded of @Model.StudentCount @notGradedWord with no scores</span>
                         </div>
                         <button type="button" class="gw-iconbtn gw-modal-close" data-modal-close aria-label="Close modal" title="Close">
                             <img src="@Url.Content("~/Content/img/icons/close.svg")" alt="" width="20" height="20" />
@@ -282,27 +300,166 @@
     }
 </section>
 
+@if (Model.StudentCount > 0 && graded > 0)
+{
+    <section class="gw-panel gw-sr-panel">
+        <div class="gw-panel-head">
+            <h2 class="gw-panel-title">@Model.ScopeLabel equivalent grades</h2>
+        </div>
+        <div class="gw-panel-body gw-fp-note">
+            <p class="gw-hint-block gw-muted">Graded students per equivalent grade. 1.00 is best; 5.00 is failed (below 64.5).</p>
+        </div>
+        <div class="gw-table-wrap">
+            <table class="gw-table gw-dist-table">
+                <caption class="gw-sr-only">Graded students per @Model.ScopeLabel equivalent grade</caption>
+                <thead>
+                    <tr>
+                        <th scope="col">Equivalent</th>
+                        <th scope="col" class="gw-num">Students</th>
+                        <th scope="col" class="gw-dist-col">Chart</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var eq in Model.EquivalentBins)
+                    {
+                        <tr title="@eq.Label: @eq.PercentText (@eq.Count of @graded graded)">
+                            <th scope="row">@eq.Label</th>
+                            <td class="gw-num">@eq.Count</td>
+                            <td class="gw-dist-col">
+                                <div class="gw-bar-track">
+                                    @if (eq.Count > 0)
+                                    {
+                                        <div class="gw-bar" style="width:@(GradeCalculator.Raw(eq.Percent))%"><span class="gw-bar-label">@eq.PercentText</span></div>
+                                    }
+                                    else
+                                    {
+                                        <span class="gw-bar-label gw-bar-label-zero">@eq.PercentText</span>
+                                    }
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <div class="gw-an-pair">
+        <section class="gw-panel gw-sr-panel">
+            <div class="gw-panel-head">
+                <h2 class="gw-panel-title">Top performers</h2>
+            </div>
+            <div class="gw-table-wrap">
+                <table class="gw-table">
+                    <thead>
+                        <tr>
+                            <th scope="col">Student</th>
+                            <th scope="col" class="gw-num">@Model.ScopeLabel</th>
+                            <th scope="col" class="gw-num">Eq.</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var t in Model.TopStudents)
+                        {
+                            <tr>
+                                <td><strong>@t.FullName</strong><br /><span class="gw-muted gw-small">@t.StudentNo</span></td>
+                                <td class="gw-num"><span class="gw-fc-chip gw-sr-ps gw-sr-ps-high"><strong>@GradeCalculator.Format(t.Average)</strong></span></td>
+                                <td class="gw-num">@GradeCalculator.Format(GradeCalculator.EquivalentGrade(t.Average))</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section class="gw-panel gw-sr-panel">
+            <div class="gw-panel-head">
+                <h2 class="gw-panel-title">Needs attention</h2>
+            </div>
+            @if (Model.AttentionStudents.Count == 0)
+            {
+                <div class="gw-panel-body gw-empty-block">No graded student is below passing (64.5).</div>
+            }
+            else
+            {
+                <div class="gw-table-wrap">
+                    <table class="gw-table">
+                        <thead>
+                            <tr>
+                                <th scope="col">Student</th>
+                                <th scope="col" class="gw-num">@Model.ScopeLabel</th>
+                                <th scope="col" class="gw-num">Eq.</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var a in Model.AttentionStudents)
+                            {
+                                <tr>
+                                    <td><strong>@a.FullName</strong><br /><span class="gw-muted gw-small">@a.StudentNo</span></td>
+                                    <td class="gw-num"><span class="gw-fc-chip gw-sr-ps gw-sr-ps-low"><strong>@GradeCalculator.Format(a.Average)</strong></span></td>
+                                    <td class="gw-num">@GradeCalculator.Format(GradeCalculator.EquivalentGrade(a.Average))</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+                <div class="gw-panel-body gw-an-foot">Below passing: @Model.Failing of @graded graded. Lowest @Model.AttentionStudents.Count shown.</div>
+            }
+            @if (Model.Incomplete > 0)
+            {
+                <div class="gw-panel-body gw-an-foot">@Model.Incomplete @(Model.Incomplete == 1 ? "student is" : "students are") marked INC (Final Term exam still blank).</div>
+            }
+        </section>
+    </div>
+}
+
+@if (Model.HasTermComparison)
+{
+    <section class="gw-panel gw-sr-panel">
+        <div class="gw-panel-head">
+            <h2 class="gw-panel-title">Midterm vs Final Term</h2>
+        </div>
+        <div class="gw-panel-body gw-fp-note">
+            <p class="gw-hint-block gw-muted">Compares the @Model.TermCompared @(Model.TermCompared == 1 ? "student" : "students") graded in both terms.</p>
+        </div>
+        <div class="gw-table-wrap">
+            <table class="gw-table">
+                <tbody>
+                    <tr><th scope="row">Midterm average</th><td class="gw-num"><strong>@GradeCalculator.Format(Model.MidtermAverage)%</strong></td></tr>
+                    <tr><th scope="row">Final Term average</th><td class="gw-num"><strong>@GradeCalculator.Format(Model.FinalTermAverage)%</strong></td></tr>
+                    <tr><th scope="row">Average change</th><td class="gw-num"><strong>@(Model.TermChange.HasValue && Model.TermChange.Value > 0 ? "+" : "")@GradeCalculator.Format(Model.TermChange)</strong></td></tr>
+                    <tr><th scope="row">Improved</th><td class="gw-num">@Model.Improved</td></tr>
+                    <tr><th scope="row">Declined</th><td class="gw-num">@Model.Declined</td></tr>
+                    <tr><th scope="row">Unchanged</th><td class="gw-num">@Model.Unchanged</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+}
+
 <section class="gw-panel gw-sr-panel">
     <div class="gw-panel-head">
         <h2 class="gw-panel-title">@Model.ScopeLabel category averages</h2>
     </div>
     <div class="gw-table-wrap">
         <table class="gw-table gw-table-grouped">
-            <colgroup><col style="width:38%" /><col style="width:16%" /><col style="width:28%" /><col style="width:18%" /></colgroup>
+            <colgroup><col style="width:26%" /><col style="width:11%" /><col style="width:21%" /><col style="width:14%" /><col style="width:12%" /><col style="width:16%" /></colgroup>
             <thead>
                 <tr>
                     <th>Category</th>
                     <th class="gw-num">Weight</th>
                     <th class="gw-num">Students graded</th>
                     <th class="gw-num">Class average</th>
+                    <th class="gw-num">Passing</th>
+                    <th class="gw-num">Low &ndash; high</th>
                 </tr>
             </thead>
             <tbody>
                 @if (Model.Categories.Count == 0)
                 {
                     <tr>
-                        <td colspan="4" class="gw-empty">
-                            This course has no @Model.ScopeLabel grading categories yet.
+                        <td colspan="6" class="gw-empty">
+                            No @Model.ScopeLabel categories yet.
                             @Html.ActionLink("Set them up", "Categories", "Faculty", new { id = Model.CourseId }, null)
                         </td>
                     </tr>
@@ -310,13 +467,13 @@
                 @foreach (var group in Model.Categories.Count == 0 ? new string[0] : new[] { "Class Standing", "Exam" })
                 {
                     var groupRows = Model.Categories.Where(c => c.Group == group).ToList();
-                    <tr><td colspan="4" class="gw-group-cell"><details class="gw-student-major @(group == "Exam" ? "gw-grp-ex" : "gw-grp-cs")" open><summary><strong>@group</strong><span>@(Model.Scope == GradeScopes.FinalGrade ? (group == "Class Standing" ? "30%" : "20%") : (group == "Class Standing" ? "60%" : "40%"))</span></summary>
+                    <tr><td colspan="6" class="gw-group-cell"><details class="gw-student-major @(group == "Exam" ? "gw-grp-ex" : "gw-grp-cs")" open><summary><strong>@group</strong><span>avg @GradeCalculator.Format(group == "Exam" ? Model.ExamAverage : Model.ClassStandingAverage) &middot; @(Model.Scope == GradeScopes.FinalGrade ? (group == "Class Standing" ? "30%" : "20%") : (group == "Class Standing" ? "60%" : "40%"))</span></summary>
                         <table class="gw-table gw-table-grouped">
-                        <colgroup><col style="width:38%" /><col style="width:16%" /><col style="width:28%" /><col style="width:18%" /></colgroup>
+                        <colgroup><col style="width:26%" /><col style="width:11%" /><col style="width:21%" /><col style="width:14%" /><col style="width:12%" /><col style="width:16%" /></colgroup>
                         <tbody>
                         @if (groupRows.Count == 0)
                         {
-                            <tr><td colspan="4" class="gw-empty">No @group.ToLower() categories in this grading period.</td></tr>
+                            <tr><td colspan="6" class="gw-empty">No @group.ToLower() categories here.</td></tr>
                         }
                         @foreach (var c in groupRows)
                         {
@@ -327,6 +484,8 @@
                                 <td class="gw-num"><strong>@GradeCalculator.Format(c.Weight)%</strong></td>
                                 <td class="gw-num">@c.Graded of @Model.StudentCount <span class="gw-muted">(@gradedPctText)</span></td>
                                 <td class="gw-num"><span class="gw-fc-chip gw-sr-ps gw-sr-ps-@(!c.Average.HasValue ? "none" : c.Average.Value >= 75 ? "high" : c.Average.Value >= 65 ? "mid" : "low")">@(c.Average.HasValue ? GradeCalculator.Format(c.Average) + "%" : GradeCalculator.Format(c.Average))</span></td>
+                                <td class="gw-num">@(c.PassRate.HasValue ? GradeCalculator.Format(c.PassRate) + "%" : GradeCalculator.Format(c.PassRate))</td>
+                                <td class="gw-num">@(c.Lowest.HasValue ? GradeCalculator.Format(c.Lowest) + " to " + GradeCalculator.Format(c.Highest) : GradeCalculator.Format(c.Lowest))</td>
                             </tr>
                         }
                         </tbody></table>
@@ -335,6 +494,18 @@
             </tbody>
         </table>
     </div>
+    @{
+        var withAvg = Model.Categories.Where(c => c.Average.HasValue).ToList();
+        if (withAvg.Count > 1)
+        {
+            var strongest = withAvg.OrderByDescending(c => c.Average.Value).First();
+            var weakest = withAvg.OrderBy(c => c.Average.Value).First();
+            <div class="gw-panel-body gw-an-foot">
+                Strongest: <strong>@strongest.Name</strong> (@GradeCalculator.Format(strongest.Average)%).
+                Weakest: <strong>@weakest.Name</strong> (@GradeCalculator.Format(weakest.Average)%).
+            </div>
+        }
+    }
 </section>
 
 </div>

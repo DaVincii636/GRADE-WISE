@@ -144,11 +144,11 @@
         <div class="gw-panel-body gw-empty-block">
             @if (Model.Enrolled.Count == 0)
             {
-                @:There are no active student accounts yet. Ask an administrator to create them.
+                @:No active student accounts yet. Ask an administrator to create some.
             }
             else
             {
-                @:Every active student account is already enrolled in this course.
+                @:All active students are already enrolled.
             }
         </div>
     }
@@ -184,7 +184,7 @@
             </div>
 
             <div class="gw-panel-body gw-sr-savebar">
-                <span class="gw-sr-savehint" id="gw-add-selected" aria-live="polite">Tick the students to add.</span>
+                <span class="gw-sr-savehint" id="gw-add-selected" aria-live="polite">Select students to add.</span>
                 <div class="gw-form-buttons">
                     <button type="button" class="gw-btn gw-btn-outline" id="select-all">Select all</button>
                     <button type="submit" class="gw-btn" id="gw-add-submit">Enroll selected</button>
@@ -245,7 +245,7 @@
 
             var refreshAdd = function () {
                 var n = checkedCount();
-                addSelected.textContent = n === 0 ? "Tick the students to add." : plural(n, "student") + " selected.";
+                addSelected.textContent = n === 0 ? "Select students to add." : plural(n, "student") + " selected.";
                 addSubmit.disabled = n === 0;
                 var visible = picks.filter(function (p) { return !p.hidden; });
                 var allVisibleOn = visible.length > 0 && visible.every(function (p) { return p.querySelector("input").checked; });

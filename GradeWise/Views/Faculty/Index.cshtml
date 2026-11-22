@@ -14,7 +14,7 @@
 <div class="gw-page-head">
     <div>
         <h1 class="gw-page-title">My courses</h1>
-        <p class="gw-page-sub">Set up grading categories and enter student scores.</p>
+        <p class="gw-page-sub">Manage categories and enter scores.</p>
     </div>
     <a href="@Url.Action("CreateCourse", "Faculty")" class="gw-iconbtn gw-iconbtn-add" aria-label="Create course" title="Create course">
         <img src="@Url.Content("~/Content/img/icons/add.svg")" alt="" width="24" height="24" />
@@ -55,7 +55,7 @@
         <div class="gw-panel-body gw-empty-state">
             <img src="@Url.Content("~/Content/img/stickers/mascot-cat.svg")" alt="" class="gw-empty-mascot" width="72" height="72" />
             <p class="gw-empty-title">No courses yet</p>
-            <p class="gw-muted">Create your first course to start entering scores.</p>
+            <p class="gw-muted">Create a course to start entering scores.</p>
             @Html.ActionLink("Create course", "CreateCourse", "Faculty", null, new { @class = "gw-btn" })
         </div>
     }

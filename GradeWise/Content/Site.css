@@ -5526,14 +5526,17 @@ html.gw-loading button {
 /* ---------- Category bar ---------- */
 .gw-fcourse .gw-sr-bar {
     display: flex;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;          /* label, groups and chips stay on one line */
     align-items: center;
-    gap: 10px 14px;
-    padding-top: 14px;
-    padding-bottom: 14px;
+    gap: 8px 12px;
+    padding-top: 12px;
+    padding-bottom: 12px;
+    overflow-x: auto;           /* safety net for very many categories on a narrow screen */
 }
 
 .gw-fcourse .gw-sr-bar-label {
+    flex: none;
+    white-space: nowrap;
     font-family: var(--gw-font-pixel);
     font-size: 0.7rem;
     letter-spacing: 0.06em;
@@ -5542,12 +5545,14 @@ html.gw-loading button {
 
 .gw-fcourse .gw-sr-chips {
     display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
+    flex-wrap: nowrap;
+    gap: 6px;
 }
 
 .gw-fcourse .gw-sr-chip {
-    padding: 5px 12px;
+    padding: 4px 9px;
+    white-space: nowrap;
+    font-size: 0.9rem;
     background: var(--gw-paper);
     color: var(--gw-ink);
     border: var(--gw-outline);
@@ -5973,10 +5978,11 @@ html.gw-loading button {
 /* ---------- Class Standing / Exam division of the score table ---------- */
 .gw-fcourse .gw-sr-chipgroup {
     display: flex;
-    flex-wrap: wrap;
+    flex: none;
+    flex-wrap: nowrap;
     align-items: center;
-    gap: 8px 10px;
-    padding: 6px 10px;
+    gap: 6px 8px;
+    padding: 4px 8px;
     border: var(--gw-outline);
 }
 
@@ -5986,6 +5992,15 @@ html.gw-loading button {
 .gw-fcourse .gw-sr-chipgroup-name {
     font-size: 0.85rem;
     font-weight: 700;
+    white-space: nowrap;
+}
+
+/* on phones there is no room for one line, so the bar wraps again */
+@media (max-width: 767.98px) {
+    .gw-fcourse .gw-sr-bar,
+    .gw-fcourse .gw-sr-chips,
+    .gw-fcourse .gw-sr-chipgroup { flex-wrap: wrap; }
+    .gw-fcourse .gw-sr-bar { overflow-x: visible; }
 }
 
 .gw-fcourse .gw-sr-chipgroup-name .gw-sr-chip-w { margin-left: 4px; }
@@ -6601,4 +6616,27 @@ html.gw-loading button {
     .gw-ec-grid,
     .gw-ec-grid-course,
     .gw-ec-grid-term { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* ---------- Faculty pages: short notes and the extra Analytics panels ---------- */
+.gw-fpage .gw-fp-note p { margin: 0; }
+.gw-fpage .gw-fp-note p + p { margin-top: 4px; }
+
+/* two panels side by side (Top performers, Needs attention); stacked on small screens */
+.gw-fpage .gw-an-pair {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 20px;
+    margin-bottom: 28px;
+}
+
+.gw-fpage .gw-an-pair > .gw-panel { margin-bottom: 0; }
+
+.gw-fpage .gw-an-foot {
+    border-top: var(--gw-outline);
+    font-size: 0.9rem;
+}
+
+@media (max-width: 767.98px) {
+    .gw-fpage .gw-an-pair { grid-template-columns: minmax(0, 1fr); }
 }
