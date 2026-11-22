@@ -20,7 +20,9 @@ namespace GradeWise.Controllers
             var me = CurrentStudentUser();
             if (me == null) return new HttpUnauthorizedResult();
 
-            return View(StudentService.GetDashboard(me.Id, id, me));
+            var model = StudentService.GetCourseList(me.Id);
+            model.StudentNo = me.StudentNo;
+            return View(model);
         }
 
         // GET: /Student/Course/{courseId}  (one course: scores, progress history and class comparison)
@@ -50,7 +52,9 @@ namespace GradeWise.Controllers
             var me = CurrentStudentUser();
             if (me == null) return new HttpUnauthorizedResult();
 
-            return View(StudentService.GetWhatIf(me.Id, id));
+            var model = StudentService.GetWhatIf(me.Id, id);
+            model.StudentNo = me.StudentNo;
+            return View(model);
         }
 
         // ---------- helpers ----------

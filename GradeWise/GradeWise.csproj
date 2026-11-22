@@ -300,6 +300,7 @@
     <Content Include="Scripts\faculty-course.js" />
     <Content Include="Scripts\faculty-courses.js" />
     <Content Include="Scripts\student-grades.js" />
+    <Content Include="Scripts\student-goal.js" />
     <Content Include="Scripts\gw-modal.js" />
     <Content Include="Scripts\gw-notifications.js" />
     <Content Include="Scripts\whatif.js" />

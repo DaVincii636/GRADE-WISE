@@ -11,6 +11,21 @@ namespace GradeWise.Models
 
         /// <summary>The instructor's full name, or "Unassigned" when the course has none.</summary>
         public string FacultyName { get; set; }
+
+        /// <summary>"Midterm", "Final Term" or "Final Grade": what the instructor currently shows.</summary>
+        public string ScopeLabel { get; set; } = "Midterm";
+
+        /// <summary>Points earned out of 100 in that scope, or null until something is graded.</summary>
+        public double? EarnedGrade { get; set; }
+
+        /// <summary>Points earned so far (0 when nothing is graded), used for the goal sum on My courses.</summary>
+        public double Earned { get; set; }
+
+        /// <summary>Weight not graded yet.</summary>
+        public double RemainingWeight { get; set; }
+
+        /// <summary>True when the scope has categories and its weights total 100, so a goal can be worked out.</summary>
+        public bool Ready { get; set; }
     }
 
     /// <summary>One line of the assessment breakdown. Only the student's own score is here.</summary>
@@ -196,6 +211,7 @@ namespace GradeWise.Models
 
         public bool HasCourse { get; set; }
         public string SelectedId { get; set; }
+        public string StudentNo { get; set; }
         public string Code { get; set; }
         public string Name { get; set; }
         public string Term { get; set; }

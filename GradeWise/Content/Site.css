@@ -7118,83 +7118,99 @@ button.gw-legend-btn:focus-visible { box-shadow: 3px 3px 0 var(--gw-ink); backgr
 }
 
 /* =====================================================================
-   Student pages: hoverable progress-history chart (tooltip is the shared
-   .gw-tip, same as the faculty Analytics charts).
+   Student pages: visual hierarchy. All the colours stay; what changes is the
+   order and the weight. Top to bottom on the Course page:
+     1. which course, and what can I do here (title, buttons)
+     2. alerts: a problem first, then my goal
+     3. where I stand (the Earned number is the biggest thing on the page)
+     4. the scores behind it
+     5. my progress, then how I compare (least urgent, so last)
+   Rules used: the most important thing is the largest and sits top left;
+   one primary button, the rest outlined; more space between sections than
+   inside them; emphasis is kept for a few things so it still stands out.
    ===================================================================== */
-.gw-history-panel .gw-history-hit .gw-chart-dot { transition: r 0.1s; }
-.gw-history-panel .gw-history-hit:hover .gw-chart-dot,
-.gw-history-panel .gw-history-hit:focus-visible .gw-chart-dot { r: 6; }
-.gw-history-panel .gw-history-hit:focus-visible .gw-hit-area { stroke: var(--gw-ink); stroke-width: 1.5; }
+.gw-student-whatif [hidden] { display: none !important; }
+
+.gw-student-grades .gw-page-head { margin-bottom: 20px; flex-wrap: wrap; align-items: flex-end; }
+.gw-student-grades .gw-page-head .gw-form-buttons { margin: 0; }
+
+/* goal alert: one line, label on the left, answer in the middle, the way to change it on the right */
+.gw-student-grades .gw-goal-alert {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 12px;
+    margin-bottom: 24px;
+}
+.gw-student-grades .gw-goal-label {
+    font-family: var(--gw-font-pixel);
+    font-size: 0.7rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+.gw-student-grades .gw-goal-text { flex: 1 1 260px; font-weight: 700; }
+.gw-student-grades .gw-goal-link {
+    margin-left: auto;
+    color: var(--gw-ink);
+    font-weight: 700;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+}
+.gw-student-grades .gw-goal-link:hover { background: var(--gw-note); }
+
+/* the Earned number leads: biggest card, biggest number */
+.gw-student-grades .gw-sg-hero { grid-template-columns: 1.5fr 1fr 1fr; margin-bottom: 28px; }
+.gw-student-grades .gw-sg-hero .gw-stat:first-child .gw-stat-value { font-size: 3.4rem; }
+.gw-student-grades .gw-sg-hero .gw-stat:not(:first-child) .gw-stat-value { font-size: 2.1rem; }
+@media (max-width: 720px) {
+    .gw-student-grades .gw-sg-hero { grid-template-columns: 1fr; }
+}
+
+/* more room between sections than inside them */
+.gw-student-grades > .gw-panel,
+.gw-student-whatif .gw-panel,
+.gw-student-whatif .gw-stats { margin-bottom: 28px; }
+
+/* My courses: two short lines of text under each course (earned so far, then the goal) */
+.gw-student-grades .gw-sg-rowtext {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    margin-top: 8px;
+    font-size: 0.92rem;
+    line-height: 1.4;
+    color: var(--gw-ink);
+}
+.gw-student-grades .gw-sg-earned strong { font-size: 1.05rem; font-weight: 700; }
+.gw-student-grades .gw-sg-goaltext {
+    color: var(--gw-muted);
+    padding-left: 8px;
+    border-left: 4px solid var(--gw-line);
+}
+.gw-student-grades .gw-sg-goal-ok   { color: var(--gw-ink); border-left-color: var(--gw-lime); }
+.gw-student-grades .gw-sg-goal-info { color: var(--gw-ink); border-left-color: var(--gw-ink); }
+.gw-student-grades .gw-sg-goal-warn { color: var(--gw-ink); border-left-color: var(--gw-orange); }
+
+/* What-if: saved-goal note, room under the table and above the buttons */
+.gw-student-whatif .gw-goal-note { margin: 4px 0 0; font-size: 0.88rem; color: var(--gw-muted); }
+.gw-student-whatif .gw-sw-scenario .gw-table-wrap { margin-bottom: 16px; }
+.gw-student-whatif .gw-sw-scenario .gw-form-buttons,
+.gw-student-whatif .gw-sw-target .gw-form-buttons { margin-top: 16px; }
 
 /* =====================================================================
-   Student pages: calmer look (.gw-calm). One neutral surface, lime only
-   for the main accent, no rainbow tints or hard shadows. The pass colours
-   on scores (lime / gold / orange) stay, because they carry meaning.
-   Used together with .gw-fcourse, so it wins over the faculty tints.
+   Student pages: progress history chart. Hovering only shades the column
+   and shows the tooltip (plain words, no symbols); the dots do not change.
+   A one-line key under the chart names the dashed passing line.
    ===================================================================== */
-.gw-fcourse.gw-calm .gw-panel { box-shadow: none; }
-.gw-fcourse.gw-calm .gw-panel-head { background: var(--gw-paper); }
-
-/* summary cards: one surface, thin lime top bar */
-.gw-fcourse.gw-calm .gw-stat,
-.gw-fcourse.gw-calm .gw-stat-lime,
-.gw-fcourse.gw-calm .gw-stat-blue,
-.gw-fcourse.gw-calm .gw-stat-gold,
-.gw-fcourse.gw-calm .gw-stat-lav,
-.gw-fcourse.gw-calm .gw-stat-orange { background: var(--gw-paper); box-shadow: none; }
-.gw-fcourse.gw-calm .gw-stat[data-tab]::before { background: var(--gw-lime); }
-.gw-fcourse.gw-calm .gw-stat .gw-stat-value { text-shadow: none; }
-
-/* course list: plain rows, neutral square sticker */
-.gw-fcourse.gw-calm .gw-fc-row-lime,
-.gw-fcourse.gw-calm .gw-fc-row-blue,
-.gw-fcourse.gw-calm .gw-fc-row-gold,
-.gw-fcourse.gw-calm .gw-fc-row-lav,
-.gw-fcourse.gw-calm .gw-fc-row-orange { --fc-tone: var(--gw-lime); --fc-tone-pale: var(--gw-head); }
-.gw-fcourse.gw-calm .gw-fc-sticker { box-shadow: none; border: var(--gw-outline); }
-
-/* notes: soft grey band instead of gold */
-.gw-fcourse.gw-calm .gw-fp-note { background: var(--gw-head); }
-
-/* score table: one tone for every category, neutral group bands and headers */
-.gw-fcourse.gw-calm .gw-sr-tone-lime,
-.gw-fcourse.gw-calm .gw-sr-tone-blue,
-.gw-fcourse.gw-calm .gw-sr-tone-gold,
-.gw-fcourse.gw-calm .gw-sr-tone-lav,
-.gw-fcourse.gw-calm .gw-sr-tone-orange { --sr-tone: var(--gw-lime); --sr-pale: var(--gw-head); }
-.gw-fcourse.gw-calm .gw-sr-chip-lime,
-.gw-fcourse.gw-calm .gw-sr-chip-blue,
-.gw-fcourse.gw-calm .gw-sr-chip-gold,
-.gw-fcourse.gw-calm .gw-sr-chip-lav,
-.gw-fcourse.gw-calm .gw-sr-chip-orange { --sr-tone: var(--gw-lime); }
-.gw-fcourse.gw-calm .gw-sr-chipgroup-cs,
-.gw-fcourse.gw-calm .gw-sr-chipgroup-ex,
-.gw-fcourse.gw-calm .gw-sr-table thead th.gw-sr-group-cs,
-.gw-fcourse.gw-calm .gw-sr-table thead th.gw-sr-group-ex,
-.gw-fcourse.gw-calm .gw-sr-final thead th.gw-sr-tone-blue,
-.gw-fcourse.gw-calm .gw-sr-final thead th.gw-sr-tone-gold,
-.gw-fcourse.gw-calm .gw-sr-final thead th.gw-sr-tone-lime { background: var(--gw-head); }
-
-/* category squares: all the same lime */
-.gw-fcourse.gw-calm .gw-sg-dot,
-.gw-fcourse.gw-calm .gw-sg-dot-lime,
-.gw-fcourse.gw-calm .gw-sg-dot-blue,
-.gw-fcourse.gw-calm .gw-sg-dot-gold,
-.gw-fcourse.gw-calm .gw-sg-dot-lav,
-.gw-fcourse.gw-calm .gw-sg-dot-orange { background: var(--gw-lime); }
-
-/* What-if: neutral table headers, group bands and target card */
-.gw-fcourse.gw-calm .gw-sw-scenario .gw-table thead th,
-.gw-fcourse.gw-calm .gw-sw-graded .gw-table thead th,
-.gw-fcourse.gw-calm .gw-calc .gw-table thead th { background: var(--gw-head); }
-.gw-fcourse.gw-calm .gw-calc .gw-table tfoot th,
-.gw-fcourse.gw-calm .gw-calc .gw-table tfoot td { background: var(--gw-lime-pale); }
-.gw-fcourse.gw-calm .gw-sw-group-cs td,
-.gw-fcourse.gw-calm .gw-sw-group-ex td { background: var(--gw-head); }
-.gw-fcourse.gw-calm .gw-sw-target { background: var(--gw-paper); }
-.gw-fcourse.gw-calm .gw-sw-target .gw-chip { box-shadow: none; }
-.gw-fcourse.gw-calm .gw-sw-target .gw-chip:hover { background: var(--gw-lime-pale); }
-
-/* class comparison card */
-.gw-fcourse.gw-calm .gw-benchmark { background: var(--gw-paper); }
-.gw-fcourse.gw-calm .gw-benchmark .gw-stat-value { text-shadow: none; }
+.gw-history-panel .gw-chart-legend {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 8px 0 0;
+    font-size: 0.85rem;
+    color: var(--gw-muted);
+}
+.gw-history-panel .gw-chart-key {
+    width: 22px;
+    border-top: 2px dashed var(--gw-orange);
+}

@@ -63,14 +63,13 @@
             <div class="gw-panel-body">
                 <svg class="gw-chart" viewBox="0 0 @W @H" role="img"
                      aria-label="Line chart of your @gradeHead over time, from @GradeCalculator.Format(points[0].Earned) to @GradeCalculator.Format(points[points.Count - 1].Earned) out of 100. Passing is @(pass.ToString("0")).">
-                    @foreach (var tick in new[] { 0, 50, 100 })
+                    @foreach (var tick in new[] { 0, 100 })
                     {
                         <line class="gw-chart-grid" x1="@GradeCalculator.Raw(L)" x2="@GradeCalculator.Raw(W - R)" y1="@GradeCalculator.Raw(py(tick))" y2="@GradeCalculator.Raw(py(tick))" />
                         @Html.Raw(label(L - 6, py(tick) + 4, "end", tick.ToString()))
                     }
                     <line class="gw-chart-pass" x1="@GradeCalculator.Raw(L)" x2="@GradeCalculator.Raw(W - R)" y1="@GradeCalculator.Raw(py(pass))" y2="@GradeCalculator.Raw(py(pass))" />
                     @Html.Raw(label(L - 6, py(pass) + 4, "end", pass.ToString("0")))
-                    @Html.Raw(label(W - R, py(pass) - 4, "end", "passing " + pass.ToString("0")))
 
                     <polygon class="gw-chart-area" points="@areaPoints" />
                     <polyline class="gw-chart-line" points="@linePoints" />
@@ -79,15 +78,17 @@
                     @for (var i = 0; i < points.Count; i++)
                     {
                         var step = (W - L - R) / (points.Count - 1);
-                        var tip = points[i].Label + " · " + gradeHead + " " + GradeCalculator.Format(points[i].Earned)
-                                  + " · Eq. " + GradeCalculator.Format(points[i].Equivalent)
-                                  + (points[i].Change.HasValue ? " · " + (points[i].Change.Value >= 0 ? "+" : "") + GradeCalculator.Format(points[i].Change) : "");
+                        // Plain words only, no symbols: "11/23/2026 3:39 AM, Midterm grade 66.75, Equivalent 3.00, up 2.00".
+                        var tip = points[i].Label + ", " + gradeHead + " " + GradeCalculator.Format(points[i].Earned)
+                                  + ", Equivalent " + (points[i].HasGrades ? GradeCalculator.Format(points[i].Equivalent) : "none yet")
+                                  + (points[i].Change.HasValue ? ", " + (points[i].Change.Value >= 0 ? "up " : "down ") + GradeCalculator.Format(Math.Abs(points[i].Change.Value)) : "");
                         <g class="gw-hit gw-history-hit" data-tooltip="@tip" data-iso="@points[i].Iso" tabindex="0" role="img" aria-label="@tip">
                             <rect class="gw-hit-area" x="@GradeCalculator.Raw(px(i) - step / 2)" y="@GradeCalculator.Raw(T)" width="@GradeCalculator.Raw(step)" height="@GradeCalculator.Raw(H - T - B)" />
                             <circle class="gw-chart-dot" cx="@GradeCalculator.Raw(px(i))" cy="@GradeCalculator.Raw(py(points[i].Earned))" r="4" />
                         </g>
                     }
                 </svg>
+                <p class="gw-chart-legend"><span class="gw-chart-key" aria-hidden="true"></span>Dashed line: passing grade (@(pass.ToString("0")))</p>
             </div>
         }
 
@@ -216,7 +217,7 @@
         for (var k = 0; k < hits.length; k++) {
             var local = localTimes[hits[k].getAttribute("data-iso")];
             var text = hits[k].getAttribute("data-tooltip") || "";
-            var cut = text.indexOf(" \u00b7 ");
+            var cut = text.indexOf(", ");
             if (!local || cut < 0) continue;
             var fixed = local + text.substring(cut);
             hits[k].setAttribute("data-tooltip", fixed);

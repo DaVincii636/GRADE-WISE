@@ -1,23 +1,29 @@
 @model GradeWise.Models.StudentDashboardViewModel
 @using System.Globalization
+@using System.Linq
 @using GradeWise.Models
 @using GradeWise.Services
 @{
     ViewBag.Title = "My courses";
     // Sticker colours cycle through the same accents the faculty My courses page uses.
     var tones = new[] { "lime", "blue", "gold", "lav", "orange" };
+
+    // The grade table, so the page script can turn a saved goal into "needs an average of ..." (same scale as the What-If page).
+    var scaleText = string.Join(";", GradeCalculator.Scale().Select(st => GradeCalculator.Raw(st.MinAverage) + ":" + GradeCalculator.Raw(st.Grade)));
 }
 
 @* Defined before the page markup, so it also runs when the student has no courses. The script is in Scripts/student-grades.js. *@
 @section scripts {
+    @* whatif.js only supplies the shared formulas here (it does nothing without the simulator on the page). *@
+    <script src="@Url.Content("~/Scripts/whatif.js")?v=@System.IO.File.GetLastWriteTimeUtc(Server.MapPath("~/Scripts/whatif.js")).Ticks"></script>
     <script src="@Url.Content("~/Scripts/student-grades.js")?v=@System.IO.File.GetLastWriteTimeUtc(Server.MapPath("~/Scripts/student-grades.js")).Ticks"></script>
 }
 
-<div class="gw-faculty-courses gw-fcourse gw-student-grades gw-calm">
+<div class="gw-faculty-courses gw-fcourse gw-student-grades">
 <div class="gw-page-head gw-page-head-date">
     <div>
         <h1 class="gw-page-title">My courses</h1>
-        <p class="gw-page-sub">Pick a course to see your scores.</p>
+        <p class="gw-page-sub">Pick a course to see your scores. Each line shows what you have earned so far and your goal.</p>
     </div>
     <div class="gw-datebox" aria-live="off">
         <span class="gw-datebox-day" id="gw-day">@DateTime.Now.ToString("dddd", CultureInfo.InvariantCulture)</span>
@@ -63,18 +69,29 @@
         <p class="gw-fc-count" id="gw-fc-count" aria-live="polite"></p>
     </div>
 
-    <ul class="gw-collection" id="gw-fc-list">
+    <ul class="gw-collection" id="gw-fc-list" data-student="@Model.StudentNo" data-scale="@scaleText">
         @for (var i = 0; i < Model.Courses.Count; i++)
         {
             var c = Model.Courses[i];
             var tone = tones[i % tones.Length];
-            <li data-course-row data-search="@((c.Code + " " + c.Name + " " + c.FacultyName).ToLowerInvariant())">
+            <li data-course-row data-course="@c.Id" data-ready="@(c.Ready ? "1" : "0")" data-earned="@GradeCalculator.Raw(c.Earned)" data-remaining="@GradeCalculator.Raw(c.RemainingWeight)" data-search="@((c.Code + " " + c.Name + " " + c.FacultyName).ToLowerInvariant())">
                 <a href="@Url.Action("Course", "Student", new { id = c.Id })" class="gw-collection-item gw-collection-row gw-fc-row gw-fc-row-@tone">
                     <span class="gw-collection-sticker gw-fc-sticker gw-fc-sticker-@tone" aria-hidden="true">@(c.Code.Length > 2 ? c.Code.Substring(0, 2) : c.Code)</span>
                     <span class="gw-collection-main">
                         <span class="gw-collection-code">@c.Code &middot; @c.Name</span>
                         <span class="gw-collection-meta gw-fc-meta">
                             <span class="gw-fc-chip gw-fc-chip-section">@c.FacultyName</span>
+                        </span>
+                        <span class="gw-sg-rowtext">
+                            @if (c.EarnedGrade.HasValue)
+                            {
+                                <span class="gw-sg-earned">@c.ScopeLabel earned so far: <strong>@GradeCalculator.Format(c.EarnedGrade)</strong> out of 100</span>
+                            }
+                            else
+                            {
+                                <span class="gw-sg-earned">@c.ScopeLabel: no scores yet</span>
+                            }
+                            <span class="gw-sg-goaltext" data-goal-text>No goal yet. Set one in the What-If simulator.</span>
                         </span>
                     </span>
                     <img src="@Url.Content("~/Content/img/icons/chevron-right.svg")" alt="" class="gw-collection-chevron" width="20" height="20" />

@@ -12,6 +12,51 @@
     if (day) { day.textContent = names[now.getDay()]; }
     if (date) { date.textContent = two(now.getMonth() + 1) + "/" + two(now.getDate()) + "/" + now.getFullYear(); }
 
+    // ---------- Goal text on each course: the goal the student picked on the What-If simulator ----------
+    // Same key and same formulas as the Course page alert (see student-goal.js and whatif.js).
+    var goalList = document.getElementById("gw-fc-list");
+    var calc = window.GradeWiseWhatIf;
+    if (goalList) {
+        var student = goalList.getAttribute("data-student") || "";
+        var scale = (goalList.getAttribute("data-scale") || "").split(";").map(function (pair) {
+            var parts = pair.split(":");
+            return { min: parseFloat(parts[0]), grade: parseFloat(parts[1]) };
+        }).filter(function (step) { return isFinite(step.min) && isFinite(step.grade); });
+        var f2 = function (n) { return n.toFixed(2); };
+        var eqOf = function (value) {
+            for (var i = 0; i < scale.length; i++) { if (Math.round(value * 1e6) / 1e6 >= scale[i].min) { return scale[i].grade; } }
+            return 5;
+        };
+
+        Array.prototype.forEach.call(goalList.querySelectorAll("[data-course-row]"), function (row) {
+            var out = row.querySelector("[data-goal-text]");
+            if (!out) { return; }
+            var goal = null;
+            try {
+                var v = parseFloat(localStorage.getItem("gw.goal." + student + "." + row.getAttribute("data-course")));
+                if (isFinite(v) && v >= 0 && v <= 100) { goal = v; }
+            } catch (e) { }
+            if (goal === null) { return; }
+
+            var head = "Your goal: " + f2(eqOf(goal)) + " (" + f2(goal) + "%)";
+            var state = "info";
+            var text = head;
+            if (row.getAttribute("data-ready") === "1") {
+                var earned = parseFloat(row.getAttribute("data-earned"));
+                var remaining = parseFloat(row.getAttribute("data-remaining"));
+                var result = calc ? calc.checkTarget(goal, earned, remaining) : null;
+                if (result) {
+                    if (result.status === "Secured") { state = "ok"; text = head + ". Secured."; }
+                    else if (result.status === "NothingLeft") { state = "warn"; text = head + ". Not reached."; }
+                    else if (result.status === "OutOfReach") { state = "warn"; text = head + ". Out of reach this term."; }
+                    else { text = head + ". Needs an average of " + f2(result.required) + " on the remaining " + f2(remaining) + "%."; }
+                }
+            }
+            out.textContent = text;
+            out.className = "gw-sg-goaltext gw-sg-goal-" + state;
+        });
+    }
+
     // ---------- Course search filter ----------
     var controls = document.getElementById("gw-fc-controls");
     var searchEl = document.getElementById("gw-fc-search");

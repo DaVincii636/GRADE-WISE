@@ -47,7 +47,7 @@
         .ToList();
 }
 
-<div class="gw-faculty-courses gw-fcourse gw-student-whatif gw-calm">
+<div class="gw-faculty-courses gw-fcourse gw-student-whatif">
 <div class="gw-page-head">
     <div>
         <h1 class="gw-page-title">What-If simulator</h1>
@@ -126,6 +126,7 @@ else
     else
     {
         <div id="whatif"
+             data-goal-key="@("gw.goal." + Model.StudentNo + "." + Model.SelectedId)"
              data-earned="@GradeCalculator.Raw(Model.Earned)"
              data-remaining="@GradeCalculator.Raw(Model.RemainingWeight)"
              data-default="@GradeCalculator.Raw(Model.DefaultScore)"
@@ -209,6 +210,7 @@ else
                 <div class="gw-panel-body">
                     <div class="gw-fp-note gw-sw-note">
                         <p>Pick your goal to see what your remaining work must average.</p>
+                        <p id="sim-goal-note" class="gw-goal-note" aria-live="polite"></p>
                     </div>
 
                     <div class="gw-chips" role="group" aria-label="Target equivalent grade">
@@ -231,7 +233,10 @@ else
 
                     <div id="sim-target-msg" class="gw-alert gw-sim-msg" role="status" aria-live="polite"></div>
                     <p id="sim-compare" class="gw-muted gw-sim-compare" aria-live="polite"></p>
-                    <button type="button" id="sim-apply" class="gw-btn gw-btn-small" style="display:none">Use this score for all remaining work</button>
+                    <div class="gw-form-buttons">
+                        <button type="button" id="sim-apply" class="gw-btn gw-btn-small" style="display:none">Use this score for all remaining work</button>
+                        <button type="button" id="sim-goal-clear" class="gw-btn gw-btn-small gw-btn-outline" hidden>Clear goal</button>
+                    </div>
                 </div>
             </section>
         </div>

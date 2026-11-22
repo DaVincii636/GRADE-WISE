@@ -44,6 +44,38 @@ namespace GradeWise.Services
             return model;
         }
 
+        /// <summary>The "My courses" list: every course with what the student has earned so far in its shown term.</summary>
+        public static StudentDashboardViewModel GetCourseList(string studentId)
+        {
+            var model = new StudentDashboardViewModel { MinClassSize = MinClassSize };
+            var db = new MongoDbContext();
+
+            var mine = db.Courses
+                .Find(c => c.StudentIds.Contains(studentId))
+                .SortBy(c => c.Code)
+                .ThenBy(c => c.Name)
+                .ToList();
+
+            model.Courses = CourseOptions(db, mine);
+            model.HasCourse = mine.Count > 0;
+
+            for (var i = 0; i < mine.Count; i++)
+            {
+                var course = mine[i];
+                var scope = GradeScopes.Normalize(course.ReflectedScope);
+                var result = GradeCalculator.CalculateScope(course.Categories, ScoresOf(db, course, studentId), scope);
+                var option = model.Courses[i];
+                option.ScopeLabel = GradeScopes.Label(scope);
+                option.Earned = result.Earned;
+                option.EarnedGrade = result.EarnedOrNull;
+                option.RemainingWeight = result.RemainingWeight;
+                option.Ready = GradeCalculator.ScopeCategories(course.Categories, scope).Any()
+                    && GradeCalculator.ScopeReady(course.Categories, scope);
+            }
+
+            return model;
+        }
+
         public static WhatIfViewModel GetWhatIf(string studentId, string requestedCourseId)
         {
             var model = new WhatIfViewModel();

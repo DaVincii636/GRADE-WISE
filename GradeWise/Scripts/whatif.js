@@ -298,13 +298,64 @@
             update();
         });
 
+        // The target is the student's goal. It is kept in this browser under the key the page gives us, so the Course
+        // page and My courses show the same goal. Reset only puts the boxes back; it never clears the saved goal.
+        var goalKey = host.getAttribute("data-goal-key");
+        var goalNote = document.getElementById("sim-goal-note");
+        var clearGoalBtn = document.getElementById("sim-goal-clear");
+
+        function readSavedGoal() {
+            if (!goalKey) return null;
+            try {
+                var v = parseFloat(localStorage.getItem(goalKey));
+                return isFinite(v) && v >= 0 && v <= 100 ? v : null;
+            } catch (e) { return null; }
+        }
+        function showGoalNote() {
+            var saved = readSavedGoal() !== null;
+            if (goalNote) {
+                goalNote.textContent = saved
+                    ? "Saved as your goal. It shows on this course's page and on My courses."
+                    : "Not saved yet. Pick a grade or move the slider to save it as your goal.";
+            }
+            if (clearGoalBtn) clearGoalBtn.hidden = !saved;
+        }
+        function saveGoal() {
+            var t = readNumber(targetNum);
+            if (!goalKey || t === null) return;
+            try { localStorage.setItem(goalKey, String(t)); } catch (e) { }
+            showGoalNote();
+        }
+
+        var firstGoal = readSavedGoal();
+        if (firstGoal !== null) {
+            targetNum.value = String(firstGoal);
+            targetRange.value = String(firstGoal);
+        }
+        showGoalNote();
+
+        targetRange.addEventListener("input", saveGoal);
+        targetNum.addEventListener("input", saveGoal);
+        chips.forEach(function (chip) { chip.addEventListener("click", saveGoal); });
+
+        if (clearGoalBtn) {
+            clearGoalBtn.addEventListener("click", function () {
+                try { localStorage.removeItem(goalKey); } catch (e) { }
+                targetNum.value = String(defaultTarget);
+                targetRange.value = String(defaultTarget);
+                showGoalNote();
+                update();
+            });
+        }
+
         resetBtn.addEventListener("click", function () {
             rows.forEach(function (row) {
                 row.num.value = String(defaultScore);
                 row.range.value = String(defaultScore);
             });
-            targetNum.value = String(defaultTarget);
-            targetRange.value = String(defaultTarget);
+            var keep = readSavedGoal();
+            targetNum.value = String(keep !== null ? keep : defaultTarget);
+            targetRange.value = targetNum.value;
             update();
         });
 
