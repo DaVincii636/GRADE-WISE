@@ -5636,7 +5636,7 @@ html.gw-loading button {
 .gw-fcourse .gw-sr-chip-w {
     margin-left: 6px;
     font-family: var(--gw-font-pixel);
-    font-size: 0.65rem;
+    font-size: 0.78rem;
     font-weight: 400;
 }
 
@@ -5733,7 +5733,7 @@ html.gw-loading button {
 .gw-fcourse .gw-sr-catsub {
     display: block;
     font-family: var(--gw-font-pixel);
-    font-size: 0.65rem;
+    font-size: 0.8rem;
     font-weight: 400;
     letter-spacing: 0.04em;
 }
@@ -5794,7 +5794,7 @@ html.gw-loading button {
     min-height: 32px;
     background: var(--gw-paper);
     border: 1.5px solid var(--gw-ink);
-    font-size: 0.78rem;
+    font-size: 0.9rem;
     font-weight: 700;
     line-height: 1.2;
     overflow: hidden;
@@ -5828,7 +5828,7 @@ html.gw-loading button {
     background: transparent;
     border-style: dashed;
     font-family: var(--gw-font-pixel);
-    font-size: 0.62rem;
+    font-size: 0.75rem;
     font-weight: 400;
     letter-spacing: 0;
     text-transform: uppercase;
@@ -5901,7 +5901,7 @@ html.gw-loading button {
 
 .gw-fcourse .gw-sr-gi-calc {
     align-self: center;
-    font-size: 0.9rem;
+    font-size: 1rem;
 }
 
 /* Total and PS are not typed in: shown as small chips */
@@ -5916,7 +5916,7 @@ html.gw-loading button {
 
 /* more columns: smaller numbers, so each row stays on one line like the header */
 .gw-fcourse .gw-sr-grid .gw-sr-input,
-.gw-fcourse td .gw-sr-gi-calc { font-size: clamp(0.62rem, calc(1.05rem - 0.07rem * var(--sr-n)), 0.9rem); }
+.gw-fcourse td .gw-sr-gi-calc { font-size: clamp(0.75rem, calc(1.2rem - 0.07rem * var(--sr-n)), 1rem); }
 .gw-fcourse .gw-sr-grid { gap: clamp(2px, calc(8px - 0.5px * var(--sr-n)), 6px); }
 
 /* highest possible score row */
@@ -5977,7 +5977,7 @@ html.gw-loading button {
     background: var(--gw-head);
     color: var(--gw-ink);
     border: 1.5px solid var(--gw-line);
-    font-size: 0.8rem;
+    font-size: 0.85rem;
 }
 
 /* PS and earned chips use the same standing colours as the course list */
@@ -5985,6 +5985,9 @@ html.gw-loading button {
 .gw-fcourse .gw-sr-ps-mid  { background: var(--gw-note); }
 .gw-fcourse .gw-sr-ps-low  { background: var(--gw-fc-orange); }
 .gw-fcourse .gw-sr-ps-none { background: var(--gw-head); color: var(--gw-muted); border-color: var(--gw-line); }
+
+/* the category and earned numbers in the score tables: a little larger so they stay readable */
+.gw-fcourse .gw-sr-table .gw-sr-ps { font-size: 0.95rem; }
 
 /* Final Grade table headers */
 .gw-fcourse .gw-sr-final thead th.gw-sr-tone-blue { background: var(--gw-acct-blue); }
@@ -6033,7 +6036,7 @@ html.gw-loading button {
     .gw-fcourse .gw-sr-table .gw-sr-fin { width: 62px; }
     .gw-fcourse .gw-sr-avatar { display: none; }
     .gw-fcourse .gw-sr-table th,
-    .gw-fcourse .gw-sr-table td { padding: 6px 4px; font-size: 0.85rem; }
+    .gw-fcourse .gw-sr-table td { padding: 6px 4px; font-size: 0.9rem; }
     .gw-fcourse .gw-sr-grid { gap: 3px; }
 }
 
@@ -6104,7 +6107,7 @@ html.gw-loading button {
 .gw-fcourse .gw-sr-group-w {
     display: block;
     font-family: var(--gw-font-pixel);
-    font-size: 0.65rem;
+    font-size: 0.8rem;
     font-weight: 400;
     letter-spacing: 0.04em;
 }
@@ -7009,6 +7012,17 @@ button.gw-legend-btn:focus-visible { box-shadow: 3px 3px 0 var(--gw-ink); backgr
 .gw-student-whatif .gw-fc-filter-search select {
     width: 100%;
     height: 38px;
+    /* own arrow: the browser's is tiny and sits against the edge */
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    padding-right: 44px;
+    background-color: var(--gw-paper);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='10' viewBox='0 0 16 10'%3E%3Cpath d='M1.5 1.5 8 8l6.5-6.5' fill='none' stroke='%23111111' stroke-width='2.4' stroke-linecap='square'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 16px center;
+    background-size: 16px 10px;
+    cursor: pointer;
 }
 
 .gw-student-whatif .gw-fc-filter select:focus {
@@ -7154,7 +7168,7 @@ button.gw-legend-btn:focus-visible { box-shadow: 3px 3px 0 var(--gw-ink); backgr
     background: var(--gw-paper);
     border: 1.5px solid var(--gw-ink);
     text-align: center;
-    font-size: clamp(0.62rem, calc(1.05rem - 0.07rem * var(--sr-n)), 0.9rem);
+    font-size: clamp(0.75rem, calc(1.2rem - 0.07rem * var(--sr-n)), 1rem);
 }
 
 .gw-fcourse .gw-sr-val-empty {
@@ -7164,7 +7178,7 @@ button.gw-legend-btn:focus-visible { box-shadow: 3px 3px 0 var(--gw-ink); backgr
 }
 
 .gw-fcourse .gw-sr-hps .gw-sr-gi {
-    font-size: clamp(0.62rem, calc(1.05rem - 0.07rem * var(--sr-n)), 0.9rem);
+    font-size: clamp(0.75rem, calc(1.2rem - 0.07rem * var(--sr-n)), 1rem);
 }
 
 /* the printout lists every score under the table */
@@ -7622,9 +7636,9 @@ button.gw-legend-btn:focus-visible { box-shadow: 3px 3px 0 var(--gw-ink); backgr
 .gw-sg-course .gw-sr-grid { gap: clamp(3px, calc(8px - 0.5px * var(--sr-n)), 6px); }
 .gw-sg-course .gw-sr-grid-head .gw-sr-gi { min-height: 34px; font-size: 0.85rem; }
 .gw-sg-course .gw-sr-grid-head .gw-sr-gi-calc { font-size: 0.65rem; }
-.gw-sg-course .gw-sr-val { padding: 7px 2px; font-size: clamp(0.75rem, calc(1.15rem - 0.07rem * var(--sr-n)), 0.98rem); }
-.gw-sg-course td .gw-sr-gi-calc { padding: 7px 2px; font-size: clamp(0.75rem, calc(1.15rem - 0.07rem * var(--sr-n)), 0.98rem); }
-.gw-sg-course .gw-sr-hps .gw-sr-gi { font-size: clamp(0.75rem, calc(1.15rem - 0.07rem * var(--sr-n)), 0.98rem); }
+.gw-sg-course .gw-sr-val { padding: 7px 2px; font-size: clamp(0.85rem, calc(1.25rem - 0.07rem * var(--sr-n)), 1.05rem); }
+.gw-sg-course td .gw-sr-gi-calc { padding: 7px 2px; font-size: clamp(0.85rem, calc(1.25rem - 0.07rem * var(--sr-n)), 1.05rem); }
+.gw-sg-course .gw-sr-hps .gw-sr-gi { font-size: clamp(0.85rem, calc(1.25rem - 0.07rem * var(--sr-n)), 1.05rem); }
 .gw-sg-course .gw-sr-name { font-size: 1rem; }
 .gw-sg-course .gw-sr-id { font-size: 0.85rem; }
 

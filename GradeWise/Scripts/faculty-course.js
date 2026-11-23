@@ -215,9 +215,11 @@
         };
 
         var clearSearch = function () {
+            var had = search.value !== "";
             search.value = "";
             applySearch();
             search.focus();
+            if (had && window.GW && window.GW.toast) { window.GW.toast("success", "Search cleared."); }
         };
 
         search.addEventListener("input", applySearch);

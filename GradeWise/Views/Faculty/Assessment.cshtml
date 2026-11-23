@@ -53,7 +53,7 @@
 
 @if (Model.Errors.Count > 0)
 {
-    <div class="gw-alert" role="alert">
+    <div class="gw-alert" role="alert" data-gw-flash="error">
         <strong>Nothing was saved. Please fix the following:</strong>
         <ul class="gw-error-list">
             @foreach (var error in Model.Errors)

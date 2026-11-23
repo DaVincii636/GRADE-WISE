@@ -94,9 +94,11 @@
     }
 
     function clear() {
+        var had = search.value !== "";
         search.value = "";
         apply();
         search.focus();
+        if (had && window.GW && window.GW.toast) { window.GW.toast("success", "Filters cleared."); }
     }
 
     search.addEventListener("input", apply);

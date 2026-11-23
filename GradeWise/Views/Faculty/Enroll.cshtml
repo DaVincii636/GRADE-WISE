@@ -26,11 +26,11 @@
 
 @if (!string.IsNullOrEmpty(error))
 {
-    <div class="gw-alert" role="alert">@error</div>
+    <div class="gw-alert" role="alert" data-gw-flash="error">@error</div>
 }
 @if (!string.IsNullOrEmpty(message))
 {
-    <div class="gw-alert gw-alert-ok" role="status">@message</div>
+    <div class="gw-alert gw-alert-ok" role="status" data-gw-flash="success">@message</div>
 }
 
 <div class="gw-toolbar gw-fcourse-toolbar">
@@ -219,7 +219,7 @@
                     if (noMatch) { noMatch.hidden = shown !== 0; }
                     enCount.textContent = q === "" ? plural(rows.length, "student") : shown + " of " + plural(rows.length, "student");
                 };
-                var clearEn = function () { enSearch.value = ""; applyEn(); enSearch.focus(); };
+                var clearEn = function () { var had = enSearch.value !== ""; enSearch.value = ""; applyEn(); enSearch.focus(); if (had && window.GW && window.GW.toast) { window.GW.toast("success", "Search cleared."); } };
                 enSearch.addEventListener("input", applyEn);
                 document.getElementById("gw-en-clear").addEventListener("click", clearEn);
                 [].forEach.call(document.querySelectorAll("[data-en-clear]"), function (b) { b.addEventListener("click", clearEn); });
@@ -274,6 +274,9 @@
                 var allVisibleOn = visible.length > 0 && visible.every(function (p) { return p.querySelector("input").checked; });
                 visible.forEach(function (p) { p.querySelector("input").checked = !allVisibleOn; });
                 refreshAdd();
+                if (window.GW && window.GW.toast && visible.length) {
+                    window.GW.toast("success", allVisibleOn ? "Selection cleared." : plural(visible.length, "student") + " selected.");
+                }
             });
 
             addForm.addEventListener("change", refreshAdd);

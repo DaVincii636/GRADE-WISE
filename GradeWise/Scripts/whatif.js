@@ -296,6 +296,9 @@
                 row.range.value = String(required);
             });
             update();
+            if (window.GW && window.GW.toast) {
+                window.GW.toast("success", "Score applied. Every remaining item is now set to " + fmt(required) + ".", { title: "Done" });
+            }
         });
 
         // The target is the student's goal. It is kept in this browser under the key the page gives us, so the Course
@@ -334,9 +337,18 @@
         }
         showGoalNote();
 
+        function goalToast() {
+            if (goalKey && readNumber(targetNum) !== null && window.GW && window.GW.toast) {
+                window.GW.toast("success", "Goal saved.");
+            }
+        }
         targetRange.addEventListener("input", saveGoal);
         targetNum.addEventListener("input", saveGoal);
         chips.forEach(function (chip) { chip.addEventListener("click", saveGoal); });
+        // One toast per choice (a chip click, or when a slider or number box is let go), not one per step.
+        chips.forEach(function (chip) { chip.addEventListener("click", goalToast); });
+        targetRange.addEventListener("change", goalToast);
+        targetNum.addEventListener("change", goalToast);
 
         if (clearGoalBtn) {
             clearGoalBtn.addEventListener("click", function () {
@@ -345,6 +357,7 @@
                 targetRange.value = String(defaultTarget);
                 showGoalNote();
                 update();
+                if (window.GW && window.GW.toast) { window.GW.toast("success", "Goal cleared."); }
             });
         }
 
@@ -357,6 +370,7 @@
             targetNum.value = String(keep !== null ? keep : defaultTarget);
             targetRange.value = targetNum.value;
             update();
+            if (window.GW && window.GW.toast) { window.GW.toast("success", "Scores reset."); }
         });
 
         update();

@@ -47,15 +47,15 @@
 
 @if (!string.IsNullOrEmpty(error))
 {
-    <div class="gw-alert" role="alert">@error</div>
+    <div class="gw-alert" role="alert" data-gw-flash="error">@error</div>
 }
 @if (!string.IsNullOrEmpty(message))
 {
-    <div class="gw-alert gw-alert-ok" role="status">@message</div>
+    <div class="gw-alert gw-alert-ok" role="status" data-gw-flash="success">@message</div>
 }
 @if (Model.Errors.Count > 0)
 {
-    <div class="gw-alert" role="alert">
+    <div class="gw-alert" role="alert" data-gw-flash="error">
         <strong>Nothing was saved. Please fix the following:</strong>
         <ul class="gw-error-list">
             @foreach (var e in Model.Errors)
@@ -170,7 +170,10 @@
         <div class="gw-panel-body gw-sr-savebar">
             <span class="gw-sr-savehint">Both terms are saved together.</span>
             <div class="gw-form-buttons">
-                <button type="submit" class="gw-btn">Save categories</button>
+                <button type="submit" class="gw-btn"
+                        data-confirm="Saves the grading categories and weights for both terms."
+                        data-confirm-title="Save categories?"
+                        data-confirm-ok="Save">Save categories</button>
             </div>
         </div>
     }
@@ -365,6 +368,7 @@
                         }
                     });
                     copyMidterm();
+                    if (window.GW && window.GW.toast) { window.GW.toast("success", "Copied from Midterm. Save to keep it."); }
                     return;
                 }
 
@@ -378,6 +382,7 @@
                     gone.hidden = true;
                     touched(goneOf);
                     refresh();
+                    if (window.GW && window.GW.toast) { window.GW.toast("success", "Category removed. Save to keep it."); }
                 }
             });
 

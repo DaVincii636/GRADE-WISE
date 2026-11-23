@@ -235,7 +235,10 @@ else
                     <p id="sim-compare" class="gw-muted gw-sim-compare" aria-live="polite"></p>
                     <div class="gw-form-buttons">
                         <button type="button" id="sim-apply" class="gw-btn gw-btn-small" style="display:none">Use this score for all remaining work</button>
-                        <button type="button" id="sim-goal-clear" class="gw-btn gw-btn-small gw-btn-outline" hidden>Clear goal</button>
+                        <button type="button" id="sim-goal-clear" class="gw-btn gw-btn-small gw-btn-outline" hidden
+                                data-confirm="Your saved goal will be removed."
+                                data-confirm-title="Clear goal?"
+                                data-confirm-ok="Clear">Clear goal</button>
                     </div>
                 </div>
             </section>

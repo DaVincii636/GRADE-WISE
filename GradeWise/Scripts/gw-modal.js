@@ -433,7 +433,7 @@
     // ---------- Toasts ----------
     // GW.toast("success" | "warning" | "error", message, { title, lines, duration })
     // Short notices in the top-right corner. They float above the page (no layout shift), close on
-    // their own after a few seconds (paused while hovered or focused) and have a close button.
+    // their own after a few seconds (paused while the mouse is over them or they have focus) and have a close button.
     /** @type {HTMLDivElement | null} */
     var toastStack = null;
     /** @type {Record<string, string>} */
@@ -504,6 +504,7 @@
 
         var duration = opts.duration || TOAST_TIMES[kind];
         var left = duration, started = 0, gone = false;
+        timer.style.animationDuration = duration + "ms";   // set once, so pausing and resuming keeps the bar in step
         /** @type {number | undefined} the running close timer, if any */
         var handle;
 
@@ -516,7 +517,6 @@
         }
         function run() {
             started = Date.now();
-            timer.style.animationDuration = duration + "ms";
             timer.style.animationPlayState = "running";
             handle = setTimeout(dismiss, left);
         }
@@ -563,12 +563,30 @@
         for (var i = 0; i < items.length; i++) {
             var item = items[i];
             var kind = item.getAttribute("data-gw-flash") || "success";
-            var text = (item.textContent || "").replace(/\s+/g, " ").trim();
-            if (item.parentNode) item.parentNode.removeChild(item);
-            if (!text || seen[kind + "|" + text]) continue;   // never the same notice twice
-            seen[kind + "|" + text] = true;
+            // A banner with a list (a heading and reasons) becomes a toast with the same list.
+            /** @type {string[]} */
+            var lines = [];
+            var listItems = item.querySelectorAll("li");
+            for (var j = 0; j < listItems.length; j++) {
+                var line = (listItems[j].textContent || "").replace(/\s+/g, " ").trim();
+                if (line) lines.push(line);
+            }
+            var plain = item;
+            if (listItems.length) {
+                plain = /** @type {Element} */ (item.cloneNode(true));
+                var lists = plain.querySelectorAll("ul, ol");
+                for (var k = 0; k < lists.length; k++) {
+                    if (lists[k].parentNode) lists[k].parentNode.removeChild(lists[k]);
+                }
+            }
+            var text = (plain.textContent || "").replace(/\s+/g, " ").trim();
+            // data-gw-flash-keep: show the toast and leave the banner on the page (errors next to a form).
+            if (!item.hasAttribute("data-gw-flash-keep") && item.parentNode) item.parentNode.removeChild(item);
+            var key = kind + "|" + text + "|" + lines.join("|");
+            if ((!text && !lines.length) || seen[key]) continue;   // never the same notice twice
+            seen[key] = true;
             shown.push({ kind: kind, text: text });
-            toast(kind, text);
+            toast(kind, text, lines.length ? { lines: lines } : undefined);
         }
         return shown;
     }

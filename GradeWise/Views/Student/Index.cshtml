@@ -35,7 +35,7 @@
 }
 @if (!string.IsNullOrEmpty(flash))
 {
-    <div class="gw-alert gw-alert-ok" role="status">@flash</div>
+    <div class="gw-alert gw-alert-ok" role="status" data-gw-flash="success">@flash</div>
 }
 
 @if (!Model.HasCourse)

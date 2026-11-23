@@ -65,7 +65,7 @@
             <section class="gw-user-form-block" aria-labelledby="gw-ei-profile-h">
                 @if (profileErrors.Count > 0)
                 {
-                    <div class="gw-alert" role="alert">
+                    <div class="gw-alert" role="alert" data-gw-flash="error" data-gw-flash-keep>
                         <strong>Your profile was not updated.</strong>
                         <ul class="gw-error-list">
                             @foreach (var e in profileErrors) { <li>@e</li> }
@@ -137,7 +137,10 @@
                     <div class="gw-user-actions">
                         <p class="gw-note">Your password is needed to save these changes.</p>
                         <div class="gw-form-buttons">
-                            <button type="submit" class="gw-btn">Save profile changes</button>
+                            <button type="submit" class="gw-btn"
+                                    data-confirm="Saves the changes to your profile."
+                                    data-confirm-title="Save changes?"
+                                    data-confirm-ok="Save">Save profile changes</button>
                         </div>
                     </div>
                 }
@@ -146,7 +149,7 @@
             <section class="gw-user-form-block" aria-labelledby="gw-ei-pw-h">
                 @if (passwordErrors.Count > 0)
                 {
-                    <div class="gw-alert" role="alert">
+                    <div class="gw-alert" role="alert" data-gw-flash="error" data-gw-flash-keep>
                         <strong>Your password was not changed.</strong>
                         <ul class="gw-error-list">
                             @foreach (var e in passwordErrors) { <li>@e</li> }
@@ -178,7 +181,10 @@
                     <div class="gw-user-actions">
                         <p class="gw-note">The new password must differ from your current one.</p>
                         <div class="gw-form-buttons">
-                            <button type="submit" class="gw-btn">Update password</button>
+                            <button type="submit" class="gw-btn"
+                                    data-confirm="Your password will be changed."
+                                    data-confirm-title="Update password?"
+                                    data-confirm-ok="Update">Update password</button>
                         </div>
                     </div>
                 }

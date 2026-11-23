@@ -61,15 +61,15 @@
 
 @if (!string.IsNullOrEmpty(error))
 {
-    <div class="gw-alert" role="alert">@error</div>
+    <div class="gw-alert" role="alert" data-gw-flash="error">@error</div>
 }
 @if (!string.IsNullOrEmpty(message))
 {
-    <div class="gw-alert gw-alert-ok" role="status">@message</div>
+    <div class="gw-alert gw-alert-ok" role="status" data-gw-flash="success">@message</div>
 }
 @if (Model.Errors.Count > 0)
 {
-    <div class="gw-alert" role="alert">
+    <div class="gw-alert" role="alert" data-gw-flash="error">
         <strong>Nothing was saved. Please fix the following:</strong>
         <ul class="gw-error-list">
             @foreach (var e in Model.Errors)
@@ -587,7 +587,7 @@ else if (!Model.PeriodsOk)
             <div class="gw-panel-body gw-editinfo-body gw-ec-body">
                 @if (editErrors.Count > 0)
                 {
-                    <div class="gw-alert" role="alert">
+                    <div class="gw-alert" role="alert" data-gw-flash="error" data-gw-flash-keep>
                         <strong>The course was not changed.</strong>
                         <ul class="gw-error-list">
                             @foreach (var e in editErrors)

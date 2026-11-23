@@ -23,11 +23,11 @@
 
 @if (!string.IsNullOrEmpty(error))
 {
-    <div class="gw-alert" role="alert">@error</div>
+    <div class="gw-alert" role="alert" data-gw-flash="error">@error</div>
 }
 @if (!string.IsNullOrEmpty(message))
 {
-    <div class="gw-alert gw-alert-ok" role="status">@message</div>
+    <div class="gw-alert gw-alert-ok" role="status" data-gw-flash="success">@message</div>
 }
 
 <section class="gw-stats" aria-label="Summary">
