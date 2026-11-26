@@ -10,8 +10,8 @@ namespace GradeWise.Services
     {
         private const string SmtpHost = "smtp.gmail.com";
         private const int SmtpPort = 587;
-        private const string SmtpUser = "duayjerick@gmail.com";
-        private const string SmtpPass = "dxhrhkpynjqdonkv";
+        private const string SmtpUser = "gradewise102@gmail.com";
+        private const string SmtpPass = "xtvosghmbhwddhkh"; 
 
         public static void Send(string toEmail, string subject, string body)
         {
