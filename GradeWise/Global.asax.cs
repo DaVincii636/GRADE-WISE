@@ -16,6 +16,7 @@ namespace GradeWise
 {
     public class MvcApplication : System.Web.HttpApplication
     {
+
         protected void Application_Start()
         {
             ServicePointManager.SecurityProtocol |= SecurityProtocolType.Tls12;
@@ -41,13 +42,15 @@ namespace GradeWise
                 try
                 {
                     MongoDbSeeder.Initialize();
+
                 }
                 catch (Exception ex)
                 {
-                    Trace.TraceError("MongoDB seeding failed: " + ex.Message);
+                    Trace.TraceError("MongoDB initialization or ID migration failed: " + ex.Message);
                 }
             });
         }
+
 
         protected void Application_PostAuthenticateRequest(object sender, EventArgs e)
         {

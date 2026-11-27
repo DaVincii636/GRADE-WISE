@@ -1,3 +1,4 @@
+using MongoDB.Bson.Serialization.Attributes;
 using System.Collections.Generic;
 
 namespace GradeWise.Models
@@ -24,6 +25,12 @@ namespace GradeWise.Models
     public class GradeRecord
     {
         public string Id { get; set; }
+        [BsonElement("grade_id")]
+        public string GradeId
+        {
+            get { return Id; }
+            set { Id = value; }
+        }
 
         public string CourseId { get; set; }
 

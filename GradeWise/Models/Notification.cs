@@ -17,6 +17,12 @@ namespace GradeWise.Models
     public class Notification
     {
         public string Id { get; set; }
+        [BsonElement("notification_id")]
+        public string NotificationId
+        {
+            get { return Id; }
+            set { Id = value; }
+        }
 
         public string StudentId { get; set; }
 

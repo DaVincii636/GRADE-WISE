@@ -1,6 +1,7 @@
+using GradeWise.Services;
+using MongoDB.Bson.Serialization.Attributes;
 using System;
 using System.Collections.Generic;
-using GradeWise.Services;
 
 namespace GradeWise.Models
 {
@@ -22,6 +23,12 @@ namespace GradeWise.Models
     public class ScoreSnapshot
     {
         public string Id { get; set; }
+        [BsonElement("snapshot_id")]
+        public string SnapshotId
+        {
+            get { return Id; }
+            set { Id = value; }
+        }
 
         public string CourseId { get; set; }
 

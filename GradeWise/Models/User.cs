@@ -1,3 +1,4 @@
+using MongoDB.Bson.Serialization.Attributes;
 using System;
 
 namespace GradeWise.Models
@@ -21,6 +22,12 @@ namespace GradeWise.Models
     public class User
     {
         public string Id { get; set; }
+        [BsonElement("user_id")]
+        public string UserId
+        {
+            get { return Id; }
+            set { Id = value; }
+        }
 
         /// <summary>Student number or username used to sign in. Unique, case-insensitive.</summary>
         public string StudentNo { get; set; }
